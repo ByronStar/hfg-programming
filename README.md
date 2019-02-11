@@ -5,7 +5,7 @@ as folders with exercises for the students.
 
 The general structure is as follows:
  
-    root directory            administrative files and the more important all the .html files (our documents)
+    root directory           administrative files and the more important all the .html files (our documents)
     |- css directory         stylesheet files for look and feel of our documents
     |- img directory         images of various types
     |- js directory          javascript files for the actual programming
