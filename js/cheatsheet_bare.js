@@ -11,6 +11,8 @@ var myFunction = function() {
   console.log("Hallo");
 }
 
+var layer;
+
 function init() {
   layer = document.getElementById('layer1');
   var uri = layer.namespaceURI;
