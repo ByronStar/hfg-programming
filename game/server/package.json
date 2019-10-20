@@ -1,0 +1,21 @@
+{
+  "name": "hfg-games",
+  "version": "0.1.0",
+  "description": "HfG Programming Web/WebSocket Server",
+  "main": "gameserver.js",
+  "scripts": {
+    "start": "./gameserver.sh",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ByronStar/hfg-programming"
+  },
+  "author": "ByronStar",
+  "license": "MIT",
+  "homepage": "https://github.com/ByronStar",
+  "dependencies": {
+    "ws": ">=3.3.1"
+  },
+  "devDependencies": {}
+}
