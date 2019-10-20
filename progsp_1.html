@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- Hier beginnt der Administrative Teil der Seite -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="ByronStar">
+
+    <title>Programmiersprachen - Übung 1</title>
+
+    <!-- Velocity -->
+    <!--
+      <script type="text/javascript" src="lib/velocity.min.js"></script>
+      -->
+
+    <!-- p5js -->
+    <!--
+      <script src="lib/p5.js" type="text/javascript"></script>
+      <script src="lib/p5.dom.js" type="text/javascript"></script>
+      <script src="lib/p5.sound.js" type="text/javascript"></script>
+      -->
+
+    <!-- matter.js -->
+    <!--
+      <script type="text/javascript" src="lib/matter.js"></script>
+      -->
+
+    <!-- Javascript Programm in separater Datei -->
+    <script type="text/javascript" src="js/progsp_0.js"></script>
+
+    <!-- Styles in separater Datei -->
+    <link rel="stylesheet" href="css/progsp.css">
+
+    <!-- Inline Styles -->
+    <style type="text/css">
+        .progspxx {
+        }
+
+        h3 {
+        }
+
+        div {
+        }
+
+        div div {
+        }
+
+        .back {
+        }
+
+        .rot {
+        }
+
+        .kreise, .rechtecke {
+        }
+
+        div.kreise div {
+        }
+
+        g#layer1 rect {
+        }
+
+        g#layer1 text {
+        }
+
+        g#layer1 circle {
+        }
+    </style>
+</head>
+
+<body class="progspxx" onload="init()">
+<span class="hint">Via <b>Class</b> Selector für die ganze Seite: ein anderer Hintergrund, ein netter Font in passender Farbe, etwas Abstand, ...</span>
+<h3>Übung 1</h3>
+<ol>
+    <li>Farbe, Form, Position und Anordnung der Elemente mit CSS ändern
+    <li><a href="http://studenten.hfg-gmuend.de/ig1/progsp/progsp.html#HTML" target="info1">HTML Info</a>
+    <li><a href="http://studenten.hfg-gmuend.de/ig1/progsp/progsp.html#CSS" target="info2">CSS Info</a>
+    <li><a href="http://studenten.hfg-gmuend.de/ig1/progsp/progsp.html#SVG" target="info3">SVG Info</a>
+    <li><a href="http://studenten.hfg-gmuend.de/ig1/progsp/Aufgabe/progsp_1_ok.html" target="solution">Lösung</a>
+    <li><a href="http://studenten.hfg-gmuend.de/ig1/progsp/Aufgabe/progsp_1.zip">Herunterladen</a> auspacken und den Inhalt in Euer lokales Verzeichnis <b>Aufgabe</b> kopieren
+</ol>
+<span class="hint">Horizontal zentriert und mit grünem Hintergrund für alle &lt;h3&gt; Überschriften via <b>Element</b> Selector</span>
+<h3 id="box0">Hallo</h3>
+<span class="hint">4 x 4 cyan Rechtecke (&lt;div&gt;&lt;/div&gt;) und auf der Seite horizontal zentriert mit geschachteltem <b>Element</b> Selector</span>
+<div class="rechtecke">
+    <div class="rot">X</div>
+    <div>X</div>
+    <div>X</div>
+    <div>X</div>
+    <br>
+    <div>X</div>
+    <div class="rot">X</div>
+    <div>X</div>
+    <div>X</div>
+    <br>
+    <div>X</div>
+    <div>X</div>
+    <div class="rot">X</div>
+    <div>X</div>
+    <br>
+    <div>X</div>
+    <div>X</div>
+    <div>X</div>
+    <div class="rot">X</div>
+</div>
+<span class="hint">4 x 4 rote Kreise (&lt;div&gt;&lt;/div&gt;) und auf der Seite horizontal zentriert mit <b>Class</b> und geschachteltem <b>Element</b> Selector</span>
+<div class="kreise">
+    <div>X</div>
+    <div>X</div>
+    <div>X</div>
+    <div>X</div>
+    <br>
+    <div>X</div>
+    <div>X</div>
+    <div>X</div>
+    <div>X</div>
+    <br>
+    <div>X</div>
+    <div>X</div>
+    <div>X</div>
+    <div>X</div>
+    <br>
+    <div>X</div>
+    <div>X</div>
+    <div>X</div>
+    <div>X</div>
+</div>
+<span class="hint">4 x 4 grüne Rechtecke (&lt;rect&gt;&lt;/rect&gt;) und auf der Seite horizontal zentriert mit geschachteltem <b>Element</b> Selector und Element <b>ID</b></span>
+<div>
+    <svg id="svg01" xmlns="http://www.w3.org/2000/svg" version="1.1" width="240" height="240" viewBox="-120 -120 240 240">
+        <rect class="back" x="-50%" y="-50%" width="240" height="240"></rect>
+        <g id="layer1">
+            <rect x="-110" y="-110" width="40" height="40"></rect>
+            <text x="-90" y="-90">X</text>
+            <rect x="-50" y="-110" width="40" height="40"></rect>
+            <rect x="10" y="-110" width="40" height="40"></rect>
+            <rect x="70" y="-110" width="40" height="40"></rect>
+
+            <rect x="-110" y="-50" width="40" height="40"></rect>
+            <rect x="-50" y="-50" width="40" height="40"></rect>
+            <text x="-30" y="-30">X</text>
+            <rect x="10" y="-50" width="40" height="40"></rect>
+            <rect x="70" y="-50" width="40" height="40"></rect>
+
+            <rect x="-110" y="10" width="40" height="40"></rect>
+            <rect x="-50" y="10" width="40" height="40"></rect>
+            <rect x="10" y="10" width="40" height="40"></rect>
+            <text x="30" y="30">X</text>
+            <rect x="70" y="10" width="40" height="40"></rect>
+
+            <rect x="-110" y="70" width="40" height="40"></rect>
+            <rect x="-50" y="70" width="40" height="40"></rect>
+            <rect x="10" y="70" width="40" height="40"></rect>
+            <rect x="70" y="70" width="40" height="40"></rect>
+            <text x="90" y="90">X</text>
+        </g>
+    </svg>
+</div>
+<span class="hint">4 x 4 gelbe Kreise (&lt;circle&gt;&lt;/circle&gt;) und auf der Seite horizontal zentriert mit geschachteltem <b>Element</b> Selector und Element <b>ID</b></span>
+<div>
+    <svg id="svg02" xmlns="http://www.w3.org/2000/svg" version="1.1" width="240" height="240" viewBox="-120 -120 240 240">
+        <rect class="back" x="-50%" y="-50%" width="240" height="240"></rect>
+        <g id="layer1">
+            <circle cx="-90" cy="-90" r="20"></circle>
+            <text x="-90" y="-90">X</text>
+            <circle cx="-30" cy="-90" r="20"></circle>
+            <circle cx="30" cy="-90" r="20"></circle>
+            <circle cx="90" cy="-90" r="20"></circle>
+
+            <circle cx="-90" cy="-30" r="20"></circle>
+            <circle cx="-30" cy="-30" r="20"></circle>
+            <text x="-30" y="-30">X</text>
+            <circle cx="30" cy="-30" r="20"></circle>
+            <circle cx="90" cy="-30" r="20"></circle>
+
+            <circle cx="-90" cy="30" r="20"></circle>
+            <circle cx="-30" cy="30" r="20"></circle>
+            <circle cx="30" cy="30" r="20"></circle>
+            <text x="30" y="30">X</text>
+            <circle cx="90" cy="30" r="20"></circle>
+
+            <circle cx="-90" cy="90" r="20"></circle>
+            <circle cx="-30" cy="90" r="20"></circle>
+            <circle cx="30" cy="90" r="20"></circle>
+            <circle cx="90" cy="90" r="20"></circle>
+            <text x="90" y="90">X</text>
+        </g>
+    </svg>
+</div>
+</body>
+</html>

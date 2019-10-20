@@ -149,6 +149,14 @@ function init() {
   // Zur Sicherheit schauen wir mal, was wir da erzeugt haben - sichtbar im Browser in der Konsole
   console.log(myElems[4]);
 
+  // Jetzt noch Spezialkram. Der 'Global' 'Variable' "svg" wird das SVG Element aus der Seite zugewiesen.
+  // Damit erhalten wir Zugriff auf zwei wichtige Funktionen, die damit verknüpt sind.
+  svg = document.getElementById('svg');
+  // Wir können einen SVG Punkt anlegen und in der Variablen pt abspeichern
+  pt = svg.createSVGPoint();
+  // und wir können einen uns die Bildschirm Daten in der Variablen matrix abspeichern
+  matrix = svg.getScreenCTM().inverse();
+  // Das brauchen wir später für Umrechnung von Mouse/Bildschirm Koordinaten mit der Funktion cursorPoint
 }
 
 // Verwenden einer nicht 'Global' - 'Local' - 'Variable' erzeugt eine Fehlermeldung in der Konsole
@@ -286,6 +294,13 @@ function cloneElement(parent, elem, attrList) {
 
   // Das erzeugte Element "wrap" wird dem Aufrufer 'Caller' der 'Function' zur weiteren Verwendung zurückgegeben 'returned'
   return wrap;
+}
+
+// Umrechnen von Bildschirm Koordineten in SVG Koordinaten
+function cursorPoint(evt) {
+  pt.x = evt.clientX;
+  pt.y = evt.clientY;
+  return pt.matrixTransform(matrix);
 }
         </code>
       </pre>

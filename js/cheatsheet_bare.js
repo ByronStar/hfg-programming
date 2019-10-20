@@ -20,6 +20,9 @@ function init() {
   var myElems = createPattern(layer, 20, 10, 10, '#FF00FF', 0);
   myElems[4].setAttribute('fill', 'lime');
   console.log(myElems[4]);
+  svg = document.getElementById('svg');
+  pt = svg.createSVGPoint();
+  matrix = svg.getScreenCTM().inverse();
 }
 
 console.log("Fehler!", uri);
@@ -67,4 +70,10 @@ function cloneElement(parent, elem, attrList) {
   var wrap = createElement(parent, 'g', {});
   wrap.appendChild(place);
   return wrap;
+}
+
+function cursorPoint(evt) {
+  pt.x = evt.clientX;
+  pt.y = evt.clientY;
+  return pt.matrixTransform(matrix);
 }
