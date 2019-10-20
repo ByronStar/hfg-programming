@@ -81,7 +81,7 @@ console.log((new Date()) + ' listening on http://' + ipAddr + ':' + ipPort + "/p
 
 function broadcast(server, message) {
   if (msgTrace) {
-    console.log('%s SND <%s> (%d clients)', new Date().getTime(), message, server.clients.length)
+    console.log('%s SND <%s> (%d clients)', new Date().getTime(), message, server.clients.size)
   }
   server.clients.forEach(function each(client) {
     try {
@@ -179,7 +179,7 @@ function handleClose(server, id) {
     from: 'SERVER',
     data: { id: id, players: players }
   });
-  console.log('%s EXIT <%s> (%d clients)', new Date().getTime(), message, server.clients.length)
+  console.log('%s EXIT <%s> (%d clients)', new Date().getTime(), message, server.clients.size)
   // Broadcast: Client has left
   broadcast(server, message)
 }
@@ -187,8 +187,9 @@ function handleClose(server, id) {
 let wsServer = new WebSocketServer({ port: wsPort })
 console.log((new Date()) + ' listening on port ws://' + wsPort)
 
-wsServer.on('connection', function connection(client) {
-  let id = client.upgradeReq.headers['sec-websocket-key']
+wsServer.on('connection', function connection(client, req) {
+  client.upgradeReq = req;
+  let id = req.headers['sec-websocket-key']
   clients[id] = client
 
   // Client sent message
@@ -207,11 +208,11 @@ wsServer.on('connection', function connection(client) {
     from: 'SERVER',
     data: {
       id: id,
-      seq: wsServer.clients.length - 1
+      seq: wsServer.clients.size - 1
     }
   })
   client.send(message)
-  console.log('%s JOIN <%s> (%d clients)', new Date().getTime(), message, wsServer.clients.length)
+  console.log('%s JOIN <%s> (%d clients)', new Date().getTime(), message, wsServer.clients.size)
 })
 
 let httpsServer = https.createServer(options, function(request, response) {
@@ -224,8 +225,9 @@ httpsServer.listen(wssPort, function() {
 })
 let wssServer = new WebSocketServer({ server: httpsServer })
 
-wssServer.on('connection', function connection(client) {
-  let id = client.upgradeReq.headers['sec-websocket-key']
+wssServer.on('connection', function connection(client, req) {
+  client.upgradeReq = req;
+  let id = req.headers['sec-websocket-key']
   clients[id] = client
 
   // Client sent message
@@ -244,7 +246,7 @@ wssServer.on('connection', function connection(client) {
     from: 'SERVER',
     data: {
       id: id,
-      seq: wsServer.clients.length - 1
+      seq: wsServer.clients.size - 1
     }
   })
   client.send(message)
