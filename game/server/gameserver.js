@@ -21,6 +21,7 @@ let ipAddr = Object.keys(ifs).map(x => ifs[x].filter(x => x.family === 'IPv4' &&
 let ipPort = 8091
 
 let clients = {}
+let games = {}
 let players = []
 // track active IP Addresses
 let active = {}
@@ -51,7 +52,9 @@ http.createServer(function(request, response) {
 
   fs.exists(filename, function(exists) {
     if (!exists) {
-      response.writeHead(404, { "Content-Type": "text/plain" })
+      response.writeHead(404, {
+        "Content-Type": "text/plain"
+      })
       response.write("404 Not Found\n")
       response.end()
       return
@@ -61,7 +64,9 @@ http.createServer(function(request, response) {
 
     fs.readFile(filename, "binary", function(err, file) {
       if (err) {
-        response.writeHead(500, { "Content-Type": "text/plain" })
+        response.writeHead(500, {
+          "Content-Type": "text/plain"
+        })
         response.write(err + "\n")
         response.end()
         return
@@ -115,9 +120,22 @@ function handleMessage(server, message, id, client) {
     active[ip] = true
     switch (msg.id) {
       case 'JOIN':
+        if (!(msg.data.game in games)) {
+          games[msg.data.game] = {
+            players: []
+          }
+        }
+        games[msg.data.game].players.push({
+          id: id,
+          name: msg.data.name,
+          game: msg.data.game,
+          active: false,
+          group: []
+        });
         players.push({
           id: id,
           name: msg.data.name,
+          game: msg.data.game,
           active: false,
           group: []
         })
@@ -125,20 +143,23 @@ function handleMessage(server, message, id, client) {
           JSON.stringify({
             id: 'PLAYERS',
             from: 'SERVER',
-            data: { players: players }
+            data: {
+              players: players
+            }
           }))
         break
       case 'UPDATE':
         msg.id = 'PLAYERS'
-      case 'PREPARE':
-      case 'ACCEPT':
-        let idx = players.findIndex(v => v.id === id)
-        players[idx] = msg.data.player
-        msg.data.players = players
+        msg.data.players = updatePlayers(msg.data.player)
         broadcast(server, JSON.stringify(msg))
         break
+      case 'PREPARE':
+      case 'ACCEPT':
+        msg.data.players = updatePlayers(msg.data.player)
+        forward(server, JSON.stringify(msg), [msg.data.to])
+        break
       case 'DECLINE':
-        broadcast(server, message)
+        forward(server, message, [msg.data.to])
         break
       case 'MOVE':
         forward(server, message, msg.data.group)
@@ -152,7 +173,7 @@ function handleMessage(server, message, id, client) {
           if (err) {
             console.log(err)
           } else {
-            console.log("client" + msg.data.name + " updated.")
+            console.log("client" + msg.data.name + " saved.")
           }
         });
         break
@@ -169,6 +190,12 @@ function handleMessage(server, message, id, client) {
   }
 }
 
+function updatePlayers(player) {
+  let idx = players.findIndex(v => v.id === player.id)
+  players[idx] = player
+  return players
+}
+
 function handleClose(server, id) {
   // console.log(code, message)
   delete clients[id]
@@ -177,14 +204,19 @@ function handleClose(server, id) {
   let message = JSON.stringify({
     id: 'EXIT',
     from: 'SERVER',
-    data: { id: id, players: players }
+    data: {
+      id: id,
+      players: players
+    }
   });
   console.log('%s EXIT <%s> (%d clients)', new Date().getTime(), message, server.clients.size)
   // Broadcast: Client has left
   broadcast(server, message)
 }
 
-let wsServer = new WebSocketServer({ port: wsPort })
+let wsServer = new WebSocketServer({
+  port: wsPort
+})
 console.log((new Date()) + ' listening on port ws://' + wsPort)
 
 wsServer.on('connection', function connection(client, req) {
@@ -223,7 +255,9 @@ let httpsServer = https.createServer(options, function(request, response) {
 httpsServer.listen(wssPort, function() {
   console.log((new Date()) + ' listening on port wss://' + wssPort)
 })
-let wssServer = new WebSocketServer({ server: httpsServer })
+let wssServer = new WebSocketServer({
+  server: httpsServer
+})
 
 wssServer.on('connection', function connection(client, req) {
   client.upgradeReq = req;
@@ -254,3 +288,27 @@ wssServer.on('connection', function connection(client, req) {
     console.log('%s SND <%s>', new Date().getTime(), message)
   }
 })
+
+function guid() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    let r = Math.random() * 16 | 0,
+      v = c == 'x' ? r : (r & 0x3 | 0x8)
+    return v.toString(16)
+  })
+}
+
+let lut = []
+for (let i = 0; i < 256; i++) {
+  lut[i] = (i < 16 ? '0' : '') + (i).toString(16)
+}
+
+function guid7() {
+  let d0 = Math.random() * 0xffffffff | 0
+  let d1 = Math.random() * 0xffffffff | 0
+  let d2 = Math.random() * 0xffffffff | 0
+  let d3 = Math.random() * 0xffffffff | 0
+  return lut[d0 & 0xff] + lut[d0 >> 8 & 0xff] + lut[d0 >> 16 & 0xff] + lut[d0 >> 24 & 0xff] + '-' +
+    lut[d1 & 0xff] + lut[d1 >> 8 & 0xff] + '-' + lut[d1 >> 16 & 0x0f | 0x40] + lut[d1 >> 24 & 0xff] + '-' +
+    lut[d2 & 0x3f | 0x80] + lut[d2 >> 8 & 0xff] + '-' + lut[d2 >> 16 & 0xff] + lut[d2 >> 24 & 0xff] +
+    lut[d3 & 0xff] + lut[d3 >> 8 & 0xff] + lut[d3 >> 16 & 0xff] + lut[d3 >> 24 & 0xff]
+}

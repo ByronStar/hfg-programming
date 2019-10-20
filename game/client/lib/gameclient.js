@@ -5,7 +5,7 @@ let gc = {
   players: [],
   me: null,
   id: null,
-  gameid: 0,
+  game: 0,
   online: false,
   ready: false,
   move: function(data) {
@@ -22,13 +22,15 @@ let gc = {
       return v.id === gc.me.group[idx]
     })
   },
+  cursorPoint: cursorPoint,
   store: getScript,
-  add: setScript
+  add: addScript
 }
 let playerNode
 let statusNode
 let moveCallback
 let msgTrace = false
+let reconnect = false
 
 // the WebSocket connection is established to the http / https URL with these ports
 let wsPort = 11203
@@ -87,7 +89,15 @@ function onState(online, ws) {
   gc.online = online
   if (!gc.online) {
     gc.players = []
-    setTimeout(reload, 2000)
+    if (reconnect) {
+      setTimeout(reload, 5000)
+    } else {
+      if (location.hostname.match(/127.0.0.1|localhost/)) {
+        alert("Es wurde kein lokaler Server gefunden! Eventuell einen remote Server verwenden:\n" + location.href + "?server=<IPAddress>")
+      }
+    }
+  } else {
+    reconnect = true
   }
   refreshPlayers(gc.players)
 }
@@ -115,7 +125,7 @@ function onReceive(data) {
     case 'ID':
       // connected and server provides ID
       gc.id = msg.data.id
-      sendState('JOIN', { name: name, gameid: gc.gameid })
+      sendState('JOIN', { name: name, game: gc.game })
       break
     case 'PLAYERS':
       break;
@@ -202,7 +212,7 @@ function loadedScript(text, context) {
   createQRCode(gameURL, 'p1')
 }
 
-function setScript(name) {
+function addScript(name) {
   var script = document.createElement("script");
   script.setAttribute('type', 'text/javascript');
   script.setAttribute('src', name);
@@ -295,6 +305,21 @@ function trace(arg) {
 
 function rand(min, max) {
   return min + Math.random() * (max - min);
+}
+
+let pt, matrix;
+
+function initPoint() {
+  let svg = document.getElementById('svg');
+  pt = svg.createSVGPoint();
+  matrix = svg.getScreenCTM().inverse();
+}
+
+// Get point in global SVG space
+function cursorPoint(evt) {
+  pt.x = evt.clientX;
+  pt.y = evt.clientY;
+  return pt.matrixTransform(matrix);
 }
 
 let headers = null;

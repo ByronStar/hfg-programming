@@ -54,18 +54,3 @@ function onMove(move) {
       console.log(move);
   }
 }
-
-var svg, pt, matrix;
-
-function initPoint() {
-  svg = document.getElementById('svg');
-  pt = svg.createSVGPoint();
-  matrix = svg.getScreenCTM().inverse();
-}
-
-// Get point in global SVG space
-function cursorPoint(evt) {
-  pt.x = evt.clientX;
-  pt.y = evt.clientY;
-  return pt.matrixTransform(matrix);
-}
