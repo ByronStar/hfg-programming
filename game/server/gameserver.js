@@ -17,7 +17,10 @@ const path = require("path")
 let ifs = require('os').networkInterfaces()
 // console.log(ifs)
 
-let ipAddr = Object.keys(ifs).map(x => ifs[x].filter(x => x.family === 'IPv4' && !x.internal)[0]).filter(x => x)[0].address
+let ipAddr = 'localhost'
+if (process.argv.length < 3 || process.argv[2] != '-local') {
+  ipAddr = Object.keys(ifs).map(x => ifs[x].filter(x => x.family === 'IPv4' && !x.internal)[0]).filter(x => x)[0].address
+}
 let ipPort = 8091
 
 let clients = {}
@@ -25,6 +28,11 @@ let games = {}
 let players = []
 // track active IP Addresses
 let active = {}
+
+let state = { games: {} }
+let stateFile = './gamestate.json';
+
+loadState();
 
 let options = {
   key: fs.readFileSync('./privkey.pem'),
@@ -39,7 +47,7 @@ let options = {
 // https.createServer(options, function (request, response) {
 http.createServer(function(request, response) {
 
-  let uri = "/../client/" + url.parse(request.url).pathname,
+  let uri = "/../" + url.parse(request.url).pathname,
     filename = path.join(process.cwd(), uri)
 
   console.log(filename)
@@ -168,12 +176,62 @@ function handleMessage(server, message, id, client) {
         process.exit(msg.data.rc)
         break
       case 'STORE':
-        let buff = new Buffer.from(msg.data.code, 'base64')
-        fs.writeFile("../client" + msg.data.name, buff.toString('utf8'), 'utf8', (err, data) => {
+        let part = msg.data.name.endsWith('.js') ? 'js' : 'html'
+        if (msg.data.game in state.games) {
+          if (state.games[msg.data.game][part] != undefined && state.games[msg.data.game][part] != msg.data.name) {
+            if (part == 'html') { // This is unsave: Split STORE in STORE_CHK and STORE
+              client.send(JSON.stringify({
+                id: 'STORE',
+                from: 'SERVER',
+                data: {
+                  rc: -1,
+                  msg: "Ein Spiel mit der selben ID existiert bereits unter einem anderen Namen: '" + state.games[msg.data.game][part] +
+                    "'.\nEventuell im Javascript \ngame.gameId = '" + msg.data.game + "';\n durch \ngame.gameId = '" + guid7() + "';\n ersetzen!"
+                }
+              }))
+            }
+            break;
+          }
+        } else {
+          state.games[msg.data.game] = { id: msg.data.game }
+        }
+        if (msg.data.name in state.games) {
+          if (state.games[msg.data.name].id != msg.data.game) {
+            if (part == 'html') {
+              client.send(JSON.stringify({
+                id: 'STORE',
+                from: 'SERVER',
+                data: {
+                  rc: -2,
+                  msg: 'Ein Spiel mit dem selben Namen "' + msg.data.name + '" existiert bereits unter einer anderen ID: ' + state.games[msg.data.name].id +
+                    "'.\nEventuell HTML und Javascript umbenennen."
+                }
+              }))
+            }
+            break;
+          }
+        } else {
+          state.games[msg.data.name] = state.games[msg.data.game]
+        }
+        state.games[msg.data.game][part] = msg.data.name
+        saveState();
+        let buff = Buffer.from(msg.data.code, 'base64')
+        //console.log(msg.data.code, buff, buff.toString(), buff.toString('utf-8'))
+        fs.writeFile(".." + msg.data.name, buff.toString('utf-8'), 'utf8', (err, data) => {
           if (err) {
             console.log(err)
+            client.send(JSON.stringify({
+              id: 'STORE',
+              from: 'SERVER',
+              data: { rc: -1, msg: err }
+            }))
           } else {
-            console.log("client" + msg.data.name + " saved.")
+            console.log(msg.data.name + " saved.")
+            client.send(JSON.stringify({
+              id: 'STORE',
+              from: 'SERVER',
+              data: { rc: 0, msg: '' }
+            }))
           }
         });
         break
@@ -217,7 +275,7 @@ function handleClose(server, id) {
 let wsServer = new WebSocketServer({
   port: wsPort
 })
-console.log((new Date()) + ' listening on port ws://' + wsPort)
+console.log((new Date()) + ' listening on port ws://' + ipAddr + ':' + wsPort)
 
 wsServer.on('connection', function connection(client, req) {
   client.upgradeReq = req;
@@ -240,6 +298,7 @@ wsServer.on('connection', function connection(client, req) {
     from: 'SERVER',
     data: {
       id: id,
+      ip: ipAddr,
       seq: wsServer.clients.size - 1
     }
   })
@@ -253,7 +312,7 @@ let httpsServer = https.createServer(options, function(request, response) {
   response.end()
 })
 httpsServer.listen(wssPort, function() {
-  console.log((new Date()) + ' listening on port wss://' + wssPort)
+  console.log((new Date()) + ' listening on port wss://' + ipAddr + ':' + wssPort)
 })
 let wssServer = new WebSocketServer({
   server: httpsServer
@@ -280,6 +339,7 @@ wssServer.on('connection', function connection(client, req) {
     from: 'SERVER',
     data: {
       id: id,
+      ip: ipAddr,
       seq: wsServer.clients.size - 1
     }
   })
@@ -289,12 +349,25 @@ wssServer.on('connection', function connection(client, req) {
   }
 })
 
-function guid() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    let r = Math.random() * 16 | 0,
-      v = c == 'x' ? r : (r & 0x3 | 0x8)
-    return v.toString(16)
-  })
+function loadState() {
+  fs.readFile(stateFile, 'utf-8', (err, data) => {
+    if (err) {
+      console.log(err);
+    } else {
+      state = JSON.parse(data);
+      saveState();
+    }
+  });
+}
+
+function saveState() {
+  fs.writeFile(stateFile, JSON.stringify(state), 'utf8', (err, data) => {
+    if (err) {
+      console.log(err);
+    } else {
+      // console.log(stateFile + " updated");
+    }
+  });
 }
 
 let lut = []

@@ -3,6 +3,7 @@ var ball;
 
 function init() {
   game = wsinit(onMove, document.getElementById('players'), document.getElementById('status'));
+  game.gameId = 0;
   console.log(game);
 
   ball = document.getElementById("ball");
@@ -12,19 +13,27 @@ function init() {
 function onKeyDown(evt) {
   switch (evt.key) {
     case 'ArrowLeft':
-      gc.move({ id: 'L' });
+      if (game.ready && game.id == game.me.group[0]) {
+        game.move({ id: 'L' });
+      }
       evt.preventDefault();
       break;
     case 'ArrowRight':
-      gc.move({ id: 'R' });
+      if (game.ready && game.id == game.me.group[0]) {
+        game.move({ id: 'R' });
+      }
       evt.preventDefault();
       break;
     case 'ArrowUp':
-      gc.move({ id: 'U' });
+      if (game.ready && game.id == game.me.group[1]) {
+        game.move({ id: 'U' });
+      }
       evt.preventDefault();
       break;
     case 'ArrowDown':
-      gc.move({ id: 'D' });
+      if (game.ready && game.id == game.me.group[1]) {
+        game.move({ id: 'D' });
+      }
       evt.preventDefault();
       break;
     default:

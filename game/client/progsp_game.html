@@ -18,28 +18,11 @@
   <script type="text/javascript" src="lib/gameclient.js"></script>
 
   <!-- Javascript Programm in separater Datei -->
-  <script id="code" type="text/javascript" src="js/progsp_game.js"></script>
+  <script id="game" type="text/javascript" src="js/progsp_game.js"></script>
 
   <!-- Styles in separater Datei -->
   <link rel="stylesheet" href="css/progsp.css">
 
-  <!-- Inline Styles -->
-  <style type="text/css">
-    .progsp g#layer0 rect {
-      fill: #808080;
-    }
-
-    .progsp g#layer1 rect {
-      fill: #00FF00;
-    }
-
-    .progsp g#layer2 rect {
-      fill: #FF0000;
-    }
-
-    .centered {
-      text-align: center;
-    }
   </style>
 </head>
 
@@ -59,32 +42,29 @@
 
   <!-- Ein SVG das per Programm verändert wird -->
   <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="-960 -600 1920 1200">
-    <!-- Das Hintergrund Rechteck in einer eigenen Gruppe -->
     <g id="layer0">
-      <rect id="back" width="100%" height="100%" x="-50%" y="-50%" opacity="1.0"></rect>
-    </g>
-    <g id="layerS">
+      <!-- Der Hintergrund -->
+      <rect id="back" width="100%" height="100%" x="-50%" y="-50%" opacity="1.0" fill="#808080"></rect>
+      <!-- Der Online Status -->
       <circle id="status" cx="930" cy="-570" r=10 fill="red"></circle>
     </g>
-    <!-- Diese Gruppe ist enthält vordefinierte Rechtecke -->
     <g id="layer1">
     </g>
-    <!-- Diese Gruppe soll per Programm gefüllt werden -->
     <g id="layer2">
     </g>
-    <!-- Das Mittelpunkt Kreis in einer eigenen Gruppe -->
     <g id="layer3">
       <circle id="ball" cx="0" cy="0" r=20 fill="blue"></circle>
     </g>
   </svg>
 
-  <!-- HTML content als overly über dem Spiel - kann bei Bedarf ausgeblendet werden -->
+  <!-- HTML Content als Overly über dem Spiel -->
   <div class="overlay">
     <div>
       <h1 style="text-align:center">Multiplayer Game</h1>
     </div>
+    <!-- Spieler Info - kann bei Bedarf ausgeblendet werden -->
     <div id="info">
-      <div id="p1" style="position: absolute; top:0;right:15px;"></div>
+      <div id="p1" style="position: absolute; top:0;right:30px;"></div>
       <div id="p2" style="float: right;margin-right:40px;"></div>
       <div>
         <ol id="players">

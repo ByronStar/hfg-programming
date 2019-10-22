@@ -1,35 +1,32 @@
 // let gc = function() {
 //   let gc = function(typeNumber, errorCorrectionLevel) {
+let ipPort = 8091
+let msgTrace = true
 let ws, name
 let gc = {
   players: [],
   me: null,
   id: null,
-  game: 0,
+  gameId: 0,
   online: false,
   ready: false,
+  server: null,
   move: function(data) {
     if (gc.ready) {
       data.group = gc.me.group
       sendState('MOVE', data)
     }
   },
-  send: function(cmd, data) {
-    sendState(cmd, data)
-  },
   player: function(idx) {
     return gc.players.find(function(v, i) {
       return v.id === gc.me.group[idx]
     })
   },
-  cursorPoint: cursorPoint,
-  store: getScript,
-  add: addScript
+  cursorPoint: cursorPoint
 }
 let playerNode
 let statusNode
 let moveCallback
-let msgTrace = false
 let reconnect = false
 
 // the WebSocket connection is established to the http / https URL with these ports
@@ -37,16 +34,16 @@ let wsPort = 11203
 let wssPort = 11204
 
 function wsinit(onMove, node, status) {
-  //console.log(location);
-  let url = new URL(window.location.href);
-  name = url.searchParams.get("name");
+  //console.log(location)
+  let url = new URL(window.location.href)
+  name = url.searchParams.get("name")
   if (null == name) {
     name = "Spieler" + Math.floor(rand(100, 999))
   }
 
   moveCallback = onMove
-  let port = url.searchParams.get("port");
-  // console.log(port);
+  let port = url.searchParams.get("port")
+  // console.log(port)
 
   if (null != port) {
     wsPort = port
@@ -54,34 +51,66 @@ function wsinit(onMove, node, status) {
 
   playerNode = node
   statusNode = status
-  let host
-  serverIp = url.searchParams.get("server");
-  if (serverIp) {
-    host = serverIp
+  msgTrace = (null != url.searchParams.get("trace"))
+  let host = url.searchParams.get("server")
+  if (host) {
+    gc.server = host
   } else {
-    host = location.host ? location.host.replace(/:.*/, "") : "localhost"
+    gc.server = location.hostname ? location.hostname : "localhost"
   }
-  let wsUri = location.protocol === 'https:' ? 'wss://' + host + ':' + wssPort : 'ws://' + host + ':' + wsPort
+  let wsUri = location.protocol === 'https:' ? 'wss://' + gc.server + ':' + wssPort : 'ws://' + gc.server + ':' + wsPort
   ws = createWebSocket(wsUri, onState, onReceive)
-  window.addEventListener('keydown', onKeyDownGC);
+  // console.log(location, ws)
+  window.addEventListener('keydown', onKeyDownGC)
+  document.getElementsByTagName('h1')[0].innerHTML += (location.port == ipPort ? " (published)" : " (develop)")
   return gc
 }
+
+let pCnt = 0
+let qCnt = 0
 
 function onKeyDownGC(evt) {
   switch (evt.key) {
     case 'R':
-      gc.send('RESTART', { rc: 0 });
-      break;
+      sendState('RESTART', { rc: 0 })
+      break
     case 'Q':
-      gc.send('RESTART', { rc: -1 })
-      break;
+      if (qCnt++ > 3) {
+        sendState('RESTART', { rc: -1 })
+      }
+      break
     case 'X':
-      console.log(gc.player(0).name, gc.player(1).name);
-      break;
-    case 'S':
-      gc.store('code');
-      break;
+      console.log(gc.player(0).name, gc.player(1).name)
+      break
+    case 'P':
+      if (location.port != ipPort) {
+        let script = document.getElementById('game')
+        if (null != script) {
+          if (!location.pathname.endsWith('/progsp_game.html') && !script.src.endsWith('/progsp_game.js')) {
+            if (gc.gameId != 0) {
+              if (pCnt == 0) {
+                pCnt = 2;
+                publish(script)
+              } else {
+                alert("Verherige 'Publish' Funktion noch aktiv!")
+              }
+            } else {
+              alert("Bitte im Javascript \ngame.gameId = 0;\n durch \ngame.gameId = '" + guid7() + "';\n ersetzen!")
+            }
+          } else {
+            alert("Bitte die Dateien umbenennen: progsp_game.html und progsp_game.js sind reservierte Namen!")
+          }
+        } else {
+          alert("Der Game Code ist in der HTML Seite nicht mit der id 'game' markiert: <script id=\"game\" ... !")
+        }
+      } else {
+        alert("Die 'Publish' Funktion geht nur im lokalen Betrieb (z.B. Atom Liveserver)!")
+      }
+      break
+    case 'T':
+      break
     default:
+      qCnt = 0
   }
 }
 
@@ -125,19 +154,23 @@ function onReceive(data) {
     case 'ID':
       // connected and server provides ID
       gc.id = msg.data.id
-      sendState('JOIN', { name: name, game: gc.game })
+      gc.server = msg.data.ip
+      if (!gc.server.match(/localhost|127.0.0.1/)) {
+        createQRCode(location.protocol + '//' + gc.server + ':' + ipPort + location.pathname, 'p1')
+      }
+      sendState('JOIN', { name: name, game: gc.gameId })
       break
     case 'PLAYERS':
-      break;
+      break
     case 'EXIT':
-      if (gc.me.group.indexOf(msg.data.id) > -1) {
-        gc.ready = false;
-        moveCallback({ id: 'EXIT' });
-        gc.me.active = false;
-        gc.me.group = [];
+      if (gc.me && gc.me.group.indexOf(msg.data.id) > -1) {
+        gc.ready = false
+        moveCallback({ id: 'EXIT' })
+        gc.me.active = false
+        gc.me.group = []
         sendState('UPDATE', { player: gc.me })
       }
-      break;
+      break
     case 'PREPARE':
       if (msg.data.to == gc.id) {
         if (gc.me.active) {
@@ -145,7 +178,7 @@ function onReceive(data) {
         } else {
           gc.me.active = true
           gc.me.group = msg.data.player.group
-          gc.ready = true;
+          gc.ready = true
           sendState('ACCEPT', { player: gc.me, to: msg.from })
         }
       }
@@ -153,12 +186,23 @@ function onReceive(data) {
     case 'ACCEPT':
       break
     case 'DECLINE':
-      gc.me.active = false;
-      gc.me.group = [];
+      gc.me.active = false
+      gc.me.group = []
       sendState('UPDATE', { player: gc.me })
-      break;
+      break
+    case 'STORE':
+      pCnt--
+      if (msg.data.rc < 0) {
+        alert(msg.data.msg)
+      } else {
+        if (pCnt == 0) {
+          // switch to published page: assign or replace
+          location.assign('http://' + gc.server + ':' + ipPort + location.pathname)
+        }
+      }
+      break
     case 'MOVE':
-      moveCallback(msg.data);
+      moveCallback(msg.data)
       break
     default:
       break
@@ -166,7 +210,7 @@ function onReceive(data) {
 }
 
 function prepareGame(p) {
-  gc.ready = true;
+  gc.ready = true
   gc.me.active = true
   gc.me.group = [gc.me.id, gc.players[p].id]
   sendState('PREPARE', { player: gc.me, to: gc.players[p].id })
@@ -196,32 +240,28 @@ function refreshPlayers(players) {
   }
 }
 
-function getScript(id) {
-  var script = document.getElementById(id)
-  // let url = new URL(script.src);
-  // console.log(url);// url.pathname
-  let js = "/js/" + gc.me.name.toLowerCase() + ".js"
-  let html = "/" + gc.me.name.toLowerCase() + ".html"
-  loadData(script.src, 'text/javascript', loadedScript, { js: js, html: html })
+function publish(script) {
+  loadData(script.src, 'text/javascript', dataLoaded, { name: new URL(script.src).pathname })
+  loadData(location.origin + location.pathname, 'text/html', dataLoaded, { name: location.pathname })
 }
 
-function loadedScript(text, context) {
-  gc.send('STORE', { name: context.html, code: window.btoa(new XMLSerializer().serializeToString(document).replace("progsp_game", gc.me.name.toLowerCase())) })
-  gc.send('STORE', { name: context.js, code: window.btoa(text) })
-  let gameURL = location.origin + context.html
-  createQRCode(gameURL, 'p1')
+function dataLoaded(text, context) {
+  if (context.name.endsWith('html')) {
+    text = text.replace(/<!-- Code injected by live-server -->(.|\n)+<\/script>\n*/m, '')
+  }
+  sendState('STORE', { name: context.name, game: gc.gameId, page: location.pathname, code: Base64.encode(text) })
 }
 
 function addScript(name) {
-  var script = document.createElement("script");
-  script.setAttribute('type', 'text/javascript');
-  script.setAttribute('src', name);
-  document.head.appendChild(script);
-  console.log(document.head);
+  let script = document.createElement("script")
+  script.setAttribute('type', 'text/javascript')
+  script.setAttribute('src', name)
+  document.head.appendChild(script)
+  console.log(document.head)
 }
 
 function createQRCode(data, id) {
-  console.log(data)
+  //console.log("qrcode=" + data)
   qr = qrcode(4, 'L')
   qr.addData(data)
   data.value = ""
@@ -304,75 +344,239 @@ function trace(arg) {
 }
 
 function rand(min, max) {
-  return min + Math.random() * (max - min);
+  return min + Math.random() * (max - min)
 }
 
-let pt, matrix;
+let pt, matrix
 
 function initPoint() {
-  let svg = document.getElementById('svg');
-  pt = svg.createSVGPoint();
-  matrix = svg.getScreenCTM().inverse();
+  let svg = document.getElementById('svg')
+  pt = svg.createSVGPoint()
+  matrix = svg.getScreenCTM().inverse()
 }
 
 // Get point in global SVG space
 function cursorPoint(evt) {
-  pt.x = evt.clientX;
-  pt.y = evt.clientY;
-  return pt.matrixTransform(matrix);
+  pt.x = evt.clientX
+  pt.y = evt.clientY
+  return pt.matrixTransform(matrix)
 }
 
-let headers = null;
+let headers = null
 
 function loadData(url, responseType, callback, context) {
-  let xmlhttp;
+  let xmlhttp
   if (window.XMLHttpRequest) {
     // IE7+, Firefox, Chrome, Opera, Safari
-    xmlhttp = new XMLHttpRequest();
+    xmlhttp = new XMLHttpRequest()
   } else {
     // IE6, IE5
-    xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
-    xmlhttp.overrideMimeType("text/plain; charset=utf-8");
+    xmlhttp = new ActiveXObject("Microsoft.XMLHTTP")
+    xmlhttp.overrideMimeType("text/plain; charset=utf-8")
   }
 
   xmlhttp.onreadystatechange = function() {
     if (xmlhttp.readyState == 4) {
       if ((xmlhttp.status == 200 || xmlhttp.status == 0 && xmlhttp.responseText)) {
         if (context) {
-          let xxx = xmlhttp.getResponseHeader('xxx');
+          let xxx = xmlhttp.getResponseHeader('xxx')
           if (xxx != "undefined") {
-            context.xxx = xxx;
+            context.xxx = xxx
           }
         }
         switch (responseType) {
           case 'text/xml':
           case 'application/xml':
-            callback(xmlhttp.responseXML, context);
-            break;
+            callback(xmlhttp.responseXML, context)
+            break
           case 'application/json':
-            callback(xmlhttp.responseText, context);
-            break;
+            callback(xmlhttp.responseText, context)
+            break
           default:
-            callback(xmlhttp.responseText, context);
+            callback(xmlhttp.responseText, context)
         }
       } else {
-        console.log(xmlhttp.status, xmlhttp.getAllResponseHeaders());
+        console.log(xmlhttp.status, xmlhttp.getAllResponseHeaders())
       }
     }
-  };
-
-  // Inhalt deklarieren - ist nur beim lokalen Lesen ohne Webserver notwendig
-  xmlhttp.responseType = responseType;
-  // Lesen der Datei vorbereiten
-  xmlhttp.open("GET", url, true);
-  // Send the proxy header information along with the request
-  if (headers) {
-    xmlhttp.setRequestHeader("xxx", headers);
   }
 
-  xmlhttp.send();
+  // Inhalt deklarieren - ist nur beim lokalen Lesen ohne Webserver notwendig
+  xmlhttp.responseType = responseType
+  // Lesen der Datei vorbereiten
+  xmlhttp.open("GET", url, true)
+  // Send the proxy header information along with the request
+  if (headers) {
+    xmlhttp.setRequestHeader("xxx", headers)
+  }
+
+  xmlhttp.send()
 }
 
+let lut = []
+for (let i = 0; i < 256; i++) {
+  lut[i] = (i < 16 ? '0' : '') + (i).toString(16)
+}
+
+function guid7() {
+  let d0 = Math.random() * 0xffffffff | 0
+  let d1 = Math.random() * 0xffffffff | 0
+  let d2 = Math.random() * 0xffffffff | 0
+  let d3 = Math.random() * 0xffffffff | 0
+  return lut[d0 & 0xff] + lut[d0 >> 8 & 0xff] + lut[d0 >> 16 & 0xff] + lut[d0 >> 24 & 0xff] + '-' +
+    lut[d1 & 0xff] + lut[d1 >> 8 & 0xff] + '-' + lut[d1 >> 16 & 0x0f | 0x40] + lut[d1 >> 24 & 0xff] + '-' +
+    lut[d2 & 0x3f | 0x80] + lut[d2 >> 8 & 0xff] + '-' + lut[d2 >> 16 & 0xff] + lut[d2 >> 24 & 0xff] +
+    lut[d3 & 0xff] + lut[d3 >> 8 & 0xff] + lut[d3 >> 16 & 0xff] + lut[d3 >> 24 & 0xff]
+}
+
+function hashCode(text) {
+  let hash = 0,
+    i, chr;
+  if (text.length === 0) return hash;
+  for (i = 0; i < text.length; i++) {
+    hash = ((hash << 5) - hash) + text.charCodeAt(i);
+    hash |= 0; // Convert to 32bit integer
+  }
+  return hash;
+};
+
+/**
+ *
+ *  Base64 encode / decode
+ *  http://www.webtoolkit.info
+ *
+ **/
+const Base64 = {
+
+  // private property
+  _keyStr: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="
+
+    // public method for encoding
+    ,
+  encode: function(input) {
+      let output = ""
+      let chr1, chr2, chr3, enc1, enc2, enc3, enc4
+      let i = 0
+
+      input = Base64._utf8_encode(input)
+
+      while (i < input.length) {
+        chr1 = input.charCodeAt(i++)
+        chr2 = input.charCodeAt(i++)
+        chr3 = input.charCodeAt(i++)
+
+        enc1 = chr1 >> 2
+        enc2 = ((chr1 & 3) << 4) | (chr2 >> 4)
+        enc3 = ((chr2 & 15) << 2) | (chr3 >> 6)
+        enc4 = chr3 & 63
+
+        if (isNaN(chr2)) {
+          enc3 = enc4 = 64
+        } else if (isNaN(chr3)) {
+          enc4 = 64
+        }
+
+        output = output +
+          this._keyStr.charAt(enc1) + this._keyStr.charAt(enc2) +
+          this._keyStr.charAt(enc3) + this._keyStr.charAt(enc4)
+      } // Whend
+
+      return output
+    } // End Function encode
+
+
+    // public method for decoding
+    ,
+  decode: function(input) {
+      let output = ""
+      let chr1, chr2, chr3
+      let enc1, enc2, enc3, enc4
+      let i = 0
+
+      input = input.replace(/[^A-Za-z0-9\+\/\=]/g, "")
+      while (i < input.length) {
+        enc1 = this._keyStr.indexOf(input.charAt(i++))
+        enc2 = this._keyStr.indexOf(input.charAt(i++))
+        enc3 = this._keyStr.indexOf(input.charAt(i++))
+        enc4 = this._keyStr.indexOf(input.charAt(i++))
+
+        chr1 = (enc1 << 2) | (enc2 >> 4)
+        chr2 = ((enc2 & 15) << 4) | (enc3 >> 2)
+        chr3 = ((enc3 & 3) << 6) | enc4
+
+        output = output + String.fromCharCode(chr1)
+
+        if (enc3 != 64) {
+          output = output + String.fromCharCode(chr2)
+        }
+
+        if (enc4 != 64) {
+          output = output + String.fromCharCode(chr3)
+        }
+
+      } // Whend
+
+      output = Base64._utf8_decode(output)
+
+      return output
+    } // End Function decode
+
+
+    // private method for UTF-8 encoding
+    ,
+  _utf8_encode: function(string) {
+      let utftext = ""
+      string = string.replace(/\r\n/g, "\n")
+
+      for (let n = 0; n < string.length; n++) {
+        let c = string.charCodeAt(n)
+
+        if (c < 128) {
+          utftext += String.fromCharCode(c)
+        } else if ((c > 127) && (c < 2048)) {
+          utftext += String.fromCharCode((c >> 6) | 192)
+          utftext += String.fromCharCode((c & 63) | 128)
+        } else {
+          utftext += String.fromCharCode((c >> 12) | 224)
+          utftext += String.fromCharCode(((c >> 6) & 63) | 128)
+          utftext += String.fromCharCode((c & 63) | 128)
+        }
+
+      } // Next n
+
+      return utftext
+    } // End Function _utf8_encode
+
+    // private method for UTF-8 decoding
+    ,
+  _utf8_decode: function(utftext) {
+    let string = ""
+    let i = 0
+    let c, c1, c2, c3
+    c = c1 = c2 = 0
+
+    while (i < utftext.length) {
+      c = utftext.charCodeAt(i)
+
+      if (c < 128) {
+        string += String.fromCharCode(c)
+        i++
+      } else if ((c > 191) && (c < 224)) {
+        c2 = utftext.charCodeAt(i + 1)
+        string += String.fromCharCode(((c & 31) << 6) | (c2 & 63))
+        i += 2
+      } else {
+        c2 = utftext.charCodeAt(i + 1)
+        c3 = utftext.charCodeAt(i + 2)
+        string += String.fromCharCode(((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63))
+        i += 3
+      }
+
+    } // Whend
+
+    return string
+  } // End Function _utf8_decode
+}
 // }
-//   return gc;
-// }();
+//   return gc
+// }()
