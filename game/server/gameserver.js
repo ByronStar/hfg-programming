@@ -26,12 +26,13 @@ let clients = {}
 // track active IP Addresses
 let active = {}
 
-let stateX = {
+let state = {
   games: {
     0: {
       id: 0,
       js: "/client/js/progsp_game.js",
       html: "/client/progsp_game.html",
+      name: "Demo Spiel ",
       players: []
     }
   },
@@ -147,11 +148,11 @@ function handleMessage(server, message, id, client) {
     active[ip] = true
     switch (msg.id) {
       case 'JOIN':
-        stateX.players[id] = msg.data.game
-        if (!(msg.data.game in stateX.games)) {
+        state.players[id] = msg.data.game
+        if (!(msg.data.game in state.games)) {
           // not yet published game
           console.log("NEW")
-          stateX.games[msg.data.game] = { id: msg.data.game, players: [] }
+          state.games[msg.data.game] = { id: msg.data.game, players: [] }
         }
         let player = {
           id: id,
@@ -160,18 +161,15 @@ function handleMessage(server, message, id, client) {
           active: false,
           group: []
         }
-        console.log("+>", msg.data.game, stateX.games[msg.data.game].players)
-        stateX.games[msg.data.game].players.push(player);
-        console.log("+<", stateX.games[msg.data.game].players)
+        state.games[msg.data.game].players.push(player);
         // saveState();
         forward(server, JSON.stringify({
           id: 'PLAYERS',
           from: 'SERVER',
           data: {
-            players: stateX.games[msg.data.game].players
+            players: state.games[msg.data.game].players
           }
-        }), stateX.games[msg.data.game].players.map(v => v.id))
-        console.log("+<", stateX.games[msg.data.game].players)
+        }), state.games[msg.data.game].players.map(v => v.id))
         break
       case 'UPDATE':
         msg.id = 'PLAYERS'
@@ -196,20 +194,20 @@ function handleMessage(server, message, id, client) {
         client.send(JSON.stringify({
           id: 'STATE',
           from: 'SERVER',
-          data: stateX
+          data: state
         }))
         break
       case 'STORE':
         let part = msg.data.file.endsWith('.js') ? 'js' : 'html'
-        if (msg.data.game in stateX.games) {
-          if (stateX.games[msg.data.game][part] != undefined && stateX.games[msg.data.game][part] != msg.data.file) {
+        if (msg.data.game in state.games) {
+          if (state.games[msg.data.game][part] != undefined && state.games[msg.data.game][part] != msg.data.file) {
             if (part == 'html') { // This is unsave: Split STORE in STORE_CHK and STORE
               client.send(JSON.stringify({
                 id: 'STORE',
                 from: 'SERVER',
                 data: {
                   rc: -1,
-                  msg: "Ein Spiel mit der selben ID existiert bereits unter einem anderen Namen: '" + stateX.games[msg.data.game][part] +
+                  msg: "Ein Spiel mit der selben ID existiert bereits unter einem anderen Namen: '" + state.games[msg.data.game][part] +
                     "'.\nEventuell im Javascript \ngame.gameId = '" + msg.data.game + "';\n durch \ngame.gameId = '" + guid7() + "';\n ersetzen!"
                 }
               }))
@@ -217,17 +215,17 @@ function handleMessage(server, message, id, client) {
             break;
           }
         } else {
-          stateX.games[msg.data.game] = { id: msg.data.game, players: [] }
+          state.games[msg.data.game] = { id: msg.data.game, players: [] }
         }
-        if (msg.data.file in stateX.files) {
-          if (stateX.files[msg.data.file] != msg.data.game) {
+        if (msg.data.file in state.files) {
+          if (state.files[msg.data.file] != msg.data.game) {
             if (part == 'html') {
               client.send(JSON.stringify({
                 id: 'STORE',
                 from: 'SERVER',
                 data: {
                   rc: -2,
-                  msg: 'Ein Spiel mit dem selben Namen "' + msg.data.file + '" existiert bereits unter einer anderen ID: ' + stateX.files[msg.data.file] +
+                  msg: 'Ein Spiel mit dem selben Namen "' + msg.data.file + '" existiert bereits unter einer anderen ID: ' + state.files[msg.data.file] +
                     "'.\nEventuell HTML und Javascript umbenennen."
                 }
               }))
@@ -235,10 +233,10 @@ function handleMessage(server, message, id, client) {
             break;
           }
         } else {
-          stateX.files[msg.data.file] = msg.data.game
+          state.files[msg.data.file] = msg.data.game
         }
-        stateX.games[msg.data.game][part] = msg.data.file
-        stateX.games[msg.data.game].name = msg.data.name
+        state.games[msg.data.game][part] = msg.data.file
+        state.games[msg.data.game].name = msg.data.name
         saveState();
         let buff = Buffer.from(msg.data.code, 'base64')
         //console.log(msg.data.code, buff, buff.toString(), buff.toString('utf-8'))
@@ -274,30 +272,28 @@ function handleMessage(server, message, id, client) {
 }
 
 function updatePlayers(player) {
-  let gameId = stateX.players[player.id]
-  let idx = stateX.games[gameId].players.findIndex(v => v.id === player.id)
-  stateX.games[gameId].players[idx] = player
-  return stateX.games[gameId].players
+  let gameId = state.players[player.id]
+  let idx = state.games[gameId].players.findIndex(v => v.id === player.id)
+  state.games[gameId].players[idx] = player
+  return state.games[gameId].players
 }
 
 function handleClose(server, id) {
   delete clients[id]
-  let gameId = stateX.players[id]
-  console.log("->", gameId, stateX.games[gameId].players)
-  delete stateX.players[id]
-  stateX.games[gameId].players = stateX.games[gameId].players.filter(v => v.id !== id)
+  let gameId = state.players[id]
+  delete state.players[id]
+  state.games[gameId].players = state.games[gameId].players.filter(v => v.id !== id)
   let message = JSON.stringify({
     id: 'EXIT',
     from: 'SERVER',
     data: {
       id: id,
-      players: stateX.games[gameId].players
+      players: state.games[gameId].players
     }
   });
-  console.log("-<", stateX.games[gameId].players)
   console.log('%s EXIT <%s> (%d clients)', new Date().getTime(), message, server.clients.size)
   // Forward message to affected players: Client has left
-  forward(server, message, stateX.games[gameId].players.map(v => v.id))
+  forward(server, message, state.games[gameId].players.map(v => v.id))
 }
 
 let wsServer = new WebSocketServer({
@@ -382,19 +378,19 @@ function loadState() {
     if (err) {
       console.log(err);
     } else {
-      stateX = JSON.parse(data);
-      console.log("LOAD", stateX)
-      for (let gameId in stateX.games) {
-        stateX.games[gameId].players = []
+      state = JSON.parse(data);
+      console.log("LOAD", state)
+      for (let gameId in state.games) {
+        state.games[gameId].players = []
       }
-      stateX.players = {}
+      state.players = {}
       saveState();
     }
   });
 }
 
 function saveState() {
-  fs.writeFile(stateFile, JSON.stringify(stateX), 'utf8', (err, data) => {
+  fs.writeFile(stateFile, JSON.stringify(state), 'utf8', (err, data) => {
     if (err) {
       console.log(err);
     } else {
@@ -421,9 +417,8 @@ function guid7() {
 
 function getIndex() {
   let list = ""
-  for (let gameId in stateX.games) {
-    list += '<li><a href="' + stateX.games[gameId].html + '">' + stateX.games[gameId].name + ' (' + stateX.games[gameId].players.length + ' Spieler)</a></li>'
-    stateX.games[gameId].players = []
+  for (let gameId in state.games) {
+    list += '<li><a href="' + state.games[gameId].html + '">' + state.games[gameId].name + ' (' + state.games[gameId].players.length + ' Spieler)</a></li>'
   }
   return `
 <!DOCTYPE html>
