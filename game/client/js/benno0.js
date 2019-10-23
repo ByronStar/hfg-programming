@@ -3,8 +3,8 @@ var ball;
 
 function init() {
   game = wsinit(onMove, document.getElementById('players'), document.getElementById('status'));
-  game.gameId = 0;
-  game.name = "Demo";
+  game.gameId = '1c53299f-f90d-4cc3-a7e4-21bb37749c2f';
+  game.name = "Bennos Game X";
   console.log(game);
 
   ball = document.getElementById("ball");
@@ -14,27 +14,19 @@ function init() {
 function onKeyDown(evt) {
   switch (evt.key) {
     case 'ArrowLeft':
-      if (game.ready && game.id == game.me.group[0]) {
-        game.move({ id: 'L' });
-      }
+      game.move({ id: 'L' });
       evt.preventDefault();
       break;
     case 'ArrowRight':
-      if (game.ready && game.id == game.me.group[0]) {
-        game.move({ id: 'R' });
-      }
+      game.move({ id: 'R' });
       evt.preventDefault();
       break;
     case 'ArrowUp':
-      if (game.ready && game.id == game.me.group[1]) {
-        game.move({ id: 'U' });
-      }
+      game.move({ id: 'U' });
       evt.preventDefault();
       break;
     case 'ArrowDown':
-      if (game.ready && game.id == game.me.group[1]) {
-        game.move({ id: 'D' });
-      }
+      game.move({ id: 'D' });
       evt.preventDefault();
       break;
     default:

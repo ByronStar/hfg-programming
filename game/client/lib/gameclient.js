@@ -51,7 +51,7 @@ function wsinit(onMove, node, status) {
 
   playerNode = node
   statusNode = status
-  msgTrace = (null != url.searchParams.get("trace"))
+  msgTrace = (msgTrace || null != url.searchParams.get("trace"))
   let host = url.searchParams.get("server")
   if (host) {
     gc.server = host
@@ -73,6 +73,9 @@ function onKeyDownGC(evt) {
   switch (evt.key) {
     case 'R':
       sendState('RESTART', { rc: 0 })
+      break
+    case 'S':
+      sendState('STATE', {})
       break
     case 'Q':
       if (qCnt++ > 3) {
@@ -104,7 +107,7 @@ function onKeyDownGC(evt) {
           alert("Der Game Code ist in der HTML Seite nicht mit der id 'game' markiert: <script id=\"game\" ... !")
         }
       } else {
-        alert("Die 'Publish' Funktion geht nur im lokalen Betrieb (z.B. Atom Liveserver)!")
+        alert("Die 'Publish' Funktion geht nur bei lokale Seiten (z.B. Atom Liveserver)!")
       }
       break
     case 'T':
@@ -137,17 +140,18 @@ function reload() {
 
 function onReceive(data) {
   let msg = JSON.parse(data)
+
+  if (msgTrace) {
+    console.log("REC", msg)
+  }
+
   // calcLag(msg, new Date().getTime())
 
-  if (msg.data.players) {
+  if (msg.data.players && msg.id != 'STATE') {
     refreshPlayers(msg.data.players)
   }
   if (gc.id === msg.from && msg.id != 'MOVE') {
     return
-  }
-
-  if (msgTrace) {
-    console.log("REC", msg)
   }
 
   switch (msg.id) {
@@ -189,6 +193,8 @@ function onReceive(data) {
       gc.me.active = false
       gc.me.group = []
       sendState('UPDATE', { player: gc.me })
+      break
+    case 'STATE':
       break
     case 'STORE':
       pCnt--
@@ -241,15 +247,15 @@ function refreshPlayers(players) {
 }
 
 function publish(script) {
-  loadData(script.src, 'text/javascript', dataLoaded, { name: new URL(script.src).pathname })
-  loadData(location.origin + location.pathname, 'text/html', dataLoaded, { name: location.pathname })
+  loadData(script.src, 'text/javascript', dataLoaded, { file: new URL(script.src).pathname })
+  loadData(location.origin + location.pathname, 'text/html', dataLoaded, { file: location.pathname })
 }
 
 function dataLoaded(text, context) {
-  if (context.name.endsWith('html')) {
+  if (context.file.endsWith('html')) {
     text = text.replace(/<!-- Code injected by live-server -->(.|\n)+<\/script>\n*/m, '')
   }
-  sendState('STORE', { name: context.name, game: gc.gameId, page: location.pathname, code: Base64.encode(text) })
+  sendState('STORE', { file: context.file, game: gc.gameId, name: gc.name, page: location.pathname, code: Base64.encode(text) })
 }
 
 function addScript(name) {

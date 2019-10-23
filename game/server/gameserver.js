@@ -2,8 +2,7 @@
 
 let wsPort = 11203
 let wssPort = 11204
-let msgTrace = false
-
+let msgTrace = true
 
 const WebSocket = require('ws')
 let WebSocketServer = WebSocket.Server
@@ -24,12 +23,24 @@ if (process.argv.length < 3 || process.argv[2] != '-local') {
 let ipPort = 8091
 
 let clients = {}
-let games = {}
-let players = []
 // track active IP Addresses
 let active = {}
 
-let state = { games: {}, names: {} }
+let stateX = {
+  games: {
+    0: {
+      id: 0,
+      js: "/client/js/progsp_game.js",
+      html: "/client/progsp_game.html",
+      players: []
+    }
+  },
+  files: {
+    "/client/js/progsp_game.js": 0,
+    "/client/progsp_game.html": 0
+  },
+  players: {}
+}
 let stateFile = './gamestate.json';
 
 loadState();
@@ -44,53 +55,61 @@ let options = {
 //   cert: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/fullchain.pem')
 // }
 
+let contentTypesByExtension = {
+  '.html': "text/html",
+  '.css': "text/css",
+  '.js': "text/javascript"
+}
+
 // https.createServer(options, function (request, response) {
 http.createServer(function(request, response) {
 
-  let uri = "/../" + url.parse(request.url).pathname,
-    filename = path.join(process.cwd(), uri)
+  let pathname = url.parse(request.url).pathname,
+    filename = path.join(process.cwd(), "/../" + pathname)
 
-  console.log(filename)
+  console.log(url.parse(request.url).pathname, filename)
 
-  let contentTypesByExtension = {
-    '.html': "text/html",
-    '.css': "text/css",
-    '.js': "text/javascript"
-  }
-
-  fs.exists(filename, function(exists) {
-    if (!exists) {
-      response.writeHead(404, {
-        "Content-Type": "text/plain"
-      })
-      response.write("404 Not Found\n")
-      response.end()
-      return
-    }
-
-    if (fs.statSync(filename).isDirectory()) filename += '/index.html'
-
-    fs.readFile(filename, "binary", function(err, file) {
-      if (err) {
-        response.writeHead(500, {
+  if (pathname == '/') {
+    response.writeHead(200, { "Content-Type": "text/html" })
+    response.write(getIndex())
+    response.end()
+  } else {
+    fs.exists(filename, function(exists) {
+      if (!exists) {
+        response.writeHead(404, {
           "Content-Type": "text/plain"
         })
-        response.write(err + "\n")
+        response.write("404 Not Found\n")
         response.end()
         return
       }
 
-      let headers = {}
-      let contentType = contentTypesByExtension[path.extname(filename)]
-      if (contentType) headers["Content-Type"] = contentType
-      response.writeHead(200, headers)
-      response.write(file, "binary")
-      response.end()
+      if (fs.statSync(filename).isDirectory()) {
+        filename += 'index.html'
+      }
+
+      fs.readFile(filename, "binary", function(err, file) {
+        if (err) {
+          response.writeHead(500, {
+            "Content-Type": "text/plain"
+          })
+          response.write(err + "\n")
+          response.end()
+          return
+        }
+
+        let headers = {}
+        let contentType = contentTypesByExtension[path.extname(filename)]
+        if (contentType) headers["Content-Type"] = contentType
+        response.writeHead(200, headers)
+        response.write(file, "binary")
+        response.end()
+      })
     })
-  })
+  }
 }).listen(ipPort, ipAddr)
 
-console.log((new Date()) + ' listening on http://' + ipAddr + ':' + ipPort + "/progsp_game.html")
+console.log((new Date()) + ' listening on http://' + ipAddr + ':' + ipPort)
 
 function broadcast(server, message) {
   if (msgTrace) {
@@ -107,7 +126,7 @@ function broadcast(server, message) {
 
 function forward(server, message, active) {
   if (msgTrace) {
-    console.log('%s FWD <%s> (%d clients)', new Date().getTime(), message, active.length)
+    console.log('%s FWD <%s> ([%s] %d clients)', new Date().getTime(), message, active, active.length)
   }
   active.forEach(function each(id) {
     try {
@@ -128,43 +147,41 @@ function handleMessage(server, message, id, client) {
     active[ip] = true
     switch (msg.id) {
       case 'JOIN':
-        if (!(msg.data.game in games)) {
-          games[msg.data.game] = {
-            players: []
-          }
+        stateX.players[id] = msg.data.game
+        if (!(msg.data.game in stateX.games)) {
+          // not yet published game
+          console.log("NEW")
+          stateX.games[msg.data.game] = { id: msg.data.game, players: [] }
         }
-        games[msg.data.game].players.push({
+        let player = {
           id: id,
           name: msg.data.name,
-          game: msg.data.game,
+          // game: msg.data.game,
           active: false,
           group: []
-        });
-        players.push({
-          id: id,
-          name: msg.data.name,
-          game: msg.data.game,
-          active: false,
-          group: []
-        })
-        broadcast(server,
-          JSON.stringify({
-            id: 'PLAYERS',
-            from: 'SERVER',
-            data: {
-              players: players
-            }
-          }))
+        }
+        console.log("+>", msg.data.game, stateX.games[msg.data.game].players)
+        stateX.games[msg.data.game].players.push(player);
+        console.log("+<", stateX.games[msg.data.game].players)
+        // saveState();
+        forward(server, JSON.stringify({
+          id: 'PLAYERS',
+          from: 'SERVER',
+          data: {
+            players: stateX.games[msg.data.game].players
+          }
+        }), stateX.games[msg.data.game].players.map(v => v.id))
+        console.log("+<", stateX.games[msg.data.game].players)
         break
       case 'UPDATE':
         msg.id = 'PLAYERS'
         msg.data.players = updatePlayers(msg.data.player)
-        broadcast(server, JSON.stringify(msg))
+        forward(server, JSON.stringify(msg), msg.data.players.map(v => v.id))
         break
       case 'PREPARE':
       case 'ACCEPT':
         msg.data.players = updatePlayers(msg.data.player)
-        forward(server, JSON.stringify(msg), [msg.data.to])
+        forward(server, JSON.stringify(msg), [msg.from, msg.data.to])
         break
       case 'DECLINE':
         forward(server, message, [msg.data.to])
@@ -175,17 +192,24 @@ function handleMessage(server, message, id, client) {
       case 'RESTART':
         process.exit(msg.data.rc)
         break
+      case 'STATE':
+        client.send(JSON.stringify({
+          id: 'STATE',
+          from: 'SERVER',
+          data: stateX
+        }))
+        break
       case 'STORE':
-        let part = msg.data.name.endsWith('.js') ? 'js' : 'html'
-        if (msg.data.game in state.games) {
-          if (state.games[msg.data.game][part] != undefined && state.games[msg.data.game][part] != msg.data.name) {
+        let part = msg.data.file.endsWith('.js') ? 'js' : 'html'
+        if (msg.data.game in stateX.games) {
+          if (stateX.games[msg.data.game][part] != undefined && stateX.games[msg.data.game][part] != msg.data.file) {
             if (part == 'html') { // This is unsave: Split STORE in STORE_CHK and STORE
               client.send(JSON.stringify({
                 id: 'STORE',
                 from: 'SERVER',
                 data: {
                   rc: -1,
-                  msg: "Ein Spiel mit der selben ID existiert bereits unter einem anderen Namen: '" + state.games[msg.data.game][part] +
+                  msg: "Ein Spiel mit der selben ID existiert bereits unter einem anderen Namen: '" + stateX.games[msg.data.game][part] +
                     "'.\nEventuell im Javascript \ngame.gameId = '" + msg.data.game + "';\n durch \ngame.gameId = '" + guid7() + "';\n ersetzen!"
                 }
               }))
@@ -193,17 +217,17 @@ function handleMessage(server, message, id, client) {
             break;
           }
         } else {
-          state.games[msg.data.game] = { id: msg.data.game }
+          stateX.games[msg.data.game] = { id: msg.data.game, players: [] }
         }
-        if (msg.data.name in state.names) {
-          if (state.names[msg.data.name] != msg.data.game) {
+        if (msg.data.file in stateX.files) {
+          if (stateX.files[msg.data.file] != msg.data.game) {
             if (part == 'html') {
               client.send(JSON.stringify({
                 id: 'STORE',
                 from: 'SERVER',
                 data: {
                   rc: -2,
-                  msg: 'Ein Spiel mit dem selben Namen "' + msg.data.name + '" existiert bereits unter einer anderen ID: ' + state.names[msg.data.name] +
+                  msg: 'Ein Spiel mit dem selben Namen "' + msg.data.file + '" existiert bereits unter einer anderen ID: ' + stateX.files[msg.data.file] +
                     "'.\nEventuell HTML und Javascript umbenennen."
                 }
               }))
@@ -211,13 +235,14 @@ function handleMessage(server, message, id, client) {
             break;
           }
         } else {
-          state.names[msg.data.name] = msg.data.game
+          stateX.files[msg.data.file] = msg.data.game
         }
-        state.games[msg.data.game][part] = msg.data.name
+        stateX.games[msg.data.game][part] = msg.data.file
+        stateX.games[msg.data.game].name = msg.data.name
         saveState();
         let buff = Buffer.from(msg.data.code, 'base64')
         //console.log(msg.data.code, buff, buff.toString(), buff.toString('utf-8'))
-        fs.writeFile(".." + msg.data.name, buff.toString('utf-8'), 'utf8', (err, data) => {
+        fs.writeFile(".." + msg.data.file, buff.toString('utf-8'), 'utf8', (err, data) => {
           if (err) {
             console.log(err)
             client.send(JSON.stringify({
@@ -226,7 +251,7 @@ function handleMessage(server, message, id, client) {
               data: { rc: -1, msg: err }
             }))
           } else {
-            console.log(msg.data.name + " saved.")
+            console.log(msg.data.file + " saved.")
             client.send(JSON.stringify({
               id: 'STORE',
               from: 'SERVER',
@@ -249,33 +274,36 @@ function handleMessage(server, message, id, client) {
 }
 
 function updatePlayers(player) {
-  let idx = players.findIndex(v => v.id === player.id)
-  players[idx] = player
-  return players
+  let gameId = stateX.players[player.id]
+  let idx = stateX.games[gameId].players.findIndex(v => v.id === player.id)
+  stateX.games[gameId].players[idx] = player
+  return stateX.games[gameId].players
 }
 
 function handleClose(server, id) {
-  // console.log(code, message)
   delete clients[id]
-  players = players.filter(v => v.id !== id)
-
+  let gameId = stateX.players[id]
+  console.log("->", gameId, stateX.games[gameId].players)
+  delete stateX.players[id]
+  stateX.games[gameId].players = stateX.games[gameId].players.filter(v => v.id !== id)
   let message = JSON.stringify({
     id: 'EXIT',
     from: 'SERVER',
     data: {
       id: id,
-      players: players
+      players: stateX.games[gameId].players
     }
   });
+  console.log("-<", stateX.games[gameId].players)
   console.log('%s EXIT <%s> (%d clients)', new Date().getTime(), message, server.clients.size)
-  // Broadcast: Client has left
-  broadcast(server, message)
+  // Forward message to affected players: Client has left
+  forward(server, message, stateX.games[gameId].players.map(v => v.id))
 }
 
 let wsServer = new WebSocketServer({
   port: wsPort
 })
-console.log((new Date()) + ' listening on port ws://' + ipAddr + ':' + wsPort)
+console.log((new Date()) + ' listening on ws://' + ipAddr + ':' + wsPort)
 
 wsServer.on('connection', function connection(client, req) {
   client.upgradeReq = req;
@@ -312,7 +340,7 @@ let httpsServer = https.createServer(options, function(request, response) {
   response.end()
 })
 httpsServer.listen(wssPort, function() {
-  console.log((new Date()) + ' listening on port wss://' + ipAddr + ':' + wssPort)
+  console.log((new Date()) + ' listening on wss://' + ipAddr + ':' + wssPort)
 })
 let wssServer = new WebSocketServer({
   server: httpsServer
@@ -354,14 +382,19 @@ function loadState() {
     if (err) {
       console.log(err);
     } else {
-      state = JSON.parse(data);
+      stateX = JSON.parse(data);
+      console.log("LOAD", stateX)
+      for (let gameId in stateX.games) {
+        stateX.games[gameId].players = []
+      }
+      stateX.players = {}
       saveState();
     }
   });
 }
 
 function saveState() {
-  fs.writeFile(stateFile, JSON.stringify(state), 'utf8', (err, data) => {
+  fs.writeFile(stateFile, JSON.stringify(stateX), 'utf8', (err, data) => {
     if (err) {
       console.log(err);
     } else {
@@ -384,4 +417,37 @@ function guid7() {
     lut[d1 & 0xff] + lut[d1 >> 8 & 0xff] + '-' + lut[d1 >> 16 & 0x0f | 0x40] + lut[d1 >> 24 & 0xff] + '-' +
     lut[d2 & 0x3f | 0x80] + lut[d2 >> 8 & 0xff] + '-' + lut[d2 >> 16 & 0xff] + lut[d2 >> 24 & 0xff] +
     lut[d3 & 0xff] + lut[d3 >> 8 & 0xff] + lut[d3 >> 16 & 0xff] + lut[d3 >> 24 & 0xff]
+}
+
+function getIndex() {
+  let list = ""
+  for (let gameId in stateX.games) {
+    list += '<li><a href="' + stateX.games[gameId].html + '">' + stateX.games[gameId].name + ' (' + stateX.games[gameId].players.length + ' Spieler)</a></li>'
+    stateX.games[gameId].players = []
+  }
+  return `
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Multiplayer Game">
+  <meta name="author" content="ByronStar">
+
+  <title>Programmiersprachen - Multiplayer</title>
+  <link rel="stylesheet" href="client/css/progsp.css">
+</head>
+
+<body class="progsp" style="margin: 40px;">
+  <h1>Verfügbare Spiele</h1>
+  <div>
+    <ol id="games">
+    ${list}
+    </ol>
+  </div>
+</body>
+
+</html>`
 }

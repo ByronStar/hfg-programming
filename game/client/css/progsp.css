@@ -52,3 +52,7 @@
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.7) url("../img/arrow_d.png") no-repeat 1px center;
 }
+
+.progsp #games {
+  margin: 40px;
+}
