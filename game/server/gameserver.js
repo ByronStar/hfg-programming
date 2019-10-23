@@ -29,7 +29,7 @@ let players = []
 // track active IP Addresses
 let active = {}
 
-let state = { games: {} }
+let state = { games: {}, names: {} }
 let stateFile = './gamestate.json';
 
 loadState();
@@ -195,15 +195,15 @@ function handleMessage(server, message, id, client) {
         } else {
           state.games[msg.data.game] = { id: msg.data.game }
         }
-        if (msg.data.name in state.games) {
-          if (state.games[msg.data.name].id != msg.data.game) {
+        if (msg.data.name in state.names) {
+          if (state.names[msg.data.name] != msg.data.game) {
             if (part == 'html') {
               client.send(JSON.stringify({
                 id: 'STORE',
                 from: 'SERVER',
                 data: {
                   rc: -2,
-                  msg: 'Ein Spiel mit dem selben Namen "' + msg.data.name + '" existiert bereits unter einer anderen ID: ' + state.games[msg.data.name].id +
+                  msg: 'Ein Spiel mit dem selben Namen "' + msg.data.name + '" existiert bereits unter einer anderen ID: ' + state.names[msg.data.name] +
                     "'.\nEventuell HTML und Javascript umbenennen."
                 }
               }))
@@ -211,7 +211,7 @@ function handleMessage(server, message, id, client) {
             break;
           }
         } else {
-          state.games[msg.data.name] = state.games[msg.data.game]
+          state.names[msg.data.name] = msg.data.game
         }
         state.games[msg.data.game][part] = msg.data.name
         saveState();
