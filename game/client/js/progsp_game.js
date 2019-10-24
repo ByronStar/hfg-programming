@@ -1,6 +1,7 @@
 var game;
 var ball;
 var ballPos = {};
+let velocity = { x: 0, y: 0 };
 
 function init() {
   game = wsinit(onMove, document.getElementById('players'), document.getElementById('status'));
@@ -13,6 +14,10 @@ function init() {
   ballPos.y = +ball.getAttribute('cy');
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('click', onMouseClick);
+  // if (window.DeviceMotionEvent) {
+  //   window.addEventListener('devicemotion', onMotion);
+  //   alert("MOTION");
+  // }
 }
 
 function onKeyDown(evt) {
@@ -56,6 +61,36 @@ function onMouseClick(evt) {
     game.move({ id: 'U' });
   }
   if (pos.y > 0 && game.isPlayer(1)) {
+    game.move({ id: 'D' });
+  }
+}
+
+function onMotion(evt) {
+  velocity.x *= 0.9;
+  velocity.y *= 0.9;
+  if (Math.abs(velocity.x) < 1) {
+    velocity.x = 0;
+  }
+  if (Math.abs(velocity.y) < 1) {
+    velocity.y = 0;
+  }
+  if (Math.abs(evt.acceleration.x) > 1) {
+    velocity.x += evt.acceleration.x;
+  }
+  if (Math.abs(evt.acceleration.y) > 1) {
+    velocity.y += evt.acceleration.y;
+  }
+
+  if (velocity.x < 0 && game.isPlayer(0)) {
+    game.move({ id: 'L' });
+  }
+  if (velocity.x > 0 && game.isPlayer(0)) {
+    game.move({ id: 'R' });
+  }
+  if (velocity.y < 0 && game.isPlayer(1)) {
+    game.move({ id: 'U' });
+  }
+  if (velocity.y > 0 && game.isPlayer(1)) {
     game.move({ id: 'D' });
   }
 }

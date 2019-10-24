@@ -1,5 +1,6 @@
 var game;
 var ball;
+var ballPos = {};
 
 let position = { x: 0, y: 0 };
 let velocity = { x: 0, y: 0 };
