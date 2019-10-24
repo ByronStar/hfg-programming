@@ -22,6 +22,9 @@ let gc = {
       return v.id === gc.me.group[idx]
     })
   },
+  isPlayer: function(idx) {
+    return game.ready && gc.id == gc.me.group[idx]
+  },
   cursorPoint: cursorPoint
 }
 let playerNode
@@ -34,6 +37,7 @@ let wsPort = 11203
 let wssPort = 11204
 
 function wsinit(onMove, node, status) {
+  initPoint()
   //console.log(location)
   let url = new URL(window.location.href)
   name = url.searchParams.get("name")

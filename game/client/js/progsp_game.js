@@ -1,5 +1,6 @@
 var game;
 var ball;
+var ballPos = {};
 
 function init() {
   game = wsinit(onMove, document.getElementById('players'), document.getElementById('status'));
@@ -8,31 +9,34 @@ function init() {
   console.log(game);
 
   ball = document.getElementById("ball");
+  ballPos.x = +ball.getAttribute('cx');
+  ballPos.y = +ball.getAttribute('cy');
   window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('mousedown', onMouseDown);
 }
 
 function onKeyDown(evt) {
   switch (evt.key) {
     case 'ArrowLeft':
-      if (game.ready && game.id == game.me.group[0]) {
+      if (game.isPlayer(0)) {
         game.move({ id: 'L' });
       }
       evt.preventDefault();
       break;
     case 'ArrowRight':
-      if (game.ready && game.id == game.me.group[0]) {
+      if (game.isPlayer(0)) {
         game.move({ id: 'R' });
       }
       evt.preventDefault();
       break;
     case 'ArrowUp':
-      if (game.ready && game.id == game.me.group[1]) {
+      if (game.isPlayer(1)) {
         game.move({ id: 'U' });
       }
       evt.preventDefault();
       break;
     case 'ArrowDown':
-      if (game.ready && game.id == game.me.group[1]) {
+      if (game.isPlayer(1)) {
         game.move({ id: 'D' });
       }
       evt.preventDefault();
@@ -42,25 +46,45 @@ function onKeyDown(evt) {
   }
 }
 
+function onMouseDown(evt) {
+  let pos = cursorPoint(evt);
+  pos.x -= ballPos.x;
+  pos.y -= ballPos.y;
+  if (pos.x < 0 && game.isPlayer(0)) {
+    game.move({ id: 'L' });
+  }
+  if (pos.x > 0 && game.isPlayer(0)) {
+    game.move({ id: 'R' });
+  }
+  if (pos.y < 0 && game.isPlayer(1)) {
+    game.move({ id: 'U' });
+  }
+  if (pos.y > 0 && game.isPlayer(1)) {
+    game.move({ id: 'D' });
+  }
+}
+
 function onMove(move) {
   switch (move.id) {
     case 'L':
-      ball.setAttribute('cx', +ball.getAttribute('cx') - 5)
+      ballPos.x -= 5;
       break;
     case 'R':
-      ball.setAttribute('cx', +ball.getAttribute('cx') + 5)
+      ballPos.x += 5;
       break;
     case 'U':
-      ball.setAttribute('cy', +ball.getAttribute('cy') - 5)
+      ballPos.y -= 5;
       break;
     case 'D':
-      ball.setAttribute('cy', +ball.getAttribute('cy') + 5)
+      ballPos.y += 5;
       break;
     case 'EXIT':
-      ball.setAttribute('cx', 0)
-      ball.setAttribute('cy', 0)
+      ballPos.x = 0;
+      ballPos.y = 0;
       break;
     default:
       console.log(move);
   }
+  ball.setAttribute('cx', ballPos.x);
+  ball.setAttribute('cy', ballPos.y);
 }
