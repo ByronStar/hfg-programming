@@ -25,7 +25,7 @@ let gc = {
   isPlayer: function(idx) {
     return game.ready && gc.id == gc.me.group[idx]
   },
-  cursorPoint: cursorPoint
+  svgPoint: svgPoint
 }
 let playerNode
 let statusNode
@@ -401,7 +401,7 @@ function initPoint() {
 }
 
 // Get point in global SVG space
-function cursorPoint(evt) {
+function svgPoint(evt) {
   pt.x = evt.clientX
   pt.y = evt.clientY
   return pt.matrixTransform(matrix)

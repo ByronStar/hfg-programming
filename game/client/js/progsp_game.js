@@ -47,7 +47,7 @@ function onKeyDown(evt) {
 }
 
 function onMouseDown(evt) {
-  let pos = cursorPoint(evt);
+  let pos = svgPoint(evt);
   pos.x -= ballPos.x;
   pos.y -= ballPos.y;
   if (pos.x < 0 && game.isPlayer(0)) {
