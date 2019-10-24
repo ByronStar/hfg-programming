@@ -12,7 +12,7 @@ function init() {
   ballPos.x = +ball.getAttribute('cx');
   ballPos.y = +ball.getAttribute('cy');
   window.addEventListener('keydown', onKeyDown);
-  window.addEventListener('mousedown', onMouseDown);
+  window.addEventListener('click', onMouseClick);
 }
 
 function onKeyDown(evt) {
@@ -21,32 +21,28 @@ function onKeyDown(evt) {
       if (game.isPlayer(0)) {
         game.move({ id: 'L' });
       }
-      evt.preventDefault();
       break;
     case 'ArrowRight':
       if (game.isPlayer(0)) {
         game.move({ id: 'R' });
       }
-      evt.preventDefault();
       break;
     case 'ArrowUp':
       if (game.isPlayer(1)) {
         game.move({ id: 'U' });
       }
-      evt.preventDefault();
       break;
     case 'ArrowDown':
       if (game.isPlayer(1)) {
         game.move({ id: 'D' });
       }
-      evt.preventDefault();
       break;
     default:
       // console.log(evt.key);
   }
 }
 
-function onMouseDown(evt) {
+function onMouseClick(evt) {
   let pos = svgPoint(evt);
   pos.x -= ballPos.x;
   pos.y -= ballPos.y;
