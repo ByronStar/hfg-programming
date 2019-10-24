@@ -242,7 +242,9 @@ function refreshPlayers(players) {
       }
       playerNode.appendChild(p)
     })
-    statusNode.setAttribute('fill', gc.online ? !gc.ready ? 'green' : 'lime' : 'red')
+    if (statusNode) {
+      statusNode.setAttribute('fill', gc.online ? !gc.ready ? 'green' : 'lime' : 'red')
+    }
   }
 }
 

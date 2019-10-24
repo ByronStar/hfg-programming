@@ -432,7 +432,16 @@ function getIndex() {
   <meta name="author" content="ByronStar">
 
   <title>Programmiersprachen - Multiplayer</title>
+  <script type="text/javascript" src="lib/gameclient.js"></script>
   <link rel="stylesheet" href="client/css/progsp.css">
+  <script>
+  function init() {
+    game = wsinit(onMove, null, null);
+    game.gameId = -1;
+    game.name = "Master";
+    console.log(game);
+  }
+  </script>
 </head>
 
 <body class="progsp" style="margin: 40px;">
