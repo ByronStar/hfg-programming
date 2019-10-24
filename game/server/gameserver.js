@@ -2,7 +2,7 @@
 
 let wsPort = 11203
 let wssPort = 11204
-let msgTrace = true
+let msgTrace = false
 
 const WebSocket = require('ws')
 let WebSocketServer = WebSocket.Server
@@ -19,6 +19,9 @@ let ifs = require('os').networkInterfaces()
 let ipAddr = 'localhost'
 if (process.argv.length < 3 || process.argv[2] != '-local') {
   ipAddr = Object.keys(ifs).map(x => ifs[x].filter(x => x.family === 'IPv4' && !x.internal)[0]).filter(x => x)[0].address
+}
+if (process.argv.length > 2 && process.argv[2] == '-trace') {
+  msgTrace = true
 }
 let ipPort = 8091
 
@@ -65,8 +68,14 @@ let contentTypesByExtension = {
 // https.createServer(options, function (request, response) {
 http.createServer(function(request, response) {
 
-  let pathname = url.parse(request.url).pathname,
-    filename = path.join(process.cwd(), "/../" + pathname)
+  let pathname = url.parse(request.url).pathname
+  let filename
+  if (pathname.startsWith('/client')) {
+    filename = ".." + pathname
+  } else {
+    filename = "../client" + pathname
+  }
+  filename = path.join(process.cwd(), filename)
 
   console.log(url.parse(request.url).pathname, filename)
 
@@ -86,7 +95,7 @@ http.createServer(function(request, response) {
       }
 
       if (fs.statSync(filename).isDirectory()) {
-        filename += 'index.html'
+        filename += '/index.html'
       }
 
       fs.readFile(filename, "binary", function(err, file) {
@@ -151,7 +160,6 @@ function handleMessage(server, message, id, client) {
         state.players[id] = msg.data.game
         if (!(msg.data.game in state.games)) {
           // not yet published game
-          console.log("NEW")
           state.games[msg.data.game] = { id: msg.data.game, players: [] }
         }
         let player = {
@@ -170,6 +178,7 @@ function handleMessage(server, message, id, client) {
             players: state.games[msg.data.game].players
           }
         }), state.games[msg.data.game].players.map(v => v.id))
+        updateGames(server)
         break
       case 'UPDATE':
         msg.id = 'PLAYERS'
@@ -180,9 +189,11 @@ function handleMessage(server, message, id, client) {
       case 'ACCEPT':
         msg.data.players = updatePlayers(msg.data.player)
         forward(server, JSON.stringify(msg), [msg.from, msg.data.to])
+        updateGames(server)
         break
       case 'DECLINE':
         forward(server, message, [msg.data.to])
+        updateGames(server)
         break
       case 'MOVE':
         forward(server, message, msg.data.group)
@@ -201,17 +212,15 @@ function handleMessage(server, message, id, client) {
         let part = msg.data.file.endsWith('.js') ? 'js' : 'html'
         if (msg.data.game in state.games) {
           if (state.games[msg.data.game][part] != undefined && state.games[msg.data.game][part] != msg.data.file) {
-            if (part == 'html') { // This is unsave: Split STORE in STORE_CHK and STORE
-              client.send(JSON.stringify({
-                id: 'STORE',
-                from: 'SERVER',
-                data: {
-                  rc: -1,
-                  msg: "Ein Spiel mit der selben ID existiert bereits unter einem anderen Namen: '" + state.games[msg.data.game][part] +
-                    "'.\nEventuell im Javascript \ngame.gameId = '" + msg.data.game + "';\n durch \ngame.gameId = '" + guid7() + "';\n ersetzen!"
-                }
-              }))
-            }
+            client.send(JSON.stringify({
+              id: 'STORE',
+              from: 'SERVER',
+              data: {
+                rc: -1,
+                msg: "Ein Spiel mit der selben ID existiert bereits unter einem anderen Namen: '" + state.games[msg.data.game][part] +
+                  "'.\nEventuell im Javascript \ngame.gameId = '" + msg.data.game + "';\n durch \ngame.gameId = '" + guid7() + "';\n ersetzen!"
+              }
+            }))
             break;
           }
         } else {
@@ -219,17 +228,15 @@ function handleMessage(server, message, id, client) {
         }
         if (msg.data.file in state.files) {
           if (state.files[msg.data.file] != msg.data.game) {
-            if (part == 'html') {
-              client.send(JSON.stringify({
-                id: 'STORE',
-                from: 'SERVER',
-                data: {
-                  rc: -2,
-                  msg: 'Ein Spiel mit dem selben Namen "' + msg.data.file + '" existiert bereits unter einer anderen ID: ' + state.files[msg.data.file] +
-                    "'.\nEventuell HTML und Javascript umbenennen."
-                }
-              }))
-            }
+            client.send(JSON.stringify({
+              id: 'STORE',
+              from: 'SERVER',
+              data: {
+                rc: -2,
+                msg: 'Ein Spiel mit dem selben Namen "' + msg.data.file + '" existiert bereits unter einer anderen ID: ' + state.files[msg.data.file] +
+                  "'.\nEventuell HTML und Javascript umbenennen."
+              }
+            }))
             break;
           }
         } else {
@@ -237,7 +244,7 @@ function handleMessage(server, message, id, client) {
         }
         state.games[msg.data.game][part] = msg.data.file
         state.games[msg.data.game].name = msg.data.name
-        saveState();
+        saveState()
         let buff = Buffer.from(msg.data.code, 'base64')
         //console.log(msg.data.code, buff, buff.toString(), buff.toString('utf-8'))
         fs.writeFile(".." + msg.data.file, buff.toString('utf-8'), 'utf8', (err, data) => {
@@ -257,6 +264,7 @@ function handleMessage(server, message, id, client) {
             }))
           }
         });
+        updateGames(server)
         break
       default:
         break
@@ -269,6 +277,16 @@ function handleMessage(server, message, id, client) {
       data: {}
     }))
   }
+}
+
+function updateGames(server) {
+  forward(server, JSON.stringify({
+    id: 'GAMES',
+    from: 'SERVER',
+    data: {
+      games: state.games
+    }
+  }), state.games[-1].players.map(v => v.id))
 }
 
 function updatePlayers(player) {
@@ -294,6 +312,7 @@ function handleClose(server, id) {
   console.log('%s EXIT <%s> (%d clients)', new Date().getTime(), message, server.clients.size)
   // Forward message to affected players: Client has left
   forward(server, message, state.games[gameId].players.map(v => v.id))
+  updateGames(server)
 }
 
 let wsServer = new WebSocketServer({
@@ -416,10 +435,13 @@ function guid7() {
 }
 
 function getIndex() {
-  let list = ""
-  for (let gameId in state.games) {
-    list += '<li><a href="' + state.games[gameId].html + '">' + state.games[gameId].name + ' (' + state.games[gameId].players.length + ' Spieler)</a></li>'
-  }
+  // let list = ""
+  // for (let gameId in state.games) {
+  //   if (gameId != -1) {
+  //     let free = state.games[gameId].players.reduce((cnt, v) => v.active ? cnt : cnt + 1, 0)
+  //     list += '<li><a href="' + state.games[gameId].html + '">' + state.games[gameId].name + ' (' + free + '/' + state.games[gameId].players.length + ' Spieler)</a></li>'
+  //   }
+  // }
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -436,20 +458,32 @@ function getIndex() {
   <link rel="stylesheet" href="client/css/progsp.css">
   <script>
   function init() {
-    game = wsinit(onMove, null, null);
+    game = wsinit(onMove, null, document.getElementById('status'));
     game.gameId = -1;
     game.name = "Master";
     console.log(game);
   }
+  function onMove(move) {
+    switch (move.id) {
+      default:
+        console.log(move);
+    }
+  }
   </script>
 </head>
 
-<body class="progsp" style="margin: 40px;">
-  <h1>Verfügbare Spiele</h1>
-  <div>
-    <ol id="games">
-    ${list}
-    </ol>
+<body class="progsp" onload="init()">
+  <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="-960 -600 1920 1200">
+    <g id="layer0">
+      <circle id="status" cx="930" cy="-570" r=10 fill="red"></circle>
+    </g>
+  </svg>
+  <div class="overlay" style="margin: 40px;">
+    <h1>Verfügbare Spiele</h1>
+    <div>
+      <ol id="games">
+      </ol>
+    </div>
   </div>
 </body>
 

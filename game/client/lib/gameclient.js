@@ -1,7 +1,7 @@
 // let gc = function() {
 //   let gc = function(typeNumber, errorCorrectionLevel) {
 let ipPort = 8091
-let msgTrace = true
+let msgTrace = false
 let ws, name
 let gc = {
   players: [],
@@ -51,7 +51,7 @@ function wsinit(onMove, node, status) {
 
   playerNode = node
   statusNode = status
-  msgTrace = (msgTrace || null != url.searchParams.get("trace"))
+  msgTrace = (msgTrace || null != url.searchParams.get("trace"))
   let host = url.searchParams.get("server")
   if (host) {
     gc.server = host
@@ -60,9 +60,11 @@ function wsinit(onMove, node, status) {
   }
   let wsUri = location.protocol === 'https:' ? 'wss://' + gc.server + ':' + wssPort : 'ws://' + gc.server + ':' + wsPort
   ws = createWebSocket(wsUri, onState, onReceive)
-  // console.log(location, ws)
+  console.log(location, ws)
   window.addEventListener('keydown', onKeyDownGC)
-  document.getElementsByTagName('h1')[0].innerHTML += (location.port == ipPort ? " (published)" : " (develop)")
+  if (location.pathname != '/') {
+    document.getElementsByTagName('h1')[0].innerHTML += (location.port == ipPort ? " (published)" : " (develop)")
+  }
   return gc
 }
 
@@ -70,50 +72,56 @@ let pCnt = 0
 let qCnt = 0
 
 function onKeyDownGC(evt) {
-  switch (evt.key) {
-    case 'R':
-      sendState('RESTART', { rc: 0 })
-      break
-    case 'S':
-      sendState('STATE', {})
-      break
-    case 'Q':
-      if (qCnt++ > 3) {
-        sendState('RESTART', { rc: -1 })
-      }
-      break
-    case 'X':
-      console.log(gc.player(0).name, gc.player(1).name)
-      break
-    case 'P':
-      if (location.port != ipPort) {
-        let script = document.getElementById('game')
-        if (null != script) {
-          if (!location.pathname.endsWith('/progsp_game.html') && !script.src.endsWith('/progsp_game.js')) {
-            if (gc.gameId != 0) {
-              if (pCnt == 0) {
-                pCnt = 2;
-                publish(script)
+  if (location.pathname == '/') {
+    switch (evt.key) {
+      case 'R':
+        sendState('RESTART', { rc: 0 })
+        break
+      case 'S':
+        sendState('STATE', {})
+        break
+      case 'Q':
+        if (qCnt++ > 3) {
+          sendState('RESTART', { rc: -1 })
+        }
+        break
+      case 'T':
+        break
+      default:
+        qCnt = 0
+    }
+  } else {
+    switch (evt.key) {
+      case 'X':
+        console.log(gc.player(0).name, gc.player(1).name)
+        break
+      case 'P':
+        if (location.port != ipPort) {
+          let script = document.getElementById('game')
+          if (null != script) {
+            if (!location.pathname.endsWith('/progsp_game.html') && !script.src.endsWith('/progsp_game.js')) {
+              if (gc.gameId != 0) {
+                if (pCnt == 0) {
+                  pCnt = 2;
+                  publish(script)
+                } else {
+                  alert("Verherige 'Publish' Funktion noch aktiv!")
+                }
               } else {
-                alert("Verherige 'Publish' Funktion noch aktiv!")
+                alert("Bitte im Javascript \ngame.gameId = 0;\n durch \ngame.gameId = '" + guid7() + "';\n ersetzen!")
               }
             } else {
-              alert("Bitte im Javascript \ngame.gameId = 0;\n durch \ngame.gameId = '" + guid7() + "';\n ersetzen!")
+              alert("Bitte die Dateien umbenennen: progsp_game.html und progsp_game.js sind reservierte Namen!")
             }
           } else {
-            alert("Bitte die Dateien umbenennen: progsp_game.html und progsp_game.js sind reservierte Namen!")
+            alert("Der Game Code ist in der HTML Seite nicht mit der id 'game' markiert: <script id=\"game\" ... !")
           }
         } else {
-          alert("Der Game Code ist in der HTML Seite nicht mit der id 'game' markiert: <script id=\"game\" ... !")
+          alert("Die 'Publish' Funktion geht nur bei lokale Seiten (z.B. Atom Liveserver)!")
         }
-      } else {
-        alert("Die 'Publish' Funktion geht nur bei lokale Seiten (z.B. Atom Liveserver)!")
-      }
-      break
-    case 'T':
-      break
-    default:
-      qCnt = 0
+        break
+      default:
+    }
   }
 }
 
@@ -159,7 +167,7 @@ function onReceive(data) {
       // connected and server provides ID
       gc.id = msg.data.id
       gc.server = msg.data.ip
-      if (!gc.server.match(/localhost|127.0.0.1/)) {
+      if (!gc.server.match(/localhost|127.0.0.1/) && location.pathname != '/') {
         createQRCode(location.protocol + '//' + gc.server + ':' + ipPort + location.pathname, 'p1')
       }
       sendState('JOIN', { name: name, game: gc.gameId })
@@ -195,6 +203,19 @@ function onReceive(data) {
       sendState('UPDATE', { player: gc.me })
       break
     case 'STATE':
+      if (!msgTrace) {
+        console.log("REC", msg)
+      }
+      break
+    case 'GAMES':
+      let list = ""
+      for (let gameId in msg.data.games) {
+        if (gameId != -1) {
+          let free = msg.data.games[gameId].players.reduce((cnt, v) => v.active ? cnt : cnt + 1, 0)
+          list += '<li><a href="' + msg.data.games[gameId].html + '">' + msg.data.games[gameId].name + ' (' + free + '/' + msg.data.games[gameId].players.length + ' Spieler)</a></li>'
+        }
+      }
+      document.getElementById('games').innerHTML = list
       break
     case 'STORE':
       pCnt--
@@ -242,9 +263,9 @@ function refreshPlayers(players) {
       }
       playerNode.appendChild(p)
     })
-    if (statusNode) {
-      statusNode.setAttribute('fill', gc.online ? !gc.ready ? 'green' : 'lime' : 'red')
-    }
+  }
+  if (null != statusNode) {
+    statusNode.setAttribute('fill', gc.online ? !gc.ready ? 'green' : 'lime' : 'red')
   }
 }
 
