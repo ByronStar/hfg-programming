@@ -38,7 +38,19 @@ function wsinit(onMove, node, status) {
   let url = new URL(window.location.href)
   name = url.searchParams.get("name")
   if (null == name) {
-    name = "Spieler" + Math.floor(rand(100, 999))
+    name = getCookie('name')
+    if (null == name) {
+      name = "Spieler" + Math.floor(rand(100, 999))
+    }
+  } else {
+    if (name.startsWith('Spieler')) {
+      let saved = getCookie('name')
+      if (null != saved) {
+        name = saved
+      }
+    } else {
+      setCookie('name', name, 90)
+    }
   }
 
   moveCallback = onMove
@@ -168,7 +180,7 @@ function onReceive(data) {
       gc.id = msg.data.id
       gc.server = msg.data.ip
       if (!gc.server.match(/localhost|127.0.0.1/) && location.pathname != '/') {
-        createQRCode(location.protocol + '//' + gc.server + ':' + ipPort + location.pathname, 'p1')
+        createQRCode(location.protocol + '//' + gc.server + ':' + ipPort + location.pathname + '?name=Mobile' + Math.floor(rand(100, 999)), 'p1')
       }
       sendState('JOIN', { name: name, game: gc.gameId })
       break
@@ -212,7 +224,7 @@ function onReceive(data) {
       for (let gameId in msg.data.games) {
         if (gameId != -1) {
           let free = msg.data.games[gameId].players.reduce((cnt, v) => v.active ? cnt : cnt + 1, 0)
-          list += '<li><a href="' + msg.data.games[gameId].html + '">' + msg.data.games[gameId].name + ' (' + free + '/' + msg.data.games[gameId].players.length + ' Spieler)</a></li>'
+          list += '<li><a href="' + msg.data.games[gameId].html + "?name=" + name + '">' + msg.data.games[gameId].name + ' (' + free + ' / ' + msg.data.games[gameId].players.length + ' Spielern frei)</a></li>'
         }
       }
       document.getElementById('games').innerHTML = list
@@ -254,7 +266,7 @@ function refreshPlayers(players) {
       let p = document.createElement('li')
       p.innerHTML = '<button ' + (v == gc.me || (gc.me && gc.me.active) || v.active ? 'disabled ' : '') + 'onclick="prepareGame(' + i + ')">Einladen</button>'
       if (gc.id === v.id) {
-        p.innerHTML += v.name + " (me)"
+        p.innerHTML += v.name + " (me)" + (v.name.startsWith('Spieler')?' Tipp: in der Browser URL mit ?name=Hugo kann man seinen Namen ändern und speichern (Cookie)':'')
       } else {
         p.innerHTML += v.name
       }
@@ -351,7 +363,7 @@ function setCookie(cname, cval, cdays) {
   } else {
     let d = new Date()
     d.setTime(d.getTime() + (cdays * 86400000))
-    document.cookie = cname + "=" + cval + "; expires=" + d.toUTCString()
+    document.cookie = cname + "=" + cval + "; expires=" + d.toUTCString() + "; path=/"
   }
 }
 

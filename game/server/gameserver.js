@@ -35,7 +35,7 @@ let state = {
       id: 0,
       js: "/client/js/progsp_game.js",
       html: "/client/progsp_game.html",
-      name: "Demo Spiel ",
+      name: "Demo Spiel",
       players: []
     }
   },
@@ -77,7 +77,7 @@ http.createServer(function(request, response) {
   }
   filename = path.join(process.cwd(), filename)
 
-  console.log(url.parse(request.url).pathname, filename)
+  //console.log(url.parse(request.url).pathname, filename)
 
   if (pathname == '/') {
     response.writeHead(200, { "Content-Type": "text/html" })
@@ -119,11 +119,11 @@ http.createServer(function(request, response) {
   }
 }).listen(ipPort, ipAddr)
 
-console.log((new Date()) + ' listening on http://' + ipAddr + ':' + ipPort)
+console.log((new Date()) + ' GameServer available under http://' + ipAddr + ':' + ipPort)
 
 function broadcast(server, message) {
   if (msgTrace) {
-    console.log('%s SND <%s> (%d clients)', new Date().getTime(), message, server.clients.size)
+    console.log('%s SND <%s> (%d players)', new Date().getTime(), message, server.clients.size)
   }
   server.clients.forEach(function each(client) {
     try {
@@ -136,7 +136,7 @@ function broadcast(server, message) {
 
 function forward(server, message, active) {
   if (msgTrace) {
-    console.log('%s FWD <%s> ([%s] %d clients)', new Date().getTime(), message, active, active.length)
+    console.log('%s FWD <%s> ([%s] %d players)', new Date().getTime(), message, active, active.length)
   }
   active.forEach(function each(id) {
     try {
@@ -179,6 +179,9 @@ function handleMessage(server, message, id, client) {
           }
         }), state.games[msg.data.game].players.map(v => v.id))
         updateGames(server)
+        if (!msgTrace) {
+          console.log('%s INFO <%s>', new Date().getTime(), message)
+        }
         break
       case 'UPDATE':
         msg.id = 'PLAYERS'
@@ -280,13 +283,15 @@ function handleMessage(server, message, id, client) {
 }
 
 function updateGames(server) {
-  forward(server, JSON.stringify({
-    id: 'GAMES',
-    from: 'SERVER',
-    data: {
-      games: state.games
-    }
-  }), state.games[-1].players.map(v => v.id))
+  if (state.games[-1]) {
+    forward(server, JSON.stringify({
+      id: 'GAMES',
+      from: 'SERVER',
+      data: {
+        games: state.games
+      }
+    }), state.games[-1].players.map(v => v.id))
+  }
 }
 
 function updatePlayers(player) {
@@ -309,7 +314,7 @@ function handleClose(server, id) {
       players: state.games[gameId].players
     }
   });
-  console.log('%s EXIT <%s> (%d clients)', new Date().getTime(), message, server.clients.size)
+  console.log('%s EXIT <%s> (%d players)', new Date().getTime(), message, server.clients.size)
   // Forward message to affected players: Client has left
   forward(server, message, state.games[gameId].players.map(v => v.id))
   updateGames(server)
@@ -318,7 +323,7 @@ function handleClose(server, id) {
 let wsServer = new WebSocketServer({
   port: wsPort
 })
-console.log((new Date()) + ' listening on ws://' + ipAddr + ':' + wsPort)
+// console.log((new Date()) + ' listening on ws://' + ipAddr + ':' + wsPort)
 
 wsServer.on('connection', function connection(client, req) {
   client.upgradeReq = req;
@@ -346,7 +351,7 @@ wsServer.on('connection', function connection(client, req) {
     }
   })
   client.send(message)
-  console.log('%s JOIN <%s> (%d clients)', new Date().getTime(), message, wsServer.clients.size)
+  console.log('%s JOIN <%s> (%d players)', new Date().getTime(), message, wsServer.clients.size)
 })
 
 let httpsServer = https.createServer(options, function(request, response) {
@@ -355,7 +360,7 @@ let httpsServer = https.createServer(options, function(request, response) {
   response.end()
 })
 httpsServer.listen(wssPort, function() {
-  console.log((new Date()) + ' listening on wss://' + ipAddr + ':' + wssPort)
+  // console.log((new Date()) + ' listening on wss://' + ipAddr + ':' + wssPort)
 })
 let wssServer = new WebSocketServer({
   server: httpsServer
@@ -398,7 +403,7 @@ function loadState() {
       console.log(err);
     } else {
       state = JSON.parse(data);
-      console.log("LOAD", state)
+      // console.log("LOAD", state)
       for (let gameId in state.games) {
         state.games[gameId].players = []
       }
