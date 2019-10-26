@@ -140,7 +140,9 @@ function forward(server, message, active) {
   }
   active.forEach(function each(id) {
     try {
-      clients[id].send(message)
+      if (clients[id]) {
+        clients[id].send(message)
+      }
     } catch (e) {
       console.log(e)
     }
@@ -200,6 +202,9 @@ function handleMessage(server, message, id, client) {
         break
       case 'MOVE':
         forward(server, message, msg.data.group)
+        break
+      case 'INFO':
+        console.log("INFO: ", msg.data)
         break
       case 'RESTART':
         process.exit(msg.data.rc)

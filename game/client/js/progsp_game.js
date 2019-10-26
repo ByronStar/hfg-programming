@@ -12,12 +12,16 @@ function init() {
   ball = document.getElementById("ball");
   ballPos.x = +ball.getAttribute('cx');
   ballPos.y = +ball.getAttribute('cy');
-  window.addEventListener('keydown', onKeyDown);
-  window.addEventListener('click', onMouseClick);
-  // if (window.DeviceMotionEvent) {
-  //   window.addEventListener('devicemotion', onMotion);
-  //   alert("MOTION");
-  // }
+  document.addEventListener('keydown', onKeyDown);
+  document.addEventListener('click', onMouseClick);
+  if (window.DeviceOrientationEvent) {
+    alert("ORIENTATION");
+    window.addEventListener('deviceorientation', onOrientation)
+  }
+  if (window.DeviceMotionEvent) {
+    alert("MOTION");
+    window.addEventListener('devicemotion', onMotion);
+  }
 }
 
 function onKeyDown(evt) {
@@ -65,7 +69,15 @@ function onMouseClick(evt) {
   }
 }
 
+function onOrientation(evt) {
+  game.send(evt.alpha + ", " + evt.beta + ", " + evt.gamma);
+}
+
 function onMotion(evt) {
+  game.send(evt.acceleration.x + ", " + evt.acceleration.y + ", " + evt.acceleration.z);
+}
+
+function onMotionX(evt) {
   velocity.x *= 0.9;
   velocity.y *= 0.9;
   if (Math.abs(velocity.x) < 1) {

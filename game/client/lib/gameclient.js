@@ -17,6 +17,9 @@ let gc = {
       sendState('MOVE', data)
     }
   },
+  send: function(data) {
+    sendState('INFO', data)
+  },
   player: function(idx) {
     return gc.players.find(function(v, i) {
       return v.id === gc.me.group[idx]
@@ -281,7 +284,11 @@ function refreshPlayers(players) {
     })
   }
   if (null != statusNode) {
-    statusNode.setAttribute('fill', gc.online ? !gc.ready ? 'green' : 'lime' : 'red')
+    statusNode.setAttribute('fill', gc.online ? gc.ready ? 'lime' : 'green' : 'red')
+    let info =document.getElementById('info')
+    if (info) {
+      info.style.display = gc.ready ? 'none' : 'block'
+    }
   }
 }
 
