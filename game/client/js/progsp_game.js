@@ -70,10 +70,12 @@ function onMouseClick(evt) {
 }
 
 function onOrientation(evt) {
+  console.log(evt.alpha + ", " + evt.beta + ", " + evt.gamma);
   game.send(evt.alpha + ", " + evt.beta + ", " + evt.gamma);
 }
 
 function onMotion(evt) {
+  console.log(evt.acceleration.x + ", " + evt.acceleration.y + ", " + evt.acceleration.z);
   game.send(evt.acceleration.x + ", " + evt.acceleration.y + ", " + evt.acceleration.z);
 }
 

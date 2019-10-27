@@ -1,6 +1,7 @@
 // let gc = function() {
 //   let gc = function(typeNumber, errorCorrectionLevel) {
 let ipPort = 8091
+// let ipPort = 443
 let msgTrace = false
 let ws, name
 let gc = {
@@ -94,14 +95,18 @@ function onKeyDownGC(evt) {
   if (location.pathname == '/') {
     switch (evt.key) {
       case 'R':
-        sendState('RESTART', { rc: 0 })
+        sendState('RESTART', {
+          rc: 0
+        })
         break
       case 'S':
         sendState('STATE', {})
         break
       case 'Q':
         if (qCnt++ > 3) {
-          sendState('RESTART', { rc: -1 })
+          sendState('RESTART', {
+            rc: -1
+          })
         }
         break
       case 'T':
@@ -189,28 +194,40 @@ function onReceive(data) {
       if (!gc.server.match(/localhost|127.0.0.1/) && location.pathname != '/') {
         createQRCode(location.protocol + '//' + gc.server + ':' + ipPort + location.pathname + '?name=Mobile' + Math.floor(rand(100, 999)), 'p1')
       }
-      sendState('JOIN', { name: name, game: gc.gameId })
+      sendState('JOIN', {
+        name: name,
+        game: gc.gameId
+      })
       break
     case 'PLAYERS':
       break
     case 'EXIT':
       if (gc.me && gc.me.group.indexOf(msg.data.id) > -1) {
         gc.ready = false
-        moveCallback({ id: 'EXIT' })
+        moveCallback({
+          id: 'EXIT'
+        })
         gc.me.active = false
         gc.me.group = []
-        sendState('UPDATE', { player: gc.me })
+        sendState('UPDATE', {
+          player: gc.me
+        })
       }
       break
     case 'PREPARE':
       if (msg.data.to == gc.id) {
         if (gc.me.active) {
-          sendState('DECLINE', { to: msg.from })
+          sendState('DECLINE', {
+            to: msg.from
+          })
         } else {
           gc.me.active = true
           gc.me.group = msg.data.player.group
           gc.ready = true
-          sendState('ACCEPT', { player: gc.me, to: msg.from })
+          sendState('ACCEPT', {
+            player: gc.me,
+            to: msg.from
+          })
         }
       }
       break
@@ -219,7 +236,9 @@ function onReceive(data) {
     case 'DECLINE':
       gc.me.active = false
       gc.me.group = []
-      sendState('UPDATE', { player: gc.me })
+      sendState('UPDATE', {
+        player: gc.me
+      })
       break
     case 'STATE':
       if (!msgTrace) {
@@ -259,7 +278,10 @@ function prepareGame(p) {
   gc.ready = true
   gc.me.active = true
   gc.me.group = [gc.me.id, gc.players[p].id]
-  sendState('PREPARE', { player: gc.me, to: gc.players[p].id })
+  sendState('PREPARE', {
+    player: gc.me,
+    to: gc.players[p].id
+  })
 }
 
 function refreshPlayers(players) {
@@ -273,7 +295,7 @@ function refreshPlayers(players) {
       let p = document.createElement('li')
       p.innerHTML = '<button ' + (v == gc.me || (gc.me && gc.me.active) || v.active ? 'disabled ' : '') + 'onclick="prepareGame(' + i + ')">Einladen</button>'
       if (gc.id === v.id) {
-        p.innerHTML += v.name + " (me)" + (v.name.startsWith('Spieler')?' Tipp: in der Browser URL mit ?name=Hugo kann man seinen Namen ändern und speichern (Cookie)':'')
+        p.innerHTML += v.name + " (me)" + (v.name.startsWith('Spieler') ? ' Tipp: in der Browser URL mit ?name=Hugo kann man seinen Namen ändern und speichern (Cookie)' : '')
       } else {
         p.innerHTML += v.name
       }
@@ -285,7 +307,7 @@ function refreshPlayers(players) {
   }
   if (null != statusNode) {
     statusNode.setAttribute('fill', gc.online ? gc.ready ? 'lime' : 'green' : 'red')
-    let info =document.getElementById('info')
+    let info = document.getElementById('info')
     if (info) {
       info.style.display = gc.ready ? 'none' : 'block'
     }
@@ -293,15 +315,25 @@ function refreshPlayers(players) {
 }
 
 function publish(script) {
-  loadData(script.src, 'text/javascript', dataLoaded, { file: new URL(script.src).pathname })
-  loadData(location.origin + location.pathname, 'text/html', dataLoaded, { file: location.pathname })
+  loadData(script.src, 'text/javascript', dataLoaded, {
+    file: new URL(script.src).pathname
+  })
+  loadData(location.origin + location.pathname, 'text/html', dataLoaded, {
+    file: location.pathname
+  })
 }
 
 function dataLoaded(text, context) {
   if (context.file.endsWith('html')) {
     text = text.replace(/<!-- Code injected by live-server -->(.|\n)+<\/script>\n*/m, '')
   }
-  sendState('STORE', { file: context.file, game: gc.gameId, name: gc.name, page: location.pathname, code: Base64.encode(text) })
+  sendState('STORE', {
+    file: context.file,
+    game: gc.gameId,
+    name: gc.name,
+    page: location.pathname,
+    code: Base64.encode(text)
+  })
 }
 
 function addScript(name) {
@@ -335,6 +367,7 @@ function createWebSocket(wsUri, onChange, onReceive) {
 
     ws.onerror = function(evt) {
       onChange(false, null)
+      alert(evt)
       console.log('ERR', evt)
     }
 
@@ -351,7 +384,12 @@ function createWebSocket(wsUri, onChange, onReceive) {
 
 const sendState = (msgId, data) => {
   if (ws && ws.readyState === WebSocket.OPEN) {
-    const msg = { id: msgId, from: gc.id, ts: new Date().getTime(), data: data }
+    const msg = {
+      id: msgId,
+      from: gc.id,
+      ts: new Date().getTime(),
+      data: data
+    }
     if (msgTrace) {
       console.log("SND", msg)
     }

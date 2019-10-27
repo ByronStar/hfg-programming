@@ -24,6 +24,7 @@ if (process.argv.length > 2 && process.argv[2] == '-trace') {
   msgTrace = true
 }
 let ipPort = 8091
+// let ipPort = 443
 
 let clients = {}
 // track active IP Addresses
@@ -49,15 +50,15 @@ let stateFile = './gamestate.json';
 
 loadState();
 
+// let options = {
+//   key: fs.readFileSync('./progsp.hfg-gmuend.de.key'),
+//   cert: fs.readFileSync('./progsp.hfg-gmuend.de.pem')
+// }
 let options = {
-  key: fs.readFileSync('./privkey.pem'),
-  cert: fs.readFileSync('./fullchain.pem')
+  key: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/privkey.pem'),
+  cert: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/fullchain.pem')
 }
 
-// let options = {
-//   key: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/privkey.pem'),
-//   cert: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/fullchain.pem')
-// }
 
 let contentTypesByExtension = {
   '.html': "text/html",
@@ -65,8 +66,8 @@ let contentTypesByExtension = {
   '.js': "text/javascript"
 }
 
-// https.createServer(options, function (request, response) {
-http.createServer(function(request, response) {
+https.createServer(options, function (request, response) {
+// http.createServer(function(request, response) {
 
   let pathname = url.parse(request.url).pathname
   let filename
@@ -119,7 +120,7 @@ http.createServer(function(request, response) {
   }
 }).listen(ipPort, ipAddr)
 
-console.log((new Date()) + ' GameServer available under http://' + ipAddr + ':' + ipPort)
+console.log((new Date()) + ' GameServer available under https://' + ipAddr + ':' + ipPort)
 
 function broadcast(server, message) {
   if (msgTrace) {
