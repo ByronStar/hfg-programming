@@ -42,7 +42,6 @@ let wssPort = 11204
 
 function wsinit(onMove, node, status) {
   initPoint()
-  //console.log(location)
   let url = new URL(window.location.href)
   name = url.searchParams.get("name")
   if (null == name) {
@@ -190,7 +189,9 @@ function onReceive(data) {
     case 'ID':
       // connected and server provides ID
       gc.id = msg.data.id
-      gc.server = msg.data.ip
+      if (gc.server.match(/localhost|127.0.0.1/)) {
+        gc.server = msg.data.ip
+      }
       if (!gc.server.match(/localhost|127.0.0.1/) && location.pathname != '/') {
         createQRCode(location.protocol + '//' + gc.server + ':' + ipPort + location.pathname + '?name=Mobile' + Math.floor(rand(100, 999)), 'p1')
       }
@@ -345,7 +346,7 @@ function addScript(name) {
 }
 
 function createQRCode(data, id) {
-  //console.log("qrcode=" + data)
+  console.log("qrcode=" + data)
   qr = qrcode(4, 'L')
   qr.addData(data)
   data.value = ""

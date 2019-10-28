@@ -332,8 +332,13 @@ let wsServer = new WebSocketServer({
 // console.log((new Date()) + ' listening on ws://' + ipAddr + ':' + wsPort)
 
 wsServer.on('connection', function connection(client, req) {
-  client.upgradeReq = req;
-  let id = req.headers['sec-websocket-key']
+  let id
+  if (client.upgradeReq) {
+    id = client.upgradeReq.headers['sec-websocket-key'] 
+  } else {
+    client.upgradeReq = req;
+    id = req.headers['sec-websocket-key']
+  }
   clients[id] = client
 
   // Client sent message
@@ -373,8 +378,13 @@ let wssServer = new WebSocketServer({
 })
 
 wssServer.on('connection', function connection(client, req) {
-  client.upgradeReq = req;
-  let id = req.headers['sec-websocket-key']
+  let id
+  if (client.upgradeReq) {
+    id = client.upgradeReq.headers['sec-websocket-key']
+  } else {
+    client.upgradeReq = req;
+    id = req.headers['sec-websocket-key']
+  }
   clients[id] = client
 
   // Client sent message
