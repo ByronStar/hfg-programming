@@ -4,6 +4,8 @@ let ipPort = 8091
 // let ipPort = 443
 let msgTrace = false
 let ws, name
+let lags = [], lCnt = 0
+
 let gc = {
   players: [],
   me: null,
@@ -376,6 +378,32 @@ function createWebSocket(wsUri, onChange, onReceive) {
       // console.log(evt.currentTarget, evt.srcElement, ws)
       onReceive(evt.data)
     }
+
+    ws.calcLag = function(msg, ts) {
+      if (msg.from === ws.user.ID) {
+        // own message - confirmation of SND, can be used to calculate lag
+        lags[lCnt++ % 5] = (ts - msg.ts) / 2;
+        let lag = 0;
+        if (lags.length > 4) {
+          let med = lags.slice().sort()[2];
+          let ll = 0;
+          for (let l = 0; l < lags.length; l++) {
+            if (Math.abs(lags[l] - med) < 1000.0) {
+              lag += lags[l];
+              ll++
+            }
+          }
+          lag /= ll;
+          console.log('lag', lag);
+        }
+        //for (let  i = 0; i < lags.length; i++) {
+        //  lag += lags[i];
+        //}
+        //lag /= lags.length;
+        //console.log('lag', lag);
+      }
+    }
+
     return ws
   } catch (e) {
     console.log(e)

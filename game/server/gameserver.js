@@ -124,7 +124,7 @@ console.log((new Date()) + ' GameServer available under https://' + ipAddr + ':'
 
 function broadcast(server, message) {
   if (msgTrace) {
-    console.log('%s SND <%s> (%d players)', new Date().getTime(), message, server.clients.size)
+    console.log('%s SND <%s> (%d players)', new Date().getTime(), message, (server.clients.length ? server.clients.length : server.clients.size))
   }
   server.clients.forEach(function each(client) {
     try {
@@ -320,7 +320,7 @@ function handleClose(server, id) {
       players: state.games[gameId].players
     }
   });
-  console.log('%s EXIT <%s> (%d players)', new Date().getTime(), message, server.clients.size)
+  console.log('%s EXIT <%s> (%d players)', new Date().getTime(), message, (server.clients.length ? server.clients.length : server.clients.size))
   // Forward message to affected players: Client has left
   forward(server, message, state.games[gameId].players.map(v => v.id))
   updateGames(server)
@@ -334,7 +334,7 @@ let wsServer = new WebSocketServer({
 wsServer.on('connection', function connection(client, req) {
   let id
   if (client.upgradeReq) {
-    id = client.upgradeReq.headers['sec-websocket-key'] 
+    id = client.upgradeReq.headers['sec-websocket-key']
   } else {
     client.upgradeReq = req;
     id = req.headers['sec-websocket-key']
@@ -358,11 +358,11 @@ wsServer.on('connection', function connection(client, req) {
     data: {
       id: id,
       ip: ipAddr,
-      seq: wsServer.clients.size - 1
+      seq: (wsServer.clients.length ? wsServer.clients.length : wsServer.clients.size) - 1
     }
   })
   client.send(message)
-  console.log('%s JOIN <%s> (%d players)', new Date().getTime(), message, wsServer.clients.size)
+  console.log('%s JOIN <%s> (%d players)', new Date().getTime(), message, (wsServer.clients.length ? wsServer.clients.length : wsServer.clients.size))
 })
 
 let httpsServer = https.createServer(options, function(request, response) {
@@ -404,7 +404,7 @@ wssServer.on('connection', function connection(client, req) {
     data: {
       id: id,
       ip: ipAddr,
-      seq: wsServer.clients.size - 1
+      seq: (wssServer.clients.length ? wssServer.clients.length : wssServer.clients.size) - 1
     }
   })
   client.send(message)
