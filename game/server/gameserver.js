@@ -37,6 +37,7 @@ let state = {
       js: "/client/js/progsp_game.js",
       html: "/client/progsp_game.html",
       name: "Demo Spiel",
+      version: 0,
       players: []
     }
   },
@@ -50,15 +51,15 @@ let stateFile = './gamestate.json';
 
 loadState();
 
-// let options = {
-//   key: fs.readFileSync('./progsp.hfg-gmuend.de.key'),
-//   cert: fs.readFileSync('./progsp.hfg-gmuend.de.pem')
-// }
 let options = {
-  key: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/privkey.pem'),
-  cert: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/fullchain.pem')
+  key: fs.readFileSync('./progsp.hfg-gmuend.de.key'),
+  cert: fs.readFileSync('./progsp.hfg-gmuend.de.pem')
 }
 
+// let options = {
+//   key: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/privkey.pem'),
+//   cert: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/fullchain.pem')
+// }
 
 let contentTypesByExtension = {
   '.html': "text/html",
@@ -66,8 +67,8 @@ let contentTypesByExtension = {
   '.js': "text/javascript"
 }
 
-https.createServer(options, function (request, response) {
-// http.createServer(function(request, response) {
+https.createServer(options, function(request, response) {
+  //http.createServer(function(request, response) {
 
   let pathname = url.parse(request.url).pathname
   let filename
@@ -218,9 +219,10 @@ function handleMessage(server, message, id, client) {
         }))
         break
       case 'STORE':
-        let part = msg.data.file.endsWith('.js') ? 'js' : 'html'
+        let file = (msg.data.file.startsWith('/client') ? '' : '/client') + msg.data.file
+        let part = file.endsWith('.js') ? 'js' : 'html'
         if (msg.data.game in state.games) {
-          if (state.games[msg.data.game][part] != undefined && state.games[msg.data.game][part] != msg.data.file) {
+          if (state.games[msg.data.game][part] != undefined && state.games[msg.data.game][part] != file) {
             client.send(JSON.stringify({
               id: 'STORE',
               from: 'SERVER',
@@ -232,31 +234,32 @@ function handleMessage(server, message, id, client) {
             }))
             break;
           }
+          state.games[msg.data.game].version++
         } else {
-          state.games[msg.data.game] = { id: msg.data.game, players: [] }
+          state.games[msg.data.game] = { id: msg.data.game, players: [], version: 0 }
         }
-        if (msg.data.file in state.files) {
-          if (state.files[msg.data.file] != msg.data.game) {
+        if (file in state.files) {
+          if (state.files[file] != msg.data.game) {
             client.send(JSON.stringify({
               id: 'STORE',
               from: 'SERVER',
               data: {
                 rc: -2,
-                msg: 'Ein Spiel mit dem selben Namen "' + msg.data.file + '" existiert bereits unter einer anderen ID: ' + state.files[msg.data.file] +
+                msg: 'Ein Spiel mit dem selben Namen "' + file + '" existiert bereits unter einer anderen ID: ' + state.files[file] +
                   "'.\nEventuell HTML und Javascript umbenennen."
               }
             }))
             break;
           }
         } else {
-          state.files[msg.data.file] = msg.data.game
+          state.files[file] = msg.data.game
         }
-        state.games[msg.data.game][part] = msg.data.file
+        state.games[msg.data.game][part] = file
         state.games[msg.data.game].name = msg.data.name
         saveState()
         let buff = Buffer.from(msg.data.code, 'base64')
         //console.log(msg.data.code, buff, buff.toString(), buff.toString('utf-8'))
-        fs.writeFile(".." + msg.data.file, buff.toString('utf-8'), 'utf8', (err, data) => {
+        fs.writeFile('..' + file, buff.toString('utf-8'), 'utf8', (err, data) => {
           if (err) {
             console.log(err)
             client.send(JSON.stringify({
@@ -265,12 +268,19 @@ function handleMessage(server, message, id, client) {
               data: { rc: -1, msg: err }
             }))
           } else {
-            console.log(msg.data.file + " saved.")
-            client.send(JSON.stringify({
+            console.log(file + " saved.")
+            forward(server, JSON.stringify({
               id: 'STORE',
               from: 'SERVER',
-              data: { rc: 0, msg: '' }
-            }))
+              data: {
+                players: state.games['L-' + msg.data.game].players
+              }
+            }), state.games['L-' + msg.data.game].players.map(v => v.id))
+            // client.send(JSON.stringify({
+            //   id: 'STORE',
+            //   from: 'SERVER',
+            //   data: { rc: 0, msg: '' }
+            // }))
           }
         });
         updateGames(server)
@@ -416,12 +426,20 @@ wssServer.on('connection', function connection(client, req) {
 function loadState() {
   fs.readFile(stateFile, 'utf-8', (err, data) => {
     if (err) {
-      console.log(err);
+      if (err.code == 'ENOENT') {
+        saveState();
+      } else {
+        console.log(err, err.code);
+      }
     } else {
       state = JSON.parse(data);
       // console.log("LOAD", state)
       for (let gameId in state.games) {
-        state.games[gameId].players = []
+        if (gameId.startsWith('L-')) {
+           delete(state.games[gameId])
+        } else {
+          state.games[gameId].players = []
+        }
       }
       state.players = {}
       saveState();

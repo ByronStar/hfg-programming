@@ -4,7 +4,8 @@ let ipPort = 8091
 // let ipPort = 443
 let msgTrace = false
 let ws, name
-let lags = [], lCnt = 0
+let lags = [],
+  lCnt = 0
 
 let gc = {
   players: [],
@@ -29,7 +30,7 @@ let gc = {
     })
   },
   isPlayer: function(idx) {
-    return game.ready && gc.id == gc.me.group[idx]
+    return gc.ready && gc.id == gc.me.group[idx]
   },
   svgPoint: svgPoint
 }
@@ -81,7 +82,7 @@ function wsinit(onMove, node, status) {
   }
   let wsUri = location.protocol === 'https:' ? 'wss://' + gc.server + ':' + wssPort : 'ws://' + gc.server + ':' + wsPort
   ws = createWebSocket(wsUri, onState, onReceive)
-  console.log(location, ws)
+  // console.log(location, ws)
   window.addEventListener('keydown', onKeyDownGC)
   if (location.pathname != '/') {
     document.getElementsByTagName('h1')[0].innerHTML += (location.port == ipPort ? " (published)" : " (develop)")
@@ -199,7 +200,7 @@ function onReceive(data) {
       }
       sendState('JOIN', {
         name: name,
-        game: gc.gameId
+        game: (location.hostname.match(/localhost|127.0.0.1/) ? 'L-' : '') + gc.gameId
       })
       break
     case 'PLAYERS':
@@ -207,9 +208,7 @@ function onReceive(data) {
     case 'EXIT':
       if (gc.me && gc.me.group.indexOf(msg.data.id) > -1) {
         gc.ready = false
-        moveCallback({
-          id: 'EXIT'
-        })
+        gc.move({ id: 'END' });
         gc.me.active = false
         gc.me.group = []
         sendState('UPDATE', {
@@ -235,6 +234,7 @@ function onReceive(data) {
       }
       break
     case 'ACCEPT':
+      gc.move({ id: 'BEG' });
       break
     case 'DECLINE':
       gc.me.active = false
@@ -250,8 +250,9 @@ function onReceive(data) {
       break
     case 'GAMES':
       let list = ""
+      console.log(msg.data.games)
       for (let gameId in msg.data.games) {
-        if (gameId != -1) {
+        if (gameId != -1 && msg.data.games[gameId].html) {
           let free = msg.data.games[gameId].players.reduce((cnt, v) => v.active ? cnt : cnt + 1, 0)
           list += '<li><a href="' + msg.data.games[gameId].html + "?name=" + name + '">' + msg.data.games[gameId].name + ' (' + free + ' / ' + msg.data.games[gameId].players.length + ' Spielern frei)</a></li>'
         }
@@ -259,13 +260,18 @@ function onReceive(data) {
       document.getElementById('games').innerHTML = list
       break
     case 'STORE':
-      pCnt--
-      if (msg.data.rc < 0) {
-        alert(msg.data.msg)
+      if (pCnt == 0) {
+        // not the publischer switch to published page: assign or replace
+        location.assign('https://' + gc.server + ':' + ipPort + location.pathname)
       } else {
-        if (pCnt == 0) {
-          // switch to published page: assign or replace
-          location.assign('http://' + gc.server + ':' + ipPort + location.pathname)
+        pCnt--
+        if (msg.data.rc < 0) {
+          console.log(msg.data.msg)
+        } else {
+          if (pCnt == 0) {
+            // switch to published page: assign or replace
+            location.assign('https://' + gc.server + ':' + ipPort + location.pathname)
+          }
         }
       }
       break
@@ -335,6 +341,7 @@ function dataLoaded(text, context) {
     game: gc.gameId,
     name: gc.name,
     page: location.pathname,
+    // hash: hashCode(text),
     code: Base64.encode(text)
   })
 }
@@ -370,7 +377,6 @@ function createWebSocket(wsUri, onChange, onReceive) {
 
     ws.onerror = function(evt) {
       onChange(false, null)
-      alert(evt)
       console.log('ERR', evt)
     }
 

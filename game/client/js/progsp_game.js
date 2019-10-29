@@ -1,6 +1,6 @@
 var game;
 var ball;
-var ballPos = {};
+var ballPos = { x: 0, y: 0 };
 let velocity = { x: 0, y: 0 };
 
 function init() {
@@ -10,17 +10,19 @@ function init() {
   console.log(game);
 
   ball = document.getElementById("ball");
-  ballPos.x = +ball.getAttribute('cx');
-  ballPos.y = +ball.getAttribute('cy');
   document.addEventListener('keydown', onKeyDown);
   document.addEventListener('click', onMouseClick);
-  if (window.DeviceOrientationEvent) {
-    alert("ORIENTATION");
-    window.addEventListener('deviceorientation', onOrientation)
-  }
-  if (window.DeviceMotionEvent) {
-    alert("MOTION");
-    window.addEventListener('devicemotion', onMotion);
+  if (location.protocol == 'https:') {
+    if (window.DeviceOrientationEvent) {
+      alert("ORIENTATION");
+      window.addEventListener('deviceorientation', onOrientation)
+    }
+    if (window.DeviceMotionEvent) {
+      alert("MOTION");
+      window.addEventListener('devicemotion', onMotion);
+    }
+  // } else {
+  //   console.log("NO HTTPS")
   }
 }
 
@@ -123,9 +125,11 @@ function onMove(move) {
     case 'D':
       ballPos.y += 5;
       break;
-    case 'EXIT':
-      ballPos.x = 0;
-      ballPos.y = 0;
+    case 'BEG':
+      ballPos = { x: 0, y: 0 };
+      break;
+    case 'END':
+      ballPos = { x: 0, y: 0 };
       break;
     default:
       console.log(move);
