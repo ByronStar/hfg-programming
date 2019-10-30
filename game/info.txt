@@ -1,3 +1,37 @@
+ibmcloud login --sso -a cloud.ibm.com -r us-south -g c175ea8917be456a936800c81323c8ca
+
+ibmcloud ks cluster config --cluster bmsm51id0mf8qc4gdhmg
+
+export KUBECONFIG=/Users/$USER/.bluemix/plugins/container-service/clusters/bmsm51id0mf8qc4gdhmg/kube-config-hou02-hfgcluster.yml
+
+{
+	"name": "hfg-programming",
+	"description": "",
+	"createdAt": "2019-10-30T10:56+0000",
+	"apikey": "xb8KQmaFqeacycb08KKdANpR4_jzBeVWwcgwoJHKgEzY"
+}
+
+{
+	"name": "hfg-programming-key",
+	"description": "",
+	"createdAt": "2019-10-30T11:05+0000",
+	"apikey": "_dckkOxOs9WNvu2y2gWpiXI_ywcW82LOisOagPkLPatN"
+}
+
+
+docker build -t byronstar/hfg-programming .
+docker run -d -p 8091:8091 -p 11203:11203 -p 11204:11204 -n hfg_ig1 byronstar/hfg-programming:latest
+docker login
+docker push byronstar/hfg-programming:latest
+
+kubectl create -f hfg-namespace.yaml
+kubectl config set-context dev --namespace=hfg-dev --cluster=hfgcluster --user=staebler@de.ibm.com
+kubectl config use-context dev
+kubectl create -f hfg-data-pvc.yaml
+kubectl create -f hfg-deploy.yaml
+kubectl create -f hfg-svc.yaml
+
+
 INFO:  355.7022370565569, 37.008722438568974, 11.9353612454466
 INFO:  0.08071282835453748, -0.10253156919181346, 0.13822539838552475
 INFO:  355.38188931243644, 37.33050002246884, 12.41861887013752

@@ -64,8 +64,44 @@ let options = {
 let contentTypesByExtension = {
   '.html': "text/html",
   '.css': "text/css",
-  '.js': "text/javascript"
+  '.js': "text/javascript",
+  '.crt': "application/x-x509-ca-cert"
 }
+
+http.createServer(function(request, response) {
+
+  let filename = path.join(process.cwd(), 'rootCA.crt')
+  console.log(filename)
+  fs.exists(filename, function(exists) {
+    if (!exists) {
+      response.writeHead(404, {
+        "Content-Type": "text/plain"
+      })
+      response.write("404 Not Found\n")
+      response.end()
+      return
+    }
+
+    fs.readFile(filename, "binary", function(err, file) {
+      if (err) {
+        response.writeHead(500, {
+          "Content-Type": "text/plain"
+        })
+        response.write(err + "\n")
+        response.end()
+        return
+      }
+
+      let headers = {}
+      let contentType = contentTypesByExtension[path.extname(filename)]
+      if (contentType) headers["Content-Type"] = contentType
+      response.writeHead(200, headers)
+      response.write(file, "binary")
+      response.end()
+    })
+  })
+}).listen(80, ipAddr)
+console.log((new Date()) + ' Server available under http://' + ipAddr + ':80')
 
 https.createServer(options, function(request, response) {
   //http.createServer(function(request, response) {
@@ -436,7 +472,7 @@ function loadState() {
       // console.log("LOAD", state)
       for (let gameId in state.games) {
         if (gameId.startsWith('L-')) {
-           delete(state.games[gameId])
+          delete(state.games[gameId])
         } else {
           state.games[gameId].players = []
         }

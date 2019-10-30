@@ -1,0 +1,37 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: hfg-server
+  labels:
+    app: hfg
+    tier: server
+spec:
+  selector:
+    matchLabels:
+      app: hfg
+      tier: server
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: hfg
+        tier: server
+    spec:
+      containers:
+      - image: byronstar/hfg-programming:latest
+        name: server
+        env:
+        - name: HFG_DATA
+          value: hfg-data
+        ports:
+        - containerPort: 8091
+        - containerPort: 11203
+        - containerPort: 11204
+      #   volumeMounts:
+      #   - mountPath: /var/lib/hfg-data
+      #     name: hfg-data
+      # volumes:
+      # - name: hfg-data
+      #   persistentVolumeClaim:
+      #     claimName: hfg-data-claim

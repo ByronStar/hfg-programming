@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hfg-server
+  labels:
+    app: hfg
+    tier: server
+spec:
+  externalIPs: ["184.172.252.200"] 
+  ports:
+  - name: server-port
+    port: 8091
+    targetPort: 8091
+  - name: ws-port
+    port: 11203
+    targetPort: 11203
+  - name: wss-port
+    port: 11204
+    targetPort: 11204
+  selector:
+    app: hfg
+    tier: server
