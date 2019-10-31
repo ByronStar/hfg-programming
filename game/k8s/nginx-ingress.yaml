@@ -3,6 +3,10 @@ kind: Ingress
 metadata:
   name: "ingress-service"
 spec:
+  tls:
+  - hosts:
+    - hfg.hopto.org
+    secretName: <tls_secret_name>
   rules:
   - host: hfg.hopto.org # CHANGE ME!
     http:

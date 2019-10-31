@@ -3,6 +3,7 @@ kind: Service
 metadata:
   name: letsencrypt
 spec:
+  externalIPs: ["184.172.252.200"]
   selector:
     app: letsencrypt
   ports:

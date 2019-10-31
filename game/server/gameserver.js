@@ -69,9 +69,36 @@ let contentTypesByExtension = {
 }
 
 http.createServer(function(request, response) {
-
   let filename = path.join(process.cwd(), 'rootCA.crt')
   console.log(filename)
+  sendResponse(response, filename)
+}).listen(8090, ipAddr)
+console.log((new Date()) + ' Server available under http://' + ipAddr + ':8090')
+
+https.createServer(options, function(request, response) {
+  //http.createServer(function(request, response) {
+
+  let pathname = url.parse(request.url).pathname
+  let filename
+  if (pathname.startsWith('/client')) {
+    filename = ".." + pathname
+  } else {
+    filename = "../client" + pathname
+  }
+  filename = path.join(process.cwd(), filename)
+  //console.log(url.parse(request.url).pathname, filename)
+
+  if (pathname == '/') {
+    response.writeHead(200, { "Content-Type": "text/html" })
+    response.write(getIndex())
+    response.end()
+  } else {
+    sendResponse(response, filename)
+  }
+}).listen(ipPort, ipAddr)
+console.log((new Date()) + ' GameServer available under https://' + ipAddr + ':' + ipPort)
+
+function sendResponse(response, filename) {
   fs.exists(filename, function(exists) {
     if (!exists) {
       response.writeHead(404, {
@@ -80,6 +107,10 @@ http.createServer(function(request, response) {
       response.write("404 Not Found\n")
       response.end()
       return
+    }
+
+    if (fs.statSync(filename).isDirectory()) {
+      filename += '/index.html'
     }
 
     fs.readFile(filename, "binary", function(err, file) {
@@ -100,64 +131,7 @@ http.createServer(function(request, response) {
       response.end()
     })
   })
-}).listen(80, ipAddr)
-console.log((new Date()) + ' Server available under http://' + ipAddr + ':80')
-
-https.createServer(options, function(request, response) {
-  //http.createServer(function(request, response) {
-
-  let pathname = url.parse(request.url).pathname
-  let filename
-  if (pathname.startsWith('/client')) {
-    filename = ".." + pathname
-  } else {
-    filename = "../client" + pathname
-  }
-  filename = path.join(process.cwd(), filename)
-
-  //console.log(url.parse(request.url).pathname, filename)
-
-  if (pathname == '/') {
-    response.writeHead(200, { "Content-Type": "text/html" })
-    response.write(getIndex())
-    response.end()
-  } else {
-    fs.exists(filename, function(exists) {
-      if (!exists) {
-        response.writeHead(404, {
-          "Content-Type": "text/plain"
-        })
-        response.write("404 Not Found\n")
-        response.end()
-        return
-      }
-
-      if (fs.statSync(filename).isDirectory()) {
-        filename += '/index.html'
-      }
-
-      fs.readFile(filename, "binary", function(err, file) {
-        if (err) {
-          response.writeHead(500, {
-            "Content-Type": "text/plain"
-          })
-          response.write(err + "\n")
-          response.end()
-          return
-        }
-
-        let headers = {}
-        let contentType = contentTypesByExtension[path.extname(filename)]
-        if (contentType) headers["Content-Type"] = contentType
-        response.writeHead(200, headers)
-        response.write(file, "binary")
-        response.end()
-      })
-    })
-  }
-}).listen(ipPort, ipAddr)
-
-console.log((new Date()) + ' GameServer available under https://' + ipAddr + ':' + ipPort)
+}
 
 function broadcast(server, message) {
   if (msgTrace) {
