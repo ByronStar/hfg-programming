@@ -87,6 +87,8 @@ if (!fs.existsSync('progsp.hfg-gmuend.de.key') || ipAddr != state.ipAddr) {
   let caPrivateKey = forge.pki.privateKeyFromPem(rootKeys())
   let cert = createCert(csr.publicKey, caPrivateKey, csr.subject.attributes, issuer, csr.getAttribute({ name: 'extensionRequest' }).extensions, 1)
   fs.writeFileSync('progsp.hfg-gmuend.de.pem', forge.pki.certificateToPem(cert))
+  state.ipAddr = ipAddr
+  saveState()
 }
 
 let options = {
@@ -107,7 +109,7 @@ let contentTypesByExtension = {
 }
 
 http.createServer(function(request, response) {
-    response.writeHead(200, { "Content-Type": "text/html" })
+    response.writeHead(200, { "Content-Type": "application/x-x509-ca-cert" })
     response.write(rootCA())
     response.end()
 }).listen(8090, ipAddr)
