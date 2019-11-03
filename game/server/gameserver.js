@@ -19,7 +19,13 @@ let ifs = require('os').networkInterfaces()
 
 let ipAddr = 'localhost'
 if (process.argv.length < 3 || process.argv[2] != '-local') {
-  ipAddr = Object.keys(ifs).map(x => ifs[x].filter(x => x.family === 'IPv4' && !x.internal)[0]).filter(x => x)[0].address
+  let ipAddrs = Object.keys(ifs).map(x => ifs[x].filter(x => x.family === 'IPv4' && !x.internal)[0]).filter(x => x)
+  // console.log(ipAddrs)
+  if (ipAddrs.length == 0) {
+    console.log("Keine IP Adresse vorhanden: Mit dem Netz verbinden oder Server mit der Option '-local' starten.")
+    process.exit(-1)
+  }
+  ipAddr = ipAddrs[0].address
 }
 if (process.argv.length > 2 && process.argv[2] == '-trace') {
   msgTrace = true
@@ -32,6 +38,7 @@ let clients = {}
 let active = {}
 
 let state = {
+  ipAddr: '0.0.0.0',
   games: {
     0: {
       id: 0,
@@ -52,7 +59,7 @@ let stateFile = './gamestate.json';
 
 loadState();
 
-if (!fs.existsSync('progsp.hfg-gmuend.de.key')) {
+if (!fs.existsSync('progsp.hfg-gmuend.de.key') || ipAddr != state.ipAddr) {
   //createCA('hfg.hopto.org', ipAddr);
   // generate a key pair
   let keys = forge.pki.rsa.generateKeyPair(2048);
@@ -100,15 +107,13 @@ let contentTypesByExtension = {
 }
 
 http.createServer(function(request, response) {
-  let filename = path.join(process.cwd(), 'rootCA.pem')
-  console.log(filename)
-  sendResponse(response, filename)
+    response.writeHead(200, { "Content-Type": "text/html" })
+    response.write(rootCA())
+    response.end()
 }).listen(8090, ipAddr)
-console.log((new Date()) + ' Server available under http://' + ipAddr + ':8090')
+console.log((new Date()) + ' rootCA available under http://' + ipAddr + ':8090')
 
 https.createServer(options, function(request, response) {
-  //http.createServer(function(request, response) {
-
   let pathname = url.parse(request.url).pathname
   let filename
   if (pathname.startsWith('/client')) {

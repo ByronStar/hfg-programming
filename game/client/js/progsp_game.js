@@ -1,7 +1,8 @@
 var game;
 var ball;
 var ballPos = { x: 0, y: 0 };
-let velocity = { x: 0, y: 0 };
+let velocity = { x: 0, y: 0, z: 0 };
+let time = 0;
 
 function init() {
   game = wsinit(onMove, document.getElementById('players'), document.getElementById('status'));
@@ -13,40 +14,33 @@ function init() {
   document.addEventListener('keydown', onKeyDown);
   document.addEventListener('click', onMouseClick);
   if (location.protocol == 'https:') {
-    if (window.DeviceOrientationEvent) {
-      alert("ORIENTATION");
-      window.addEventListener('deviceorientation', onOrientation)
-    }
+    // if (window.DeviceOrientationEvent) {
+    //   alert("ORIENTATION");
+    //   window.addEventListener('deviceorientation', onOrientation)
+    // }
     if (window.DeviceMotionEvent) {
-      alert("MOTION");
+      //alert("MOTION");
+      time = new Date().getTime();
       window.addEventListener('devicemotion', onMotion);
     }
-  // } else {
-  //   console.log("NO HTTPS")
+    // } else {
+    //   console.log("NO HTTPS")
   }
 }
 
 function onKeyDown(evt) {
   switch (evt.key) {
     case 'ArrowLeft':
-      if (game.isPlayer(0)) {
         game.move({ id: 'L' });
-      }
       break;
     case 'ArrowRight':
-      if (game.isPlayer(0)) {
         game.move({ id: 'R' });
-      }
       break;
     case 'ArrowUp':
-      if (game.isPlayer(1)) {
         game.move({ id: 'U' });
-      }
       break;
     case 'ArrowDown':
-      if (game.isPlayer(1)) {
         game.move({ id: 'D' });
-      }
       break;
     default:
       // console.log(evt.key);
@@ -57,56 +51,66 @@ function onMouseClick(evt) {
   let pos = svgPoint(evt);
   pos.x -= ballPos.x;
   pos.y -= ballPos.y;
-  if (pos.x < 0 && game.isPlayer(0)) {
+  if (pos.x < 0) {
     game.move({ id: 'L' });
   }
-  if (pos.x > 0 && game.isPlayer(0)) {
+  if (pos.x > 0) {
     game.move({ id: 'R' });
   }
-  if (pos.y < 0 && game.isPlayer(1)) {
+  if (pos.y < 0) {
     game.move({ id: 'U' });
   }
-  if (pos.y > 0 && game.isPlayer(1)) {
+  if (pos.y > 0) {
     game.move({ id: 'D' });
   }
 }
 
 function onOrientation(evt) {
+  // gear (z/alpha), nick (x/beta), roll(y/gamma)
   console.log(evt.alpha + ", " + evt.beta + ", " + evt.gamma);
   game.send(evt.alpha + ", " + evt.beta + ", " + evt.gamma);
 }
 
-function onMotion(evt) {
+function onMotionX(evt) {
   console.log(evt.acceleration.x + ", " + evt.acceleration.y + ", " + evt.acceleration.z);
   game.send(evt.acceleration.x + ", " + evt.acceleration.y + ", " + evt.acceleration.z);
 }
 
-function onMotionX(evt) {
-  velocity.x *= 0.9;
-  velocity.y *= 0.9;
-  if (Math.abs(velocity.x) < 1) {
-    velocity.x = 0;
-  }
-  if (Math.abs(velocity.y) < 1) {
-    velocity.y = 0;
-  }
-  if (Math.abs(evt.acceleration.x) > 1) {
-    velocity.x += evt.acceleration.x;
-  }
-  if (Math.abs(evt.acceleration.y) > 1) {
-    velocity.y += evt.acceleration.y;
-  }
+function onMotion(evt) {
+  // velocity.x *= 0.9;
+  // velocity.y *= 0.9;
+  // velocity.z *= 0.9;
+  // if (Math.abs(velocity.x) < 1) {
+  //   velocity.x = 0;
+  // }
+  // if (Math.abs(velocity.y) < 1) {
+  //   velocity.y = 0;
+  // }
+  let delta = (new Date().getTime() - time) / 1000;
+  time = new Date().getTime();
+  // velocity.x += evt.acceleration.x * delta;
+  // velocity.y += evt.acceleration.y * delta;
+  // velocity.z += evt.acceleration.z * delta;
 
-  if (velocity.x < 0 && game.isPlayer(0)) {
+  document.getElementById("p2").innerHTML = Math.round(delta * 100) / 100 + ": " + Math.round(evt.acceleration.x * 100) / 100 + ", " + Math.round(evt.acceleration.y * 100) / 100 + ", " + Math.round(evt.acceleration.z * 100) / 100;
+
+  // ballPos.x += velocity.x * 50;
+  // ballPos.y += velocity.y * 50;
+  //
+  // document.getElementById("p2").innerHTML = Math.round(delta * 100) / 100 + ": " + Math.round(ballPos.x * 100) / 100 + ", " + Math.round(ballPos.y * 100) / 100;
+  // ball.setAttribute('cx', ballPos.x);
+  // ball.setAttribute('cy', ballPos.y);
+
+  if (evt.acceleration.x < 0) {
     game.move({ id: 'L' });
   }
-  if (velocity.x > 0 && game.isPlayer(0)) {
+  if (evt.acceleration.x > 0) {
     game.move({ id: 'R' });
   }
-  if (velocity.y < 0 && game.isPlayer(1)) {
+  if (evt.acceleration.y < 0) {
     game.move({ id: 'U' });
   }
-  if (velocity.y > 0 && game.isPlayer(1)) {
+  if (evt.acceleration.y > 0) {
     game.move({ id: 'D' });
   }
 }
