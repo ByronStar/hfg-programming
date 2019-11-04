@@ -7,6 +7,6 @@ COPY server/ server/
 WORKDIR /usr/src/game/server
 RUN npm install
 
-EXPOSE 8091 11203 11204
+EXPOSE 8090 8091 11203 11204
 
 CMD ["npm", "start" ]

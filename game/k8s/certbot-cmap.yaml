@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: certbot-run
+  namespace: hfg-dev
+data:
+  entrypoint.sh: |
+    #!/bin/sh
+
+    if [[ -z $EMAIL || -z $DOMAINS || -z $SECRET ]]; then
+      echo "EMAIL, DOMAINS, and SECRET env vars required"
+      env
+      exit 1
+    fi
+    echo "Inputs:"
+    echo " EMAIL: $EMAIL"
+    echo " DOMAINS: $DOMAINS"
+    echo " SECRET: $SECRET"
+
+    NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+    echo "Current Kubernetes namespce: $NAMESPACE"
+
+    # echo "Starting HTTP server..."
+    python -m http.server 8080 &
+    PID=$!
+    echo "Starting certbot..."
+    certbot certonly --webroot -w $PWD -n --agree-tos --email ${EMAIL} --no-self-upgrade -d ${DOMAINS}
+    echo "Certbot finished. Killing http server..."
+    kill $PID
+
+    echo "Finiding certs. Exiting if certs are not found ..."
+    CERTPATH=/etc/letsencrypt/live/$(echo $DOMAINS | cut -f1 -d',')
+    ls $CERTPATH || exit 1
+
+    echo "Creating update for secret..."
+    cat set_secret_tmpl.json | \
+      sed "s/NAMESPACE/${NAMESPACE}/" | \
+      sed "s/NAME/${SECRET}/" | \
+      sed "s/TLSCERT/$(cat ${CERTPATH}/fullchain.pem | base64 | tr -d '\n')/" | \
+      sed "s/TLSKEY/$(cat ${CERTPATH}/privkey.pem |  base64 | tr -d '\n')/" \
+      > set_secret.json
+
+    echo "Checking json file exists. Exiting if not found..."
+    ls set_secret.json || exit 1
+
+    # Add curl
+    echo "Install curl"
+    apk add curl
+
+    # Update Secret
+    echo "Updating secret..."
+    curl \
+      --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+      -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
+      -XPATCH \
+      -H "Accept: application/json, */*" \
+      -H "Content-Type: application/strategic-merge-patch+json" \
+      -d @set_secret.json https://kubernetes.default/api/v1/namespaces/${NAMESPACE}/secrets/${SECRET} \
+      -k -v
+    echo "Done"
+  set_secret_tmpl.json: |
+    {
+        "kind": "Secret",
+        "apiVersion": "v1",
+        "metadata": {
+            "name": "NAME",
+            "namespace": "NAMESPACE"
+        },
+        "data": {
+           "tls.crt": "TLSCERT",
+           "tls.key": "TLSKEY"
+        },
+        "type": "Opaque"
+    }

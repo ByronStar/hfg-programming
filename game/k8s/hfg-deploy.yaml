@@ -28,6 +28,8 @@ spec:
         - containerPort: 8091
         - containerPort: 11203
         - containerPort: 11204
+      imagePullSecrets:
+        - name: dockerhub
       #   volumeMounts:
       #   - mountPath: /var/lib/hfg-data
       #     name: hfg-data
@@ -35,3 +37,4 @@ spec:
       # - name: hfg-data
       #   persistentVolumeClaim:
       #     claimName: hfg-data-claim
+      # kubectl create secret generic dockerhub --from-file=.dockerconfigjson=~/.docker/config.json --type=kubernetes.io/dockerconfigjson

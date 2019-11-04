@@ -1,0 +1,45 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: certbot
+  labels:
+    app: hfg
+    tier: certbot
+spec:
+  selector:
+    matchLabels:
+      app: hfg
+      tier: certbot
+  template:
+    metadata:
+      labels:
+        app: hfg
+        tier: certbot
+    spec:
+      serviceAccountName: certbot-sa
+      containers:
+      - image: certbot/certbot:latest
+        name: certbot
+        command: ["./entrypoint.sh"]
+        #args: ["1800"]
+        env:
+        - name: EMAIL
+          value: benno.staebler@hfg-gmuend.de
+        - name: DOMAINS
+          value: hfg.hopto.org
+        - name: SECRET
+          value: hfg-cert
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - mountPath: /opt/certbot/entrypoint.sh
+          name: script
+          subPath: entrypoint.sh
+        - mountPath: /opt/certbot/set_secret_tmpl.json
+          name: script
+          subPath: set_secret_tmpl.json
+      volumes:
+      - name: script
+        configMap:
+          name: certbot-run
+          defaultMode: 0755

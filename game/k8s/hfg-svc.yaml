@@ -6,9 +6,12 @@ metadata:
     app: hfg
     tier: server
 spec:
-  externalIPs: ["184.172.252.200"] 
+  externalIPs: ["184.172.252.200"]
   ports:
-  - name: server-port
+  - name: http-port
+    port: 8090
+    targetPort: 8090
+  - name: https-port
     port: 8091
     targetPort: 8091
   - name: ws-port
