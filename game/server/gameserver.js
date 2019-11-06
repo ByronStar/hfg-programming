@@ -14,6 +14,7 @@ const forge = require('node-forge')
 const http = require('http')
 const url = require("url")
 const path = require("path")
+const querystring = require('querystring');
 
 let ifs = require('os').networkInterfaces()
 // console.log(ifs)
@@ -57,6 +58,7 @@ let state = {
 }
 let stateFile = './gamestate.json'
 
+let slackHook = ''
 loadState()
 
 if (fs.existsSync('../cert/tls.key')) {
@@ -88,7 +90,9 @@ if (fs.existsSync('../cert/tls.key')) {
 
     //let caPrivateKey = forge.pki.privateKeyFromPem(fs.readFileSync('rootCA.key', 'utf8'))
     let caPrivateKey = forge.pki.privateKeyFromPem(rootKeys())
-    let cert = createCert(csr.publicKey, caPrivateKey, csr.subject.attributes, issuer, csr.getAttribute({ name: 'extensionRequest' }).extensions, 1)
+    let cert = createCert(csr.publicKey, caPrivateKey, csr.subject.attributes, issuer, csr.getAttribute({
+      name: 'extensionRequest'
+    }).extensions, 1)
     fs.writeFileSync('progsp.hfg-gmuend.de.pem', forge.pki.certificateToPem(cert))
     state.ipAddr = ipAddr
     saveState()
@@ -110,12 +114,16 @@ let contentTypesByExtension = {
 let httpServer = http.createServer(function(request, response) {
   let pathname = url.parse(request.url).pathname
   if (pathname == '/') {
-    response.writeHead(200, { "Content-Type": "text/html" })
+    response.writeHead(200, {
+      "Content-Type": "text/html"
+    })
     response.write(getIndex())
     response.end()
   } else {
     if (pathname == '/rootCA') {
-      response.writeHead(200, { "Content-Type": "application/x-x509-ca-cert" })
+      response.writeHead(200, {
+        "Content-Type": "application/x-x509-ca-cert"
+      })
       response.write(rootCA())
       response.end()
     } else {
@@ -137,7 +145,9 @@ console.log((new Date()) + ' GameServer available under http://' + ipAddr + ':' 
 let httpsServer = https.createServer(options, function(request, response) {
   let pathname = url.parse(request.url).pathname
   if (pathname == '/') {
-    response.writeHead(200, { "Content-Type": "text/html" })
+    response.writeHead(200, {
+      "Content-Type": "text/html"
+    })
     response.write(getIndex())
     response.end()
   } else {
@@ -232,7 +242,10 @@ function handleMessage(server, message, id, client) {
         state.players[id] = msg.data.game
         if (!(msg.data.game in state.games)) {
           // not yet published game
-          state.games[msg.data.game] = { id: msg.data.game, players: [] }
+          state.games[msg.data.game] = {
+            id: msg.data.game,
+            players: []
+          }
         }
         let player = {
           id: id,
@@ -304,7 +317,11 @@ function handleMessage(server, message, id, client) {
           }
           state.games[msg.data.game].version++
         } else {
-          state.games[msg.data.game] = { id: msg.data.game, players: [], version: 0 }
+          state.games[msg.data.game] = {
+            id: msg.data.game,
+            players: [],
+            version: 0
+          }
         }
         if (file in state.files) {
           if (state.files[file] != msg.data.game) {
@@ -333,7 +350,10 @@ function handleMessage(server, message, id, client) {
             client.send(JSON.stringify({
               id: 'STORE',
               from: 'SERVER',
-              data: { rc: -1, msg: err }
+              data: {
+                rc: -1,
+                msg: err
+              }
             }))
           } else {
             console.log(file + " saved.")
@@ -504,6 +524,37 @@ function loadState() {
       saveState()
     }
   })
+}
+
+function gamePublished() {
+  let postData = querystring.stringify('payload={"channel": "#programmieren", "username": "webhookbot", "text": "This is posted to #programmieren and comes from a bot named webhookbot.", "icon_emoji": ":ghost:"}')
+
+  let options = {
+    hostname: 'hooks.slack.com',
+    port: 443,
+    path: '/services/' + slackHook,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Length': postData.length
+    }
+  };
+
+  let req = https.request(options, (res) => {
+    console.log('statusCode:', res.statusCode)
+    console.log('headers:', res.headers)
+
+    res.on('data', (d) => {
+      process.stdout.write(d)
+    })
+  })
+
+  req.on('error', (e) => {
+    console.error(e)
+  });
+
+  req.write(postData)
+  req.end()
 }
 
 function saveState() {
