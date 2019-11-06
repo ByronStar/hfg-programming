@@ -3,7 +3,7 @@
 let httpPort = 8090
 let httpsPort = 8091
 
-let msgTrace = true
+let msgTrace = false
 
 const WebSocket = require('ws')
 let WebSocketServer = WebSocket.Server

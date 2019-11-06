@@ -14,17 +14,14 @@ function init() {
   document.addEventListener('keydown', onKeyDown);
   document.addEventListener('click', onMouseClick);
   if (location.protocol == 'https:') {
-    // if (window.DeviceOrientationEvent) {
-    //   alert("ORIENTATION");
-    //   window.addEventListener('deviceorientation', onOrientation)
-    // }
-    if (window.DeviceMotionEvent) {
-      //alert("MOTION");
+    if (window.DeviceOrientationEvent) {
       time = new Date().getTime();
-      window.addEventListener('devicemotion', onMotion);
+      window.addEventListener('deviceorientation', onOrientation)
     }
-    // } else {
-    //   console.log("NO HTTPS")
+    // if (window.DeviceMotionEvent) {
+    //   time = new Date().getTime();
+    //   window.addEventListener('devicemotion', onMotion);
+    // }
   }
 }
 
@@ -67,13 +64,23 @@ function onMouseClick(evt) {
 
 function onOrientation(evt) {
   // gear (z/alpha), nick (x/beta), roll(y/gamma)
-  console.log(evt.alpha + ", " + evt.beta + ", " + evt.gamma);
-  game.send(evt.alpha + ", " + evt.beta + ", " + evt.gamma);
-}
-
-function onMotionX(evt) {
-  console.log(evt.acceleration.x + ", " + evt.acceleration.y + ", " + evt.acceleration.z);
-  game.send(evt.acceleration.x + ", " + evt.acceleration.y + ", " + evt.acceleration.z);
+  let delta = Math.round(new Date().getTime() - time);
+  if (delta > 40) {
+    time = new Date().getTime();
+    document.getElementById("p2").innerHTML = delta + ": " + Math.round(evt.beta) + ", " + Math.round(evt.gamma) + ", " + Math.round(evt.alpha);
+    if (evt.beta < -10) {
+      game.move({ id: 'L' });
+    }
+    if (evt.beta > 10) {
+      game.move({ id: 'R' });
+    }
+    if (evt.gamma < -10) {
+      game.move({ id: 'D' });
+    }
+    if (evt.gamma > 10) {
+      game.move({ id: 'U' });
+    }
+  }
 }
 
 function onMotion(evt) {
@@ -93,13 +100,6 @@ function onMotion(evt) {
   // velocity.z += evt.acceleration.z * delta;
 
   document.getElementById("p2").innerHTML = Math.round(delta * 100) / 100 + ": " + Math.round(evt.acceleration.x * 100) / 100 + ", " + Math.round(evt.acceleration.y * 100) / 100 + ", " + Math.round(evt.acceleration.z * 100) / 100;
-
-  // ballPos.x += velocity.x * 50;
-  // ballPos.y += velocity.y * 50;
-  //
-  // document.getElementById("p2").innerHTML = Math.round(delta * 100) / 100 + ": " + Math.round(ballPos.x * 100) / 100 + ", " + Math.round(ballPos.y * 100) / 100;
-  // ball.setAttribute('cx', ballPos.x);
-  // ball.setAttribute('cy', ballPos.y);
 
   if (evt.acceleration.x < 0) {
     game.move({ id: 'L' });

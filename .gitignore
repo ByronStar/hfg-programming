@@ -1,3 +1,5 @@
 .idea
 hfg-programming.iml
 /game/server/node_modules/
+/game/.ftpconfig
+/game/k8s/info.txt
