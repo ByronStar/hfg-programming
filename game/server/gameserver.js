@@ -1,14 +1,15 @@
 "use strict"
 
-let wsPort = 11203
-let wssPort = 11204
-let msgTrace = false
+let httpPort = 8090
+let httpsPort = 8091
+
+let msgTrace = true
 
 const WebSocket = require('ws')
 let WebSocketServer = WebSocket.Server
 const https = require('https')
 const fs = require('fs')
-const forge = require('node-forge');
+const forge = require('node-forge')
 
 const http = require('http')
 const url = require("url")
@@ -17,6 +18,7 @@ const path = require("path")
 let ifs = require('os').networkInterfaces()
 // console.log(ifs)
 
+let options = {}
 let ipAddr = 'localhost'
 if (process.argv.length < 3 || process.argv[2] != '-local') {
   let ipAddrs = Object.keys(ifs).map(x => ifs[x].filter(x => x.family === 'IPv4' && !x.internal)[0]).filter(x => x)
@@ -30,8 +32,6 @@ if (process.argv.length < 3 || process.argv[2] != '-local') {
 if (process.argv.length > 2 && process.argv[2] == '-trace') {
   msgTrace = true
 }
-let ipPort = 8091
-// let ipPort = 443
 
 let clients = {}
 // track active IP Addresses
@@ -55,51 +55,50 @@ let state = {
   },
   players: {}
 }
-let stateFile = './gamestate.json';
+let stateFile = './gamestate.json'
 
-loadState();
+loadState()
 
-if (!fs.existsSync('progsp.hfg-gmuend.de.key') || ipAddr != state.ipAddr) {
-  //createCA('hfg.hopto.org', ipAddr);
-  // generate a key pair
-  let keys = forge.pki.rsa.generateKeyPair(2048);
-  fs.writeFileSync('progsp.hfg-gmuend.de.key', forge.pki.privateKeyToPem(keys.privateKey), 'utf8')
+if (fs.existsSync('../cert/tls.key')) {
+  options = {
+    key: fs.readFileSync('../cert/tls.key'),
+    cert: fs.readFileSync('../cert/tls.crt')
+  }
+  // options = {
+  //   key: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/privkey.pem'),
+  //   cert: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/fullchain.pem')
+  // }
+} else {
+  if (!fs.existsSync('progsp.hfg-gmuend.de.key') || ipAddr != state.ipAddr) {
+    //createCA('hfg.hopto.org', ipAddr)
+    // generate a key pair
+    let keys = forge.pki.rsa.generateKeyPair(2048)
+    fs.writeFileSync('progsp.hfg-gmuend.de.key', forge.pki.privateKeyToPem(keys.privateKey), 'utf8')
 
-  // create a certification request (CSR)
-  let csr = forge.pki.createCertificationRequest();
-  csr.publicKey = keys.publicKey;
-  csr.setSubject(getSubject(ipAddr));
-  csr.setAttributes(getAttrs(false, ipAddr));
-  csr.sign(keys.privateKey);
+    // create a certification request (CSR)
+    let csr = forge.pki.createCertificationRequest()
+    csr.publicKey = keys.publicKey
+    csr.setSubject(getSubject(ipAddr))
+    csr.setAttributes(getAttrs(false, ipAddr))
+    csr.sign(keys.privateKey)
 
-  // let caCert = forge.pki.certificateFromPem(fs.readFileSync('rootCA.pem', 'utf8'))
-  let caCert = forge.pki.certificateFromPem(rootCA())
-  let issuer = caCert.subject.attributes
-  // let issuer = caCert.subject.attributes.map(v => {
-  //   if (v.name == 'localityName') {
-  //     console.log(v)
-  //     v.value = 'Schwäbisch Gmünd'
-  //   }
-  //   return v
-  // })
+    // let caCert = forge.pki.certificateFromPem(fs.readFileSync('rootCA.pem', 'utf8'))
+    let caCert = forge.pki.certificateFromPem(rootCA())
+    let issuer = caCert.subject.attributes
 
-  //let caPrivateKey = forge.pki.privateKeyFromPem(fs.readFileSync('rootCA.key', 'utf8'))
-  let caPrivateKey = forge.pki.privateKeyFromPem(rootKeys())
-  let cert = createCert(csr.publicKey, caPrivateKey, csr.subject.attributes, issuer, csr.getAttribute({ name: 'extensionRequest' }).extensions, 1)
-  fs.writeFileSync('progsp.hfg-gmuend.de.pem', forge.pki.certificateToPem(cert))
-  state.ipAddr = ipAddr
-  saveState()
+    //let caPrivateKey = forge.pki.privateKeyFromPem(fs.readFileSync('rootCA.key', 'utf8'))
+    let caPrivateKey = forge.pki.privateKeyFromPem(rootKeys())
+    let cert = createCert(csr.publicKey, caPrivateKey, csr.subject.attributes, issuer, csr.getAttribute({ name: 'extensionRequest' }).extensions, 1)
+    fs.writeFileSync('progsp.hfg-gmuend.de.pem', forge.pki.certificateToPem(cert))
+    state.ipAddr = ipAddr
+    saveState()
+  }
+
+  options = {
+    key: fs.readFileSync('./progsp.hfg-gmuend.de.key'),
+    cert: fs.readFileSync('./progsp.hfg-gmuend.de.pem')
+  }
 }
-
-let options = {
-  key: fs.readFileSync('./progsp.hfg-gmuend.de.key'),
-  cert: fs.readFileSync('./progsp.hfg-gmuend.de.pem')
-}
-
-// let options = {
-//   key: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/privkey.pem'),
-//   cert: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/fullchain.pem')
-// }
 
 let contentTypesByExtension = {
   '.html': "text/html",
@@ -108,33 +107,54 @@ let contentTypesByExtension = {
   '.pem': "application/x-x509-ca-cert"
 }
 
-http.createServer(function(request, response) {
-    response.writeHead(200, { "Content-Type": "application/x-x509-ca-cert" })
-    response.write(rootCA())
-    response.end()
-}).listen(8090, ipAddr)
-console.log((new Date()) + ' rootCA available under http://' + ipAddr + ':8090')
-
-https.createServer(options, function(request, response) {
+let httpServer = http.createServer(function(request, response) {
   let pathname = url.parse(request.url).pathname
-  let filename
-  if (pathname.startsWith('/client')) {
-    filename = ".." + pathname
-  } else {
-    filename = "../client" + pathname
-  }
-  filename = path.join(process.cwd(), filename)
-  //console.log(url.parse(request.url).pathname, filename)
-
   if (pathname == '/') {
     response.writeHead(200, { "Content-Type": "text/html" })
     response.write(getIndex())
     response.end()
   } else {
+    if (pathname == '/rootCA') {
+      response.writeHead(200, { "Content-Type": "application/x-x509-ca-cert" })
+      response.write(rootCA())
+      response.end()
+    } else {
+      let filename
+      if (pathname.startsWith('/client')) {
+        filename = ".." + pathname
+      } else {
+        filename = "../client" + pathname
+      }
+      filename = path.join(process.cwd(), filename)
+      //console.log(url.parse(request.url).pathname, filename)
+      sendResponse(response, filename)
+    }
+  }
+})
+httpServer.listen(httpPort, ipAddr)
+console.log((new Date()) + ' GameServer available under http://' + ipAddr + ':' + httpPort)
+
+let httpsServer = https.createServer(options, function(request, response) {
+  let pathname = url.parse(request.url).pathname
+  if (pathname == '/') {
+    response.writeHead(200, { "Content-Type": "text/html" })
+    response.write(getIndex())
+    response.end()
+  } else {
+    let filename
+    if (pathname.startsWith('/client')) {
+      filename = ".." + pathname
+    } else {
+      filename = "../client" + pathname
+    }
+    filename = path.join(process.cwd(), filename)
+    //console.log(url.parse(request.url).pathname, filename)
     sendResponse(response, filename)
   }
-}).listen(ipPort, ipAddr)
-console.log((new Date()) + ' GameServer available under https://' + ipAddr + ':' + ipPort)
+})
+httpsServer.listen(httpsPort, ipAddr)
+
+console.log((new Date()) + ' GameServer available under https://' + ipAddr + ':' + httpsPort)
 
 function sendResponse(response, filename) {
   fs.exists(filename, function(exists) {
@@ -221,8 +241,8 @@ function handleMessage(server, message, id, client) {
           active: false,
           group: []
         }
-        state.games[msg.data.game].players.push(player);
-        // saveState();
+        state.games[msg.data.game].players.push(player)
+        // saveState()
         forward(server, JSON.stringify({
           id: 'PLAYERS',
           from: 'SERVER',
@@ -280,7 +300,7 @@ function handleMessage(server, message, id, client) {
                   "'.\nEventuell im Javascript \ngame.gameId = '" + msg.data.game + "';\n durch \ngame.gameId = '" + guid7() + "';\n ersetzen!"
               }
             }))
-            break;
+            break
           }
           state.games[msg.data.game].version++
         } else {
@@ -297,7 +317,7 @@ function handleMessage(server, message, id, client) {
                   "'.\nEventuell HTML und Javascript umbenennen."
               }
             }))
-            break;
+            break
           }
         } else {
           state.files[file] = msg.data.game
@@ -330,7 +350,7 @@ function handleMessage(server, message, id, client) {
             //   data: { rc: 0, msg: '' }
             // }))
           }
-        });
+        })
         updateGames(server)
         break
       default:
@@ -377,7 +397,7 @@ function handleClose(server, id) {
       id: id,
       players: state.games[gameId].players
     }
-  });
+  })
   console.log('%s EXIT <%s> (%d players)', new Date().getTime(), message, (server.clients.length ? server.clients.length : server.clients.size))
   // Forward message to affected players: Client has left
   forward(server, message, state.games[gameId].players.map(v => v.id))
@@ -385,16 +405,15 @@ function handleClose(server, id) {
 }
 
 let wsServer = new WebSocketServer({
-  port: wsPort
+  server: httpServer
 })
-// console.log((new Date()) + ' listening on ws://' + ipAddr + ':' + wsPort)
 
 wsServer.on('connection', function connection(client, req) {
   let id
   if (client.upgradeReq) {
     id = client.upgradeReq.headers['sec-websocket-key']
   } else {
-    client.upgradeReq = req;
+    client.upgradeReq = req
     id = req.headers['sec-websocket-key']
   }
   clients[id] = client
@@ -423,14 +442,6 @@ wsServer.on('connection', function connection(client, req) {
   console.log('%s JOIN <%s> (%d players)', new Date().getTime(), message, (wsServer.clients.length ? wsServer.clients.length : wsServer.clients.size))
 })
 
-let httpsServer = https.createServer(options, function(request, response) {
-  console.log((new Date()) + ' Received request for ' + request.url)
-  response.writeHead(404)
-  response.end()
-})
-httpsServer.listen(wssPort, function() {
-  // console.log((new Date()) + ' listening on wss://' + ipAddr + ':' + wssPort)
-})
 let wssServer = new WebSocketServer({
   server: httpsServer
 })
@@ -440,7 +451,7 @@ wssServer.on('connection', function connection(client, req) {
   if (client.upgradeReq) {
     id = client.upgradeReq.headers['sec-websocket-key']
   } else {
-    client.upgradeReq = req;
+    client.upgradeReq = req
     id = req.headers['sec-websocket-key']
   }
   clients[id] = client
@@ -475,12 +486,12 @@ function loadState() {
   fs.readFile(stateFile, 'utf-8', (err, data) => {
     if (err) {
       if (err.code == 'ENOENT') {
-        saveState();
+        saveState()
       } else {
-        console.log(err, err.code);
+        console.log(err, err.code)
       }
     } else {
-      state = JSON.parse(data);
+      state = JSON.parse(data)
       // console.log("LOAD", state)
       for (let gameId in state.games) {
         if (gameId.startsWith('L-')) {
@@ -490,19 +501,19 @@ function loadState() {
         }
       }
       state.players = {}
-      saveState();
+      saveState()
     }
-  });
+  })
 }
 
 function saveState() {
   fs.writeFile(stateFile, JSON.stringify(state), 'utf8', (err, data) => {
     if (err) {
-      console.log(err);
+      console.log(err)
     } else {
-      // console.log(stateFile + " updated");
+      // console.log(stateFile + " updated")
     }
-  });
+  })
 }
 
 let lut = []
@@ -522,13 +533,6 @@ function guid7() {
 }
 
 function getIndex() {
-  // let list = ""
-  // for (let gameId in state.games) {
-  //   if (gameId != -1) {
-  //     let free = state.games[gameId].players.reduce((cnt, v) => v.active ? cnt : cnt + 1, 0)
-  //     list += '<li><a href="' + state.games[gameId].html + '">' + state.games[gameId].name + ' (' + free + '/' + state.games[gameId].players.length + ' Spieler)</a></li>'
-  //   }
-  // }
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -578,22 +582,22 @@ function getIndex() {
 }
 
 function createCert(publicKey, privateKey, subject, issuer, extensions, years) {
-  let cert = forge.pki.createCertificate();
-  cert.publicKey = publicKey;
-  cert.serialNumber = '01';
-  cert.validity.notBefore = new Date();
-  cert.validity.notAfter = new Date();
-  cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + years);
-  cert.setSubject(subject);
-  cert.setIssuer(issuer);
-  cert.setExtensions(extensions);
-  cert.sign(privateKey, forge.md.sha256.create());
+  let cert = forge.pki.createCertificate()
+  cert.publicKey = publicKey
+  cert.serialNumber = '01'
+  cert.validity.notBefore = new Date()
+  cert.validity.notAfter = new Date()
+  cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + years)
+  cert.setSubject(subject)
+  cert.setIssuer(issuer)
+  cert.setExtensions(extensions)
+  cert.sign(privateKey, forge.md.sha256.create())
   return cert
 }
 
 function createCA(commonName, ipAddr) {
   // generate a key pair
-  let rootKeys = forge.pki.rsa.generateKeyPair(4096);
+  let rootKeys = forge.pki.rsa.generateKeyPair(4096)
   save('rootCA.key', forge.pki.privateKeyToPem(rootKeys.privateKey))
   let rootCA = createCert(rootKeys.publicKey, rootKeys.privateKey, getSubject(commonName), getSubject(commonName), getExtensions(true, ipAddr), 2)
   save('rootCA.pem', forge.pki.certificateToPem(rootCA))
@@ -661,7 +665,7 @@ function getExtensions(cA, ipAddr) {
   }]
 }
 
-//let extensions = csr.getAttribute({ name: 'extensionRequest' }).extensions;
+//let extensions = csr.getAttribute({ name: 'extensionRequest' }).extensions
 // optionally add more extensions
 // extensions.push.apply(extensions, [{
 //   name: 'basicConstraints',
@@ -673,7 +677,7 @@ function getExtensions(cA, ipAddr) {
 //   nonRepudiation: true,
 //   keyEncipherment: true,
 //   dataEncipherment: true
-// }]);
+// }])
 
 function rootKeys() {
   return `-----BEGIN RSA PRIVATE KEY-----

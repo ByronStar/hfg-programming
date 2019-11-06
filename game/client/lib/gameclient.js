@@ -1,7 +1,11 @@
 // let gc = function() {
 //   let gc = function(typeNumber, errorCorrectionLevel) {
-let ipPort = 8091
-// let ipPort = 443
+let httpPort = 8090
+let httpsPort = 8091
+// the WebSocket connection is established to the http / https URL with these ports
+let wsPort = 8090
+let wssPort = 8091
+
 let msgTrace = false
 let ws, name
 let lags = [],
@@ -38,10 +42,6 @@ let playerNode
 let statusNode
 let moveCallback
 let reconnect = false
-
-// the WebSocket connection is established to the http / https URL with these ports
-let wsPort = 11203
-let wssPort = 11204
 
 function wsinit(onMove, node, status) {
   initPoint()
@@ -82,10 +82,10 @@ function wsinit(onMove, node, status) {
   }
   let wsUri = location.protocol === 'https:' ? 'wss://' + gc.server + ':' + wssPort : 'ws://' + gc.server + ':' + wsPort
   ws = createWebSocket(wsUri, onState, onReceive)
-  // console.log(location, ws)
+  console.log(location, ws)
   window.addEventListener('keydown', onKeyDownGC)
   if (location.pathname != '/') {
-    document.getElementsByTagName('h1')[0].innerHTML += (location.port == ipPort ? " (published)" : " (develop)")
+    document.getElementsByTagName('h1')[0].innerHTML += (location.port == httpsPort ? " (published)" : " (develop)")
   }
   return gc
 }
@@ -122,7 +122,7 @@ function onKeyDownGC(evt) {
         console.log(gc.player(0).name, gc.player(1).name)
         break
       case 'P':
-        if (location.port != ipPort) {
+        if (location.port != httpsPort) {
           let script = document.getElementById('game')
           if (null != script) {
             if (!location.pathname.endsWith('/progsp_game.html') && !script.src.endsWith('/progsp_game.js')) {
@@ -196,7 +196,7 @@ function onReceive(data) {
         gc.server = msg.data.ip
       }
       if (!gc.server.match(/localhost|127.0.0.1/) && location.pathname != '/') {
-        createQRCode(location.protocol + '//' + gc.server + ':' + ipPort + location.pathname + '?name=Mobile' + Math.floor(rand(100, 999)), 'p1')
+        createQRCode(location.protocol + '//' + gc.server + ':' + (location.protocol == 'http:' ? httpPort : httpsPort) + location.pathname + '?name=Mobile' + Math.floor(rand(100, 999)), 'p1')
       }
       sendState('JOIN', {
         name: name,
@@ -262,7 +262,7 @@ function onReceive(data) {
     case 'STORE':
       if (pCnt == 0) {
         // not the publischer switch to published page: assign or replace
-        location.assign('https://' + gc.server + ':' + ipPort + location.pathname)
+        location.assign('https://' + gc.server + ':' + httpsPort + location.pathname)
       } else {
         pCnt--
         if (msg.data.rc < 0) {
@@ -270,7 +270,7 @@ function onReceive(data) {
         } else {
           if (pCnt == 0) {
             // switch to published page: assign or replace
-            location.assign('https://' + gc.server + ':' + ipPort + location.pathname)
+            location.assign('https://' + gc.server + ':' + httpsPort + location.pathname)
           }
         }
       }
