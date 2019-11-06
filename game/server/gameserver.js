@@ -14,7 +14,8 @@ const forge = require('node-forge')
 const http = require('http')
 const url = require("url")
 const path = require("path")
-const querystring = require('querystring');
+
+let httpServer, httpsServer
 
 let ifs = require('os').networkInterfaces()
 // console.log(ifs)
@@ -58,73 +59,97 @@ let state = {
 }
 let stateFile = './gamestate.json'
 
-let slackHook = ''
 loadState()
 
-if (fs.existsSync('../cert/tls.key')) {
-  options = {
-    key: fs.readFileSync('../cert/tls.key'),
-    cert: fs.readFileSync('../cert/tls.crt')
-  }
-  // options = {
-  //   key: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/privkey.pem'),
-  //   cert: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/fullchain.pem')
-  // }
-} else {
-  if (!fs.existsSync('progsp.hfg-gmuend.de.key') || ipAddr != state.ipAddr) {
-    //createCA('hfg.hopto.org', ipAddr)
-    // generate a key pair
-    let keys = forge.pki.rsa.generateKeyPair(2048)
-    fs.writeFileSync('progsp.hfg-gmuend.de.key', forge.pki.privateKeyToPem(keys.privateKey), 'utf8')
-
-    // create a certification request (CSR)
-    let csr = forge.pki.createCertificationRequest()
-    csr.publicKey = keys.publicKey
-    csr.setSubject(getSubject(ipAddr))
-    csr.setAttributes(getAttrs(false, ipAddr))
-    csr.sign(keys.privateKey)
-
-    // let caCert = forge.pki.certificateFromPem(fs.readFileSync('rootCA.pem', 'utf8'))
-    let caCert = forge.pki.certificateFromPem(rootCA())
-    let issuer = caCert.subject.attributes
-
-    //let caPrivateKey = forge.pki.privateKeyFromPem(fs.readFileSync('rootCA.key', 'utf8'))
-    let caPrivateKey = forge.pki.privateKeyFromPem(rootKeys())
-    let cert = createCert(csr.publicKey, caPrivateKey, csr.subject.attributes, issuer, csr.getAttribute({
-      name: 'extensionRequest'
-    }).extensions, 1)
-    fs.writeFileSync('progsp.hfg-gmuend.de.pem', forge.pki.certificateToPem(cert))
-    state.ipAddr = ipAddr
-    saveState()
-  }
-
-  options = {
-    key: fs.readFileSync('./progsp.hfg-gmuend.de.key'),
-    cert: fs.readFileSync('./progsp.hfg-gmuend.de.pem')
-  }
-}
-
-let contentTypesByExtension = {
-  '.html': "text/html",
-  '.css': "text/css",
-  '.js': "text/javascript",
-  '.pem': "application/x-x509-ca-cert"
-}
-
-let httpServer = http.createServer(function(request, response) {
-  let pathname = url.parse(request.url).pathname
-  if (pathname == '/') {
-    response.writeHead(200, {
-      "Content-Type": "text/html"
-    })
-    response.write(getIndex())
-    response.end()
+function setupServers() {
+  if (fs.existsSync('../cert/tls.key')) {
+    options = {
+      key: fs.readFileSync('../cert/tls.key'),
+      cert: fs.readFileSync('../cert/tls.crt')
+    }
+    // options = {
+    //   key: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/privkey.pem'),
+    //   cert: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/fullchain.pem')
+    // }
   } else {
-    if (pathname == '/rootCA') {
+    if (!fs.existsSync('progsp.hfg-gmuend.de.key') || ipAddr != state.ipAddr) {
+      //createCA('hfg.hopto.org', ipAddr)
+      // generate a key pair
+      let keys = forge.pki.rsa.generateKeyPair(2048)
+      fs.writeFileSync('progsp.hfg-gmuend.de.key', forge.pki.privateKeyToPem(keys.privateKey), 'utf8')
+
+      // create a certification request (CSR)
+      let csr = forge.pki.createCertificationRequest()
+      csr.publicKey = keys.publicKey
+      csr.setSubject(getSubject(ipAddr))
+      csr.setAttributes(getAttrs(false, ipAddr))
+      csr.sign(keys.privateKey)
+
+      // let caCert = forge.pki.certificateFromPem(fs.readFileSync('rootCA.pem', 'utf8'))
+      let caCert = forge.pki.certificateFromPem(rootCA())
+      let issuer = caCert.subject.attributes
+
+      //let caPrivateKey = forge.pki.privateKeyFromPem(fs.readFileSync('rootCA.key', 'utf8'))
+      let caPrivateKey = forge.pki.privateKeyFromPem(rootKeys())
+      let cert = createCert(csr.publicKey, caPrivateKey, csr.subject.attributes, issuer, csr.getAttribute({
+        name: 'extensionRequest'
+      }).extensions, 1)
+      fs.writeFileSync('progsp.hfg-gmuend.de.pem', forge.pki.certificateToPem(cert))
+      state.ipAddr = ipAddr
+      saveState()
+    }
+
+    options = {
+      key: fs.readFileSync('./progsp.hfg-gmuend.de.key'),
+      cert: fs.readFileSync('./progsp.hfg-gmuend.de.pem')
+    }
+  }
+
+  let contentTypesByExtension = {
+    '.html': "text/html",
+    '.css': "text/css",
+    '.js': "text/javascript",
+    '.pem': "application/x-x509-ca-cert"
+  }
+
+  httpServer = http.createServer(function(request, response) {
+    let pathname = url.parse(request.url).pathname
+    if (pathname == '/') {
       response.writeHead(200, {
-        "Content-Type": "application/x-x509-ca-cert"
+        "Content-Type": "text/html"
       })
-      response.write(rootCA())
+      response.write(getIndex())
+      response.end()
+    } else {
+      if (pathname == '/rootCA') {
+        response.writeHead(200, {
+          "Content-Type": "application/x-x509-ca-cert"
+        })
+        response.write(rootCA())
+        response.end()
+      } else {
+        let filename
+        if (pathname.startsWith('/client')) {
+          filename = ".." + pathname
+        } else {
+          filename = "../client" + pathname
+        }
+        filename = path.join(process.cwd(), filename)
+        //console.log(url.parse(request.url).pathname, filename)
+        sendResponse(response, filename)
+      }
+    }
+  })
+  httpServer.listen(httpPort, ipAddr)
+  console.log((new Date()) + ' GameServer available under http://' + ipAddr + ':' + httpPort)
+
+  httpsServer = https.createServer(options, function(request, response) {
+    let pathname = url.parse(request.url).pathname
+    if (pathname == '/') {
+      response.writeHead(200, {
+        "Content-Type": "text/html"
+      })
+      response.write(getIndex())
       response.end()
     } else {
       let filename
@@ -137,34 +162,88 @@ let httpServer = http.createServer(function(request, response) {
       //console.log(url.parse(request.url).pathname, filename)
       sendResponse(response, filename)
     }
-  }
-})
-httpServer.listen(httpPort, ipAddr)
-console.log((new Date()) + ' GameServer available under http://' + ipAddr + ':' + httpPort)
+  })
+  httpsServer.listen(httpsPort, ipAddr)
 
-let httpsServer = https.createServer(options, function(request, response) {
-  let pathname = url.parse(request.url).pathname
-  if (pathname == '/') {
-    response.writeHead(200, {
-      "Content-Type": "text/html"
-    })
-    response.write(getIndex())
-    response.end()
-  } else {
-    let filename
-    if (pathname.startsWith('/client')) {
-      filename = ".." + pathname
+  console.log((new Date()) + ' GameServer available under https://' + ipAddr + ':' + httpsPort)
+  let wsServer = new WebSocketServer({
+    server: httpServer
+  })
+
+  wsServer.on('connection', function connection(client, req) {
+    let id
+    if (client.upgradeReq) {
+      id = client.upgradeReq.headers['sec-websocket-key']
     } else {
-      filename = "../client" + pathname
+      client.upgradeReq = req
+      id = req.headers['sec-websocket-key']
     }
-    filename = path.join(process.cwd(), filename)
-    //console.log(url.parse(request.url).pathname, filename)
-    sendResponse(response, filename)
-  }
-})
-httpsServer.listen(httpsPort, ipAddr)
+    clients[id] = client
 
-console.log((new Date()) + ' GameServer available under https://' + ipAddr + ':' + httpsPort)
+    // Client sent message
+    client.on('message', function incoming(message, flags) {
+      handleMessage(wsServer, message, id, client)
+    })
+
+    // Client terminated connection
+    client.on('close', function incoming(code, message) {
+      handleClose(wsServer, id)
+    })
+
+    // New client gets an ID from the server
+    let message = JSON.stringify({
+      id: 'ID',
+      from: 'SERVER',
+      data: {
+        id: id,
+        ip: ipAddr,
+        seq: (wsServer.clients.length ? wsServer.clients.length : wsServer.clients.size) - 1
+      }
+    })
+    client.send(message)
+    console.log('%s JOIN <%s> (%d players)', new Date().getTime(), message, (wsServer.clients.length ? wsServer.clients.length : wsServer.clients.size))
+  })
+
+  let wssServer = new WebSocketServer({
+    server: httpsServer
+  })
+
+  wssServer.on('connection', function connection(client, req) {
+    let id
+    if (client.upgradeReq) {
+      id = client.upgradeReq.headers['sec-websocket-key']
+    } else {
+      client.upgradeReq = req
+      id = req.headers['sec-websocket-key']
+    }
+    clients[id] = client
+
+    // Client sent message
+    client.on('message', function incoming(message, flags) {
+      handleMessage(wssServer, message, id, client)
+    })
+
+    // Client terminated connection
+    client.on('close', function incoming(code, message) {
+      handleClose(wssServer, id)
+    })
+
+    // New client gets an ID from the server
+    let message = JSON.stringify({
+      id: 'ID',
+      from: 'SERVER',
+      data: {
+        id: id,
+        ip: ipAddr,
+        seq: (wssServer.clients.length ? wssServer.clients.length : wssServer.clients.size) - 1
+      }
+    })
+    client.send(message)
+    if (msgTrace) {
+      console.log('%s SND <%s>', new Date().getTime(), message)
+    }
+  })
+}
 
 function sendResponse(response, filename) {
   fs.exists(filename, function(exists) {
@@ -322,6 +401,7 @@ function handleMessage(server, message, id, client) {
             players: [],
             version: 0
           }
+          //gamePublished("Neues Spiel")
         }
         if (file in state.files) {
           if (state.files[file] != msg.data.game) {
@@ -424,84 +504,6 @@ function handleClose(server, id) {
   updateGames(server)
 }
 
-let wsServer = new WebSocketServer({
-  server: httpServer
-})
-
-wsServer.on('connection', function connection(client, req) {
-  let id
-  if (client.upgradeReq) {
-    id = client.upgradeReq.headers['sec-websocket-key']
-  } else {
-    client.upgradeReq = req
-    id = req.headers['sec-websocket-key']
-  }
-  clients[id] = client
-
-  // Client sent message
-  client.on('message', function incoming(message, flags) {
-    handleMessage(wsServer, message, id, client)
-  })
-
-  // Client terminated connection
-  client.on('close', function incoming(code, message) {
-    handleClose(wsServer, id)
-  })
-
-  // New client gets an ID from the server
-  let message = JSON.stringify({
-    id: 'ID',
-    from: 'SERVER',
-    data: {
-      id: id,
-      ip: ipAddr,
-      seq: (wsServer.clients.length ? wsServer.clients.length : wsServer.clients.size) - 1
-    }
-  })
-  client.send(message)
-  console.log('%s JOIN <%s> (%d players)', new Date().getTime(), message, (wsServer.clients.length ? wsServer.clients.length : wsServer.clients.size))
-})
-
-let wssServer = new WebSocketServer({
-  server: httpsServer
-})
-
-wssServer.on('connection', function connection(client, req) {
-  let id
-  if (client.upgradeReq) {
-    id = client.upgradeReq.headers['sec-websocket-key']
-  } else {
-    client.upgradeReq = req
-    id = req.headers['sec-websocket-key']
-  }
-  clients[id] = client
-
-  // Client sent message
-  client.on('message', function incoming(message, flags) {
-    handleMessage(wssServer, message, id, client)
-  })
-
-  // Client terminated connection
-  client.on('close', function incoming(code, message) {
-    handleClose(wssServer, id)
-  })
-
-  // New client gets an ID from the server
-  let message = JSON.stringify({
-    id: 'ID',
-    from: 'SERVER',
-    data: {
-      id: id,
-      ip: ipAddr,
-      seq: (wssServer.clients.length ? wssServer.clients.length : wssServer.clients.size) - 1
-    }
-  })
-  client.send(message)
-  if (msgTrace) {
-    console.log('%s SND <%s>', new Date().getTime(), message)
-  }
-})
-
 function loadState() {
   fs.readFile(stateFile, 'utf-8', (err, data) => {
     if (err) {
@@ -522,23 +524,24 @@ function loadState() {
       }
       state.players = {}
       saveState()
+      setupServers()
     }
   })
 }
 
-function gamePublished() {
-  let postData = querystring.stringify('payload={"channel": "#programmieren", "username": "webhookbot", "text": "This is posted to #programmieren and comes from a bot named webhookbot.", "icon_emoji": ":ghost:"}')
-
+function gamePublished(info) {
+  let data = JSON.stringify({ "channel": "#programmieren", "username": "webhookbot", "text": info, "icon_emoji": ":ghost:" })
   let options = {
     hostname: 'hooks.slack.com',
     port: 443,
-    path: '/services/' + slackHook,
+    path: '/services/' + state.slackHook,
     method: 'POST',
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Content-Length': postData.length
+      'Content-Type': 'application/json',
+      'Content-Length': data.length
     }
-  };
+  }
+  console.log(options)
 
   let req = https.request(options, (res) => {
     console.log('statusCode:', res.statusCode)
@@ -553,7 +556,7 @@ function gamePublished() {
     console.error(e)
   });
 
-  req.write(postData)
+  req.write(data)
   req.end()
 }
 
