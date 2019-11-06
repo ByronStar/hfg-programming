@@ -16,7 +16,7 @@ let gc = {
   me: null,
   id: null,
   gameId: 0,
-  online: false,
+  online: null,
   ready: false,
   server: null,
   move: function(data) {
@@ -152,19 +152,20 @@ function onKeyDownGC(evt) {
 }
 
 function onState(online, ws) {
-  gc.online = online
-  if (!gc.online) {
+  console.log(online, ws)
+  if (!online) {
     gc.players = []
     if (reconnect) {
       setTimeout(reload, 5000)
     } else {
-      if (location.hostname.match(/127.0.0.1|localhost/)) {
-        alert("Es wurde kein lokaler Server gefunden! Eventuell einen remote Server verwenden:\n" + location.href + "?server=<IPAddress>")
+      if (location.hostname.match(/127.0.0.1|localhost/) && null == gc.online) {
+        alert("Es wurde kein lokaler Server gefunden! Lokalen Server starten oder einen remote Server verwenden:\n" + location.href + "?server=<IPAddress>")
       }
     }
   } else {
     reconnect = true
   }
+  gc.online = online
   refreshPlayers(gc.players)
 }
 

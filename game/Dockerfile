@@ -6,7 +6,8 @@ COPY server/ server/
 
 WORKDIR /usr/src/game/server
 RUN npm install
+RUN npm install -g wscat
 
-EXPOSE 8090 8091 11203 11204
+EXPOSE 8090 8091
 
 CMD ["npm", "start" ]
