@@ -3,7 +3,6 @@ kind: Service
 metadata:
   name: certbot
 spec:
-  externalIPs: ["184.172.252.200"]
   selector:
     app: hfg
     tier: certbot

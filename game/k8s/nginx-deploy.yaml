@@ -1,26 +1,43 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  labels:
-    app: nginx
   name: nginx
+  labels:
+    app: hfg
+    tier: nginx
 spec:
+  selector:
+    matchLabels:
+      app: hfg
+      tier: nginx
   replicas: 1
   template:
     metadata:
       labels:
-        app: nginx
+        app: hfg
+        tier: nginx
     spec:
       containers:
       - name: nginx
         image: nginx
         ports:
-        - containerPort: 80
+        - name: certbot
+          containerPort: 80
+        - name: http
+          containerPort: 8090
+        - name: https
+          containerPort: 8091
         volumeMounts:
         - name: nginx-configs
           mountPath: /etc/nginx/conf.d
+        - name: nginx-ssl
+          mountPath: /etc/nginx/ssl
+          readOnly: true
       # Load the configuration files for nginx
       volumes:
         - name: nginx-configs
           configMap:
             name: nginx-config
+        - name: nginx-ssl
+          secret:
+            secretName: hfg-cert

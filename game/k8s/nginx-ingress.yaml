@@ -2,11 +2,14 @@ apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   name: "ingress-service"
+  labels:
+    app: hfg
+    tier: ingress
 spec:
   tls:
   - hosts:
     - hfg.hopto.org
-    secretName: <tls_secret_name>
+    secretName: hfg-cert
   rules:
   - host: hfg.hopto.org # CHANGE ME!
     http:

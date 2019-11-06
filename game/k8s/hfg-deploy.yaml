@@ -25,16 +25,17 @@ spec:
         - name: HFG_DATA
           value: hfg-data
         ports:
-        - containerPort: 8091
-        - containerPort: 11203
-        - containerPort: 11204
+        - name: http
+          containerPort: 8090
+        - name: https
+          containerPort: 8091
+        volumeMounts:
+        - name: hfg-ssl
+          mountPath: /usr/src/game/cert
+          readOnly: true
       imagePullSecrets:
         - name: dockerhub
-      #   volumeMounts:
-      #   - mountPath: /var/lib/hfg-data
-      #     name: hfg-data
-      # volumes:
-      # - name: hfg-data
-      #   persistentVolumeClaim:
-      #     claimName: hfg-data-claim
-      # kubectl create secret generic dockerhub --from-file=.dockerconfigjson=~/.docker/config.json --type=kubernetes.io/dockerconfigjson
+      volumes:
+        - name: hfg-ssl
+          secret:
+            secretName: hfg-cert

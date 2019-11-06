@@ -1,15 +1,17 @@
-apiVersion: extensions/v1beta1
-kind: Deployment
+#apiVersion: extensions/v1beta1
+#kind: Deployment
+apiVersion: batch/v1
+kind: Job
 metadata:
   name: certbot
   labels:
     app: hfg
     tier: certbot
 spec:
-  selector:
-    matchLabels:
-      app: hfg
-      tier: certbot
+#  selector:
+#    matchLabels:
+#      app: hfg
+#      tier: certbot
   template:
     metadata:
       labels:
@@ -30,7 +32,8 @@ spec:
         - name: SECRET
           value: hfg-cert
         ports:
-        - containerPort: 8080
+        - name: http
+          containerPort: 8080
         volumeMounts:
         - mountPath: /opt/certbot/entrypoint.sh
           name: script
@@ -38,6 +41,7 @@ spec:
         - mountPath: /opt/certbot/set_secret_tmpl.json
           name: script
           subPath: set_secret_tmpl.json
+      restartPolicy: Never
       volumes:
       - name: script
         configMap:
