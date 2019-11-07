@@ -6,7 +6,7 @@ let httpsPort = 8091
 let msgTrace = false
 
 const WebSocket = require('ws')
-let WebSocketServer = WebSocket.Server
+const WebSocketServer = WebSocket.Server
 const https = require('https')
 const fs = require('fs')
 const forge = require('node-forge')
@@ -39,29 +39,19 @@ let clients = {}
 // track active IP Addresses
 let active = {}
 
-let state = {
-  ipAddr: '0.0.0.0',
-  games: {
-    0: {
-      id: 0,
-      js: "/client/js/progsp_game.js",
-      html: "/client/progsp_game.html",
-      name: "Demo Spiel",
-      version: 0,
-      players: []
-    }
-  },
-  files: {
-    "/client/js/progsp_game.js": 0,
-    "/client/progsp_game.html": 0
-  },
-  players: {}
+let contentTypesByExtension = {
+  '.html': "text/html",
+  '.css': "text/css",
+  '.js': "text/javascript",
+  '.pem': "application/x-x509-ca-cert"
 }
-let stateFile = './gamestate.json'
 
+let state
+let stateFile = './gamestate.json'
 loadState()
 
 function setupServers() {
+  let firstTime = ipAddr != state.ipAddr
   if (fs.existsSync('../cert/tls.key')) {
     options = {
       key: fs.readFileSync('../cert/tls.key'),
@@ -105,13 +95,6 @@ function setupServers() {
     }
   }
 
-  let contentTypesByExtension = {
-    '.html': "text/html",
-    '.css': "text/css",
-    '.js': "text/javascript",
-    '.pem': "application/x-x509-ca-cert"
-  }
-
   httpServer = http.createServer(function(request, response) {
     let pathname = url.parse(request.url).pathname
     if (pathname == '/') {
@@ -141,7 +124,7 @@ function setupServers() {
     }
   })
   httpServer.listen(httpPort, ipAddr)
-  console.log((new Date()) + ' GameServer available under http://' + ipAddr + ':' + httpPort)
+  console.log((new Date()) + ' GameServer erreichbar unter http://' + ipAddr + ':' + httpPort)
 
   httpsServer = https.createServer(options, function(request, response) {
     let pathname = url.parse(request.url).pathname
@@ -165,7 +148,7 @@ function setupServers() {
   })
   httpsServer.listen(httpsPort, ipAddr)
 
-  console.log((new Date()) + ' GameServer available under https://' + ipAddr + ':' + httpsPort)
+  console.log((new Date()) + ' GameServer erreichbar unter https://' + ipAddr + ':' + httpsPort)
   let wsServer = new WebSocketServer({
     server: httpServer
   })
@@ -243,6 +226,13 @@ function setupServers() {
       console.log('%s SND <%s>', new Date().getTime(), message)
     }
   })
+  if (firstTime && ipAddr != 'localhost') {
+    if (state.domain) {
+      announce("Neuer externer GameServer `https://" + state.domain + ":" + httpsPort + "`", "#99_benno")
+    } else {
+      announce("Neuer lokaler GameServer " + ipAddr + " - <https://" + ipAddr + ":" + httpsPort + "|Ausprobieren> (wenn Du im gleichen Netz bist)", "#99_benno")
+    }
+  }
 }
 
 function sendResponse(response, filename) {
@@ -401,7 +391,7 @@ function handleMessage(server, message, id, client) {
             players: [],
             version: 0
           }
-          //gamePublished("Neues Spiel")
+          //announce("Neues Spiel verfügbar <https://alert-system.com/alerts/1234|Click here>")
         }
         if (file in state.files) {
           if (state.files[file] != msg.data.game) {
@@ -508,6 +498,24 @@ function loadState() {
   fs.readFile(stateFile, 'utf-8', (err, data) => {
     if (err) {
       if (err.code == 'ENOENT') {
+        state = {
+          ipAddr: '0.0.0.0',
+          games: {
+            0: {
+              id: 0,
+              js: "/client/js/progsp_game.js",
+              html: "/client/progsp_game.html",
+              name: "Demo Spiel",
+              version: 0,
+              players: []
+            }
+          },
+          files: {
+            "/client/js/progsp_game.js": 0,
+            "/client/progsp_game.html": 0
+          },
+          players: {}
+        }
         saveState()
       } else {
         console.log(err, err.code)
@@ -529,39 +537,65 @@ function loadState() {
   })
 }
 
-function gamePublished(info) {
-  let data = JSON.stringify({ "channel": "#programmieren", "username": "webhookbot", "text": info, "icon_emoji": ":ghost:" })
-  let options = {
-    hostname: 'hooks.slack.com',
-    port: 443,
-    path: '/services/' + state.slackHook,
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Content-Length': data.length
+function announce(info, channel) {
+  if (state.slackHook) {
+    if (null == channel) {
+      channel = "#programmieren"
     }
-  }
-  console.log(options)
 
-  let req = https.request(options, (res) => {
-    console.log('statusCode:', res.statusCode)
-    console.log('headers:', res.headers)
+    let data = {
+      channel: channel,
+      username: "GameServer",
+      text: info,
+      icon_emoji: ":ghost:"
+      // ,attachments: [{
+      //   fallback: "New open task [Urgent]: <http://url_to_task|Test out Slack message attachments>",
+      //   pretext: "New open task [Urgent]: <http://url_to_task|Test out Slack message attachments>",
+      //   color: "#D00000",
+      //   fields: [{
+      //     title: "Notes",
+      //     value: "This is much easier than I thought it would be.",
+      //     short: false
+      //   }]
+      // }]
+    }
+    data = JSON.stringify(data)
 
-    res.on('data', (d) => {
-      process.stdout.write(d)
+    let options = {
+      hostname: 'hooks.slack.com',
+      port: 443,
+      path: '/services/' + state.slackHook,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Length': data.length
+      }
+    }
+    // console.log(options, data)
+
+    let req = https.request(options, (res) => {
+      console.log('Slack Announcement:', res.statusCode)
+      if (res.statusCode != "200") {
+        console.log(data, res.headers)
+      }
+      // console.log('headers:', res.headers)
+
+      // res.on('data', (d) => {
+      //   process.stdout.write(d)
+      // })
     })
-  })
 
-  req.on('error', (e) => {
-    console.error(e)
-  });
+    req.on('error', (e) => {
+      console.error(e)
+    });
 
-  req.write(data)
-  req.end()
+    req.write(data)
+    req.end()
+  }
 }
 
 function saveState() {
-  fs.writeFile(stateFile, JSON.stringify(state), 'utf8', (err, data) => {
+  fs.writeFile(stateFile, JSON.stringify(state), { encoding: 'utf8', flag: 'w' }, (err, data) => {
     if (err) {
       console.log(err)
     } else {

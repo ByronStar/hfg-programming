@@ -33,9 +33,15 @@ spec:
         - name: hfg-ssl
           mountPath: /usr/src/game/cert
           readOnly: true
+        - name: hfg-state
+          mountPath: /usr/src/game/server/gamestate.json
+          subPath: gamestate.json
       imagePullSecrets:
         - name: dockerhub
       volumes:
         - name: hfg-ssl
           secret:
             secretName: hfg-cert
+        - name: hfg-state
+          configMap:
+            name: hfg-config
