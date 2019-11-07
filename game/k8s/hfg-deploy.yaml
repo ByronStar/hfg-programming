@@ -34,7 +34,7 @@ spec:
           mountPath: /usr/src/game/cert
           readOnly: true
         - name: hfg-state
-          mountPath: /usr/src/game/server/gamestate.json
+          mountPath: /usr/src/game/server/gamestate0.json
           subPath: gamestate.json
       imagePullSecrets:
         - name: dockerhub

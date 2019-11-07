@@ -62,7 +62,7 @@ function setupServers() {
     //   cert: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/fullchain.pem')
     // }
   } else {
-    if (!fs.existsSync('progsp.hfg-gmuend.de.key') || ipAddr != state.ipAddr) {
+    if (!fs.existsSync('progsp.hfg-gmuend.de.key') || (ipAddr != 'localhost' && ipAddr != state.ipAddr)) {
       //createCA('hfg.hopto.org', ipAddr)
       // generate a key pair
       let keys = forge.pki.rsa.generateKeyPair(2048)
@@ -154,7 +154,9 @@ function setupServers() {
   })
 
   wsServer.on('connection', function connection(client, req) {
+    client.isAlive = true
     let id
+    console.log(req.headers)
     if (client.upgradeReq) {
       id = client.upgradeReq.headers['sec-websocket-key']
     } else {
@@ -171,6 +173,12 @@ function setupServers() {
     // Client terminated connection
     client.on('close', function incoming(code, message) {
       handleClose(wsServer, id)
+    })
+
+    // Client did sent a hearbeat
+    client.on('pong', () => {
+      console.log("PONG", id)
+      client.isAlive = true
     })
 
     // New client gets an ID from the server
@@ -192,7 +200,9 @@ function setupServers() {
   })
 
   wssServer.on('connection', function connection(client, req) {
+    client.isAlive = true
     let id
+    console.log(req.headers)
     if (client.upgradeReq) {
       id = client.upgradeReq.headers['sec-websocket-key']
     } else {
@@ -211,6 +221,12 @@ function setupServers() {
       handleClose(wssServer, id)
     })
 
+    // Client did sent a hearbeat
+    client.on('pong', () => {
+      console.log("PONG", id)
+      client.isAlive = true
+    })
+
     // New client gets an ID from the server
     let message = JSON.stringify({
       id: 'ID',
@@ -226,6 +242,24 @@ function setupServers() {
       console.log('%s SND <%s>', new Date().getTime(), message)
     }
   })
+
+  function noop() {}
+
+  setInterval(function ping() {
+    wsServer.clients.forEach(function each(client) {
+      if (client.isAlive === false) return client.terminate();
+      console.log("PING", client.upgradeReq.headers['sec-websocket-key'])
+      client.isAlive = false;
+      client.ping(noop);
+    })
+    wssServer.clients.forEach(function each(client) {
+      if (client.isAlive === false) return client.terminate();
+      console.log("PINGS")
+      client.isAlive = false;
+      client.ping(noop);
+    })
+  }, 30000)
+
   if (firstTime && ipAddr != 'localhost') {
     if (state.domain) {
       announce("Neuer externer GameServer `https://" + state.domain + ":" + httpsPort + "`", "#99_benno")

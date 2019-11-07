@@ -196,7 +196,7 @@ function onReceive(data) {
       if (gc.server.match(/localhost|127.0.0.1/)) {
         gc.server = msg.data.ip
       }
-      if (!gc.server.match(/localhost|127.0.0.1/) && location.pathname != '/') {
+      if (!gc.server.match(/localhost|127.0.0.1/) && location.pathname != '/' && (window.innerWidth > 800 || window.innerHeight > 600)) {
         createQRCode(location.protocol + '//' + gc.server + ':' + (location.protocol == 'http:' ? httpPort : httpsPort) + location.pathname + '?name=Mobile' + Math.floor(rand(100, 999)), 'p1')
       }
       sendState('JOIN', {
@@ -373,6 +373,10 @@ function createWebSocket(wsUri, onChange, onReceive) {
     }
 
     ws.onclose = function(evt) {
+      onChange(false, null)
+    }
+
+    ws.onping = function(evt) {
       onChange(false, null)
     }
 
