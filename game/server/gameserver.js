@@ -123,7 +123,7 @@ function setupServers() {
       }
     }
   })
-  httpServer.listen(httpPort, ipAddr)
+  httpServer.listen(httpPort)
   console.log((new Date()) + ' GameServer erreichbar unter http://' + ipAddr + ':' + httpPort)
 
   httpsServer = https.createServer(options, function(request, response) {
@@ -146,7 +146,7 @@ function setupServers() {
       sendResponse(response, filename)
     }
   })
-  httpsServer.listen(httpsPort, ipAddr)
+  httpsServer.listen(httpsPort)
 
   console.log((new Date()) + ' GameServer erreichbar unter https://' + ipAddr + ':' + httpsPort)
   let wsServer = new WebSocketServer({

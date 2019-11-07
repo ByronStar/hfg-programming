@@ -131,7 +131,7 @@ function onKeyDownGC(evt) {
                   pCnt = 2;
                   publish(script)
                 } else {
-                  alert("Verherige 'Publish' Funktion noch aktiv!")
+                  alert("Vorherige 'Publish' Funktion ist noch aktiv!")
                 }
               } else {
                 alert("Bitte im Javascript \ngame.gameId = 0;\n durch \ngame.gameId = '" + guid7() + "';\n ersetzen!")
