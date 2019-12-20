@@ -17,7 +17,7 @@ function init() {
   layer = document.getElementById('layer1');
   var uri = layer.namespaceURI;
   console.log("Innerhalb von init ist uri=", uri);
-  var myElems = createPattern(layer, 20, 10, 10, '#FF00FF', 0);
+  var myElems = createPattern(layer, 20, 20, 5, '#FF00FF', 2);
   myElems[4].setAttribute('fill', 'lime');
   console.log(myElems[4]);
   svg = document.getElementById('svg');

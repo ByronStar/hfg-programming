@@ -137,13 +137,13 @@ function onKeyDownGC(evt) {
                 alert("Bitte im Javascript \ngame.gameId = 0;\n durch \ngame.gameId = '" + guid7() + "';\n ersetzen!")
               }
             } else {
-              alert("Bitte die Dateien umbenennen: progsp_game.html und progsp_game.js sind reservierte Namen!")
+              alert("Das Demo Spiel kann nicht verändert werden: progsp_game.html und progsp_game.js sind reservierte Namen!")
             }
           } else {
             alert("Der Game Code ist in der HTML Seite nicht mit der id 'game' markiert: <script id=\"game\" ... !")
           }
         } else {
-          alert("Die 'Publish' Funktion geht nur bei lokale Seiten (z.B. Atom Liveserver)!")
+          alert("Die 'Publish' Funktion geht nur bei der Arbeit mit lokale Seiten (z.B. Atom Liveserver)!")
         }
         break
       default:
@@ -170,6 +170,7 @@ function onState(online, ws) {
 }
 
 function reload() {
+  // alert("Reload")
   location.reload(false)
 }
 
@@ -262,7 +263,7 @@ function onReceive(data) {
       break
     case 'STORE':
       if (pCnt == 0) {
-        // not the publischer switch to published page: assign or replace
+        // not the publisher switch to published page: assign or replace
         location.assign('https://' + gc.server + ':' + httpsPort + location.pathname)
       } else {
         pCnt--

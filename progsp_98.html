@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- Hier beginnt der Administrative Teil der Seite -->
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="">
+  <meta name="author" content="ByronStar">
+
+  <title>Programmiersprachen - Achtung die Kurve!</title>
+
+  <!-- Velocity -->
+  <!--
+    <script type="text/javascript" src="lib/velocity.min.js"></script>
+    -->
+
+  <!-- p5js -->
+  <!--
+    <script src="lib/p5.js" type="text/javascript"></script>
+    <script src="lib/p5.dom.js" type="text/javascript"></script>
+    <script src="lib/p5.sound.js" type="text/javascript"></script>
+    -->
+
+  <!-- matter.js -->
+  <!--
+    <script type="text/javascript" src="lib/matter.js"></script>
+    -->
+
+  <!-- Javascript Programm in separater Datei -->
+  <script type="text/javascript" src="js/progsp_98.js"></script>
+
+  <!-- Styles in separater Datei -->
+  <link rel="stylesheet" href="css/progsp.css">
+
+  <!-- Inline Styles -->
+  <style type="text/css">
+
+    #info {
+      font-size: 1.5em;
+    }
+    .progsp {
+      background-color: #C0C0C0
+    }
+
+    .progsp g#layer1 rect {
+      fill: #00FF00;
+      height: 40px;
+      width: 40px;
+    }
+
+    .progsp g#layer2 rect {
+      fill: #FF0000;
+    }
+
+    .centered {
+      text-align: center;
+    }
+  </style>
+</head>
+
+<!-- Hier beginnt der eigentliche Inhalt der Seite, mit onload="init()" wird die erste Javascript function aufgerufen -->
+
+<body class="progsp" onload="init()">
+  <!-- Über die viewBox wird der sichtbare Teil des SVGs und die AspectRatio festgelegt
+     ausserdem wird für unser Javascript Programm der Koordinatenraum bestimmt in
+     Grösse und Position Nullpunkt in der Bildmitte. Ansonsten ist ein SVG beliebig skalierbar
+   -->
+  <!-- 4:3 = 1,333 -->
+  <!-- viewBox="-512 -384 1024 768" -->
+  <!-- 16:9 = 1,777 -->
+  <!-- viewBox="-1280 -720 2560 1440" -->
+  <!-- viewBox="-640 -360 1280 720" -->
+  <!-- 8:5 = 1,6 -->
+  <!-- viewBox="-640 -400 1280 800" -->
+
+  <!-- Ein SVG das per Programm verändert wird -->
+  <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="-960 -600 1920 1200">
+    <!-- Das Hintergrund Rechteck in einer eigenen Gruppe -->
+    <g id="layer0">
+      <defs>
+        <filter id="glow">
+          <fegaussianblur class="blur" result="coloredBlur" stddeviation="4"></fegaussianblur>
+          <femerge>
+            <femergenode in="coloredBlur"></femergenode>
+            <femergenode in="coloredBlur"></femergenode>
+            <femergenode in="coloredBlur"></femergenode>
+            <femergenode in="SourceGraphic"></femergenode>
+          </femerge>
+        </filter>
+      </defs>
+      <rect width="100%" height="100%" x="-50%" y="-50%" opacity="1.0" fill="#505050"></rect>
+      <rect id="back" width="100%" height="100%" x="-50%" y="-50%" opacity="1.0"></rect>
+    </g>
+    <!-- Diese Gruppe ist enthält vordefinierte Rechtecke -->
+    <g id="layer1">
+    </g>
+    <!-- Diese Gruppe soll per Programm gefüllt werden -->
+    <g id="layer2">
+    </g>
+    <!-- Das Mittelpunkt Kreis in einer eigenen Gruppe -->
+    <g id="layer3">
+      <!-- <circle id="center" cx="0" cy="0" r=2 color="#505050"></circle> -->
+    </g>
+    <g style="display: none">
+    </g>
+  </svg>
+
+  <div class="overlay">
+    <div id="info">Achtung die Kurve!
+      <p>Bis zu 4 Spielern können hier spielen. Jeder Spieler steuert seine Kurve mit 2 Tasten eine für "nach links abdrehen" und eine für "nach rechts abdrehen".<br>Wer den Rand oder einen andere Kurve berührt, hat verloren.</p>
+      <p>Sobald alle die mitmachen wollen ihre Tasten gedrückt haben, mit der Leertaste das Spiel starten.</p>
+      <table border="1" style="margin: 40px;">
+        <tr><th>Spieler</th><th>Nach links</th><th>Nach rechts</th><th>Farbe</th><th>Punkte</th><th>Bereit</th></tr>
+        <tr><td>1</td><td>1</td><td>Q</td><td style="color: red;">Rot</td><td>0</td><td>1 und Q drücken</td></tr>
+        <tr><td>2</td><td>◀︎</td><td>▲</td><td style="color: blue;">Blau</td><td>0</td><td>◀︎ und ▲ drücken</td></tr>
+        <tr><td>3</td><td>Y</td><td>X</td><td style="color: green;">Grün</td><td>0</td><td>Y und X drücken</td></tr>
+        <tr><td>4</td><td>L</td><td>O</td><td style="color: yellow;">Gelb</td><td>0</td><td>L und O drücken</td></tr>
+      </table>
+    </div>
+  </div>
+
+</body>
+
+</html>

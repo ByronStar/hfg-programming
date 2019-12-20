@@ -156,7 +156,7 @@ function setupServers() {
   wsServer.on('connection', function connection(client, req) {
     client.isAlive = true
     let id
-    console.log(req.headers)
+    // console.log(req.headers)
     if (client.upgradeReq) {
       id = client.upgradeReq.headers['sec-websocket-key']
     } else {
@@ -177,7 +177,7 @@ function setupServers() {
 
     // Client did sent a hearbeat
     client.on('pong', () => {
-      console.log("PONG", id)
+      // console.log("PONG", id)
       client.isAlive = true
     })
 
@@ -202,7 +202,7 @@ function setupServers() {
   wssServer.on('connection', function connection(client, req) {
     client.isAlive = true
     let id
-    console.log(req.headers)
+    // console.log(req.headers)
     if (client.upgradeReq) {
       id = client.upgradeReq.headers['sec-websocket-key']
     } else {
@@ -245,17 +245,25 @@ function setupServers() {
 
   function noop() {}
 
+  // Send hearbeat pings and keep track of pong responsed / terminate unresponsive clients
+  // As a sideeffect nginx proxy_read_timeout does not need to be increased
   setInterval(function ping() {
     wsServer.clients.forEach(function each(client) {
-      if (client.isAlive === false) return client.terminate();
-      console.log("PING", client.upgradeReq.headers['sec-websocket-key'])
+      if (client.isAlive === false) {
+        console.log("TERM", client.upgradeReq.headers['sec-websocket-key'])
+        return client.terminate();
+      }
       client.isAlive = false;
+      // console.log("PING", client.upgradeReq.headers['sec-websocket-key'])
       client.ping(noop);
     })
     wssServer.clients.forEach(function each(client) {
-      if (client.isAlive === false) return client.terminate();
-      console.log("PINGS")
+      if (client.isAlive === false) {
+        console.log("TERM", client.upgradeReq.headers['sec-websocket-key'])
+        return client.terminate();
+      }
       client.isAlive = false;
+      // console.log("PING", client.upgradeReq.headers['sec-websocket-key'])
       client.ping(noop);
     })
   }, 30000)
