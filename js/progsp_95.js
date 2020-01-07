@@ -2,7 +2,8 @@ var layer, base;
 var info, keyPressed;
 var width, height;
 var grid = 80;
-var mouse = ['mouseleft', 'mousemiddle', 'mouseright']
+var mouse = ['mouseleft', 'mousemiddle', 'mouseright', 'mouse4', 'mouse5']
+// var mouse = ['mouseleft', 'mouseright', 'mousemiddle', 'mouse4', 'mouse5']
 
 var bindings = [{
     // default
@@ -120,7 +121,10 @@ var keys = [
   { k: 'Control', r: 4, c: 0.7, f: 0, w: 105 },
   { k: ' ', r: 4, c: 5.1, f: 4, w: 460 },
   { k: 'MouseLeft', r: 4, c: 11.5, f: 6, w: 120 },
-  { k: 'MouseRight', r: 4, c: 13.2, f: 6, w: 120 }
+  { k: 'MouseMiddle', r: 4, c: 13.3, f: 6, w: 100 },
+  { k: 'MouseRight', r: 4, c: 14.85, f: 6, w: 120 },
+  { k: 'Mouse5', r: 5, c: 11.9, f: 6, w: 60 },
+  { k: 'Mouse4', r: 6, c: 11.9, f: 6, w: 60 }
 ];
 /*
 Equal Sign	Auto Run
@@ -194,12 +198,15 @@ function onMouseMenu(evt) {
 function onMouseUp(evt) {
   evt.preventDefault();
   keyPressed[mouse[evt.button]] = false;
+  // keyPressed[mouse[Math.log2(evt.buttons)]] = false;
   show();
 }
 
 function onMouseDown(evt) {
+  // console.log(evt.button, evt.which, evt.buttons, Math.log2(evt.buttons));
   evt.preventDefault();
   keyPressed[mouse[evt.button]] = true;
+  // keyPressed[mouse[Math.log2(evt.buttons)]] = true;
   show();
 }
 
@@ -217,7 +224,7 @@ function show() {
     playSound(sounds[seq == 0 ? 4 : 0]);
     if (seq == 0) {
       var now = new Date().getTime()
-      info.innerHTML = (gapTime - seqTime) + " - " + (now - seqTime);
+      info.innerHTML = (seqTime - gapTime) + " - " + (now - seqTime);
       gapTime = now;
     }
   } else {
@@ -226,7 +233,7 @@ function show() {
       playSound(sounds[2]);
     }
   }
-  console.log(s, !sequence[seq].some((k, i) => k != s[i]));
+  //console.log(s, !sequence[seq].some((k, i) => k != s[i]));
 }
 
 function clearElement(elem) {
