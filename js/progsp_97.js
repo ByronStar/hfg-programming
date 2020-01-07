@@ -1,34 +1,68 @@
-var amount;
-var value = 7;
-var cnt = 0;
+var percent;
+var durchmesser = 7;
+var dir = 1;
 
 function setup() {
   createCanvas(windowWidth, windowHeight)
 }
 
 function draw() {
-  amount = (frameCount % 100) / 100;
-  // console.log(amount);
-  background(255, 30);
+  // Zahl zwischen 0 und 0.995 
+  percent = (frameCount % 200) / 200;
+  if (percent == 0) {
+    dir = -dir;
+  }
+  // console.log(percent);
   //background(255);
-  drawA(100, 100);
-  // drawBackslash(57, 0, 115, 150);
+  background(255, 10);
+  rotateSamples();
+  // fontSamples();
+}
+
+function rotateSamples() {
   push();
+
+  // Nicht rotierte Referenzlinie
+  strokeWeight(2);
+  stroke(0, 255, 255);
+  line(100,100,200,100);
+
+  // Um die Mitte rotierende Linie
+  translate(150,100)
+  rotate(percent * TWO_PI);
+  translate(-150,-100)
   stroke(0, 255, 0);
-  ellipse(500 + 100 * Math.cos(2*cnt), 400 + 200 * Math.sin(2*cnt), 20, 20);
+  line(100,100,200,100);
   pop();
-  ellipse(700 + 100 * Math.cos(-cnt), 400 + 200 * Math.sin(-cnt), 20, 20);
-  cnt += PI/180;
-  // drawA(200, 100);
-  //drawA(120, 0);
-  drawV(240, 100);
+
+  // Kreis der sich auf einer Kreisbahn bewegt
+  ellipse(150 + 100 * Math.cos(percent * TWO_PI), 400 + 100 * Math.sin(percent * TWO_PI), 20, 20);
+
+  // Nicht rotiertes animiertes, interaktives "A"
+  drawA(400, 200);
+
+  // Rotierendes animiertes, interaktives "A"
+  push();
+  translate(400,200)
+  rotate(percent * TWO_PI);
+  translate(-400,-200)
+  drawA(400, 200);
+  pop();
+}
+
+function fontSamples() {
+  // Animiertes, interaktives "A"
+  drawA(200, 100);
+  // Animiertes, interaktives "V"
+  drawV(300, 100);
 }
 
 function mouseClicked() {
-  if (value == 49) {
-    value = 7;
+  // Interaktion für die Buchstaben
+  if (durchmesser == 49) {
+    durchmesser = 7;
   } else {
-    value += 7;
+    durchmesser += 7;
   }
 }
 // -- letters --
@@ -54,35 +88,30 @@ function drawDash(x, y, w) {
   stroke(41, 171, 226);
   strokeWeight(1);
   // line(x, y, x + w, y);
-  var newX = lerp(x, x + w, amount);
-  ellipse(newX, y, value, value);
+  var newX = lerp(x, x + w, percent);
+  ellipse(newX, y, durchmesser, durchmesser);
 }
 
 function drawForwardslash(x1, y1, x2, y2) {
   stroke(140, 198, 63);
   strokeWeight(1);
   // line(x1, y1, x2, y2);
-  var newX = lerp(x1, x2, amount);
-  var newY = lerp(y1, y2, amount);
-  ellipse(newX, newY, value, value);
+  var newX = lerp(x1, x2, percent);
+  var newY = lerp(y1, y2, percent);
+  ellipse(newX, newY, durchmesser, durchmesser);
 }
-
-var dir = 1;
 
 function drawBackslash(x1, y1, x2, y2) {
   stroke(252, 0, 33);
   strokeWeight(1);
   //line(x1, y1, x2, y2);
-  if (amount == 0) {
-    // dir = -dir;
-  }
   if (dir == 1) {
-    var newX = lerp(x1, x2, amount);
-    var newY = lerp(y1, y2, amount);
-    ellipse(newX, newY, value, value);
+    var newX = lerp(x1, x2, percent);
+    var newY = lerp(y1, y2, percent);
+    ellipse(newX, newY, durchmesser, durchmesser);
   } else {
-    var newX = lerp(x2, x1, amount);
-    var newY = lerp(y2, y1, amount);
-    ellipse(newX, newY, value, value);
+    var newX = lerp(x2, x1, percent);
+    var newY = lerp(y2, y1, percent);
+    ellipse(newX, newY, durchmesser, durchmesser);
   }
 }

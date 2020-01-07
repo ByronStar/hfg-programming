@@ -6,6 +6,7 @@
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="black"/>
   <meta name="description" content="">
   <meta name="author" content="ByronStar">
 
@@ -34,24 +35,36 @@
   <!-- Styles in separater Datei -->
   <link rel="stylesheet" href="css/progsp.css">
 
+  <!-- Manifest for PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/img/icon.png">
+
   <!-- Inline Styles -->
   <style type="text/css">
-
     #info {
-      font-size: 1.5em;
-    }
-    .progsp {
-      background-color: #C0C0C0
-    }
-
-    .progsp g#layer1 rect {
-      fill: #00FF00;
-      height: 40px;
-      width: 40px;
+      margin: 100px;
+      padding-top: 10px;
+      font-size: 1.0em;
     }
 
-    .progsp g#layer2 rect {
-      fill: #FF0000;
+    .box, .area {
+      width: 20px;
+      height: 20px;
+      border-style: solid;
+      border-width: 1px;
+      display: inline-block;
+    }
+
+    .area {
+      width: 100px;
+    }
+
+    .fullscreen {
+      display: flex;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      width: 100%;
     }
 
     .centered {
@@ -62,7 +75,7 @@
 
 <!-- Hier beginnt der eigentliche Inhalt der Seite, mit onload="init()" wird die erste Javascript function aufgerufen -->
 
-<body class="progsp" onload="init()">
+<body class="progsp fullscreen" onload="init()">
   <!-- Über die viewBox wird der sichtbare Teil des SVGs und die AspectRatio festgelegt
      ausserdem wird für unser Javascript Programm der Koordinatenraum bestimmt in
      Grösse und Position Nullpunkt in der Bildmitte. Ansonsten ist ein SVG beliebig skalierbar
@@ -90,34 +103,46 @@
           </femerge>
         </filter>
       </defs>
-      <rect width="100%" height="100%" x="-50%" y="-50%" opacity="1.0" fill="#505050"></rect>
-      <rect id="back" width="100%" height="100%" x="-50%" y="-50%" opacity="1.0"></rect>
+      <rect width="100%" height="100%" x="-50%" y="-50%" opacity="1.0" fill="#000000"></rect>
+      <!-- <rect id="back" width="100%" height="100%" x="-50%" y="-50%" opacity="1.0"></rect> -->
     </g>
-    <!-- Diese Gruppe ist enthält vordefinierte Rechtecke -->
-    <g id="layer1">
+    <g id="base">
     </g>
-    <!-- Diese Gruppe soll per Programm gefüllt werden -->
-    <g id="layer2">
+    <g>
+      <rect id="touchSpace" style="display: none;" width="200" height="200" x="-100" y="-100" fill="rgba(0,255,255,0.3)"></rect>
     </g>
-    <!-- Das Mittelpunkt Kreis in einer eigenen Gruppe -->
-    <g id="layer3">
-      <!-- <circle id="center" cx="0" cy="0" r=2 color="#505050"></circle> -->
-    </g>
-    <g style="display: none">
+    <g id="curves">
     </g>
   </svg>
 
   <div class="overlay">
     <div id="info">Achtung die Kurve!
-      <p>Bis zu 4 Spielern können hier spielen. Jeder Spieler steuert seine Kurve mit 2 Tasten eine für "nach links abdrehen" und eine für "nach rechts abdrehen".<br>Wer den Rand oder einen andere Kurve berührt, hat verloren.</p>
-      <p>Sobald alle die mitmachen wollen ihre Tasten gedrückt haben, mit der Leertaste das Spiel starten.</p>
-      <table border="1" style="margin: 40px;">
-        <tr><th>Spieler</th><th>Nach links</th><th>Nach rechts</th><th>Farbe</th><th>Punkte</th><th>Bereit</th></tr>
-        <tr><td>1</td><td>1</td><td>Q</td><td style="color: red;">Rot</td><td>0</td><td>1 und Q drücken</td></tr>
-        <tr><td>2</td><td>◀︎</td><td>▲</td><td style="color: blue;">Blau</td><td>0</td><td>◀︎ und ▲ drücken</td></tr>
-        <tr><td>3</td><td>Y</td><td>X</td><td style="color: green;">Grün</td><td>0</td><td>Y und X drücken</td></tr>
-        <tr><td>4</td><td>L</td><td>O</td><td style="color: yellow;">Gelb</td><td>0</td><td>L und O drücken</td></tr>
-      </table>
+      <div id="keyboard">
+        <p>Bis zu 4 Spielern können hier spielen. Jeder Spieler steuert seine Kurve mit 2 Tasten eine für "nach links abdrehen" und eine für "nach rechts abdrehen".<br>Wer den Rand oder einen andere Kurve berührt, hat verloren.</p>
+        <p>Sobald alle die mitmachen wollen ihre Tasten 1x gedrückt haben, mit der Leertaste das Spiel starten.</p>
+        <table id="scores0" border="1" style="margin: 40px;">
+          <tr><th>Spieler</th><th>Nach links</th><th>Nach rechts</th><th>Farbe</th><th>Punkte</th><th>Bereit</th></tr>
+          <tr><td>1</td><td>1</td><td>Q</td><td style="color: red;">Rot</td><td>0</td><td>1 und Q drücken</td></tr>
+          <tr><td>2</td><td>◀︎</td><td>▲</td><td style="color: blue;">Blau</td><td>0</td><td>◀︎ und ▲ drücken</td></tr>
+          <tr><td>3</td><td>Y</td><td>X</td><td style="color: green;">Grün</td><td>0</td><td>Y und X drücken</td></tr>
+          <tr><td>4</td><td>L</td><td>O</td><td style="color: yellow;">Gelb</td><td>0</td><td>L und O drücken</td></tr>
+        </table>
+      </div>
+      <div id="touch">
+        <p>Bis zu 4 Spielern können hier spielen. Jeder Spieler steuert seine Kurve mit 2 Zonen eine für "nach links abdrehen" und eine für "nach rechts abdrehen".<br>Wer den Rand oder einen andere Kurve berührt, hat verloren.</p>
+        <p>Sobald alle die mitmachen wollen ihre Zonen 1x berührt haben, mit der mittleren Zone das Spiel starten.</p>
+        <table id="scores1" border="1" style="margin: 40px;">
+          <tr><th>Spieler</th><th>Nach links</th><th>Nach rechts</th><th>Farbe</th><th>Punkte</th><th>Bereit</th></tr>
+          <tr><td>1</td><td><div class="area" style="background-color: rgba(255,0,0,0.8);border-color: white;"></div></td><td><div class="area" style="background-color: rgba(255,0,0,0.8);border-color: magenta;"></div></td><td style="color: red;">Rot</td><td>0</td>
+            <td><div class="box" style="background-color: rgba(255,0,0,0.8);border-color: white;"></div> und <div class="box" style="background-color: rgba(255,0,0,0.8);border-color: magenta;"></div> berühren</td></tr>
+          <tr><td>2</td><td><div class="area" style="background-color: rgba(0,0,255,0.8);border-color: white;"></div></td><td><div class="area" style="background-color: rgba(0,0,255,0.8);border-color: magenta;"></div></td><td style="color: blue;">Blau</td><td>0</td>
+            <td><div class="box" style="background-color: rgba(0,0,255,0.8);border-color: white;"></div> und <div class="box" style="background-color: rgba(0,0,255,0.8);border-color: magenta;"></div> berühren</td></tr>
+          <tr><td>3</td><td><div class="area" style="background-color: rgba(0,255,0,0.8);border-color: white;"></div></td><td><div class="area" style="background-color: rgba(0,255,0,0.8);border-color: magenta;"></div></td><td style="color: green;">Grün</td><td>0</td>
+            <td><div class="box" style="background-color: rgba(0,255,0,0.8);border-color: white;"></div> und <div class="box" style="background-color: rgba(0,255,0,0.8);border-color: magenta;"></div> berühren</td></tr>
+          <tr><td>4</td><td><div class="area" style="background-color: rgba(255,255,0,0.8);border-color: white;"></div></td><td><div class="area" style="background-color: rgba(255,255,0,0.8);border-color: magenta;"></div></td><td style="color: yellow;">Gelb</td><td>0</td>
+            <td><div class="box" style="background-color: rgba(255,255,0,0.8);border-color: white;"></div> und <div class="box" style="background-color: rgba(255,255,0,0.8);border-color: magenta;"></div> berühren</td></tr>
+        </table>
+      </div>
     </div>
   </div>
 
