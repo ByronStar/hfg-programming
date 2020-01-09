@@ -2,78 +2,82 @@ var layer, base;
 var info, keyPressed;
 var width, height;
 var grid = 80;
-var mouse = ['mouseleft', 'mousemiddle', 'mouseright', 'mouse4', 'mouse5']
-// var mouse = ['mouseleft', 'mouseright', 'mousemiddle', 'mouse4', 'mouse5']
+// var mouse = ['mouseleft', 'mousemiddle', 'mouseright', 'mouse4', 'mouse5']
+var mouse = ['mouseleft', 'mouseright', 'mousemiddle', 'mouse4', 'mouse5']
 
 var bindings = [{
     // default
-    w: 'Forward',
-    a: 'Left',
-    s: 'Backward',
-    d: 'Right',
+    'w': 'Forward',
+    'a': 'Left',
+    's': 'Backward',
+    'd': 'Right',
     ' ': 'Jump',
-    Shift: 'Sprint',
-    0: 'Auto Run',
-    Control: 'Crouch',
-    MouseLeft: 'Fire',
-    MouseRight: 'Target',
-    r: 'Reload',
-    e: 'Use',
-    t: 'Pick',
-    1: 'Weapon 1',
-    2: 'Weapon 2',
-    3: 'Weapon 3',
-    4: 'Weapon 4',
-    F1: 'Wall',
-    F2: 'Floor',
-    F3: 'Ramp',
-    F4: 'Roof',
-    F5: 'Trap',
-    f: 'Repair',
-    g: 'Edit',
-    Escape: 'End',
-    Tab: 'Inventory',
-    i: 'Inventory',
-    l: 'Harvesting',
-    q: 'Toggle',
-    b: 'Emote',
-    m: 'Map',
+    'Shift': 'Sprint',
+    '0': 'Auto Run',
+    'Control': 'Crouch',
+    'MouseLeft': 'Fire',
+    'MouseRight': 'Target',
+    'r': 'Reload',
+    'e': 'Use',
+    't': 'Pick',
+    '1': 'Weapon 1',
+    '2': 'Weapon 2',
+    '3': 'Weapon 3',
+    '4': 'Weapon 4',
+    'F1': 'Wall',
+    'F2': 'Floor',
+    'F3': 'Ramp',
+    'F4': 'Roof',
+    'F5': 'Trap',
+    'f': 'Repair',
+    'g': 'Edit',
+    'Escape': 'End',
+    'Tab': 'Inventory',
+    'i': 'Inventory',
+    'l': 'Harvesting',
+    'q': 'Toggle',
+    'b': 'Emote',
+    'm': 'Map',
   },
   {
     // Benno #1
-    w: 'Forward',
-    a: 'Left',
-    s: 'Backward',
-    d: 'Right',
+    'w': 'Forward',
+    'a': 'Left',
+    's': 'Backward',
+    'd': 'Right',
     ' ': 'Jump',
-    Shift: 'Sprint',
-    0: 'Auto Run',
-    Control: 'Crouch',
-    MouseLeft: 'Fire',
-    MouseRight: 'Target',
-    r: 'Reload',
-    x: 'Use',
-    1: 'Axe',
-    2: 'Weapon 1',
-    3: 'Weapon 2',
-    4: 'Weapon 3',
-    5: 'Weapon 4',
-    6: 'Weapon 5',
-    c: 'Wall',
-    e: 'Floor',
-    q: 'Ramp',
-    v: 'Roof',
-    z: 'Trap',
-    h: 'Repair',
-    g: 'Edit',
-    Escape: 'End',
-    Tab: 'Inventory',
-    i: 'Inventory',
-    f: 'Place?',
-    l: 'Harvesting',
-    y: 'Map',
-    b: 'Emote',
-    m: 'Map',
+    'Shift': 'Sprint',
+    '0': 'Auto Run',
+    'Control': 'Crouch',
+    'MouseLeft': 'Fire',
+    'MouseRight': 'Target',
+    'Mouse4': 'Forward',
+    'Mouse5': 'Use',
+    'r': 'Reload',
+    'x': 'Use',
+    '1': 'Axe',
+    '2': 'Weapon 1',
+    '3': 'Weapon 2',
+    '4': 'Weapon 3',
+    '5': 'Weapon 4',
+    '6': 'Weapon 5',
+    'c': 'Wall',
+    'e': 'Floor',
+    'q': 'Ramp',
+    'v': 'Roof',
+    'z': 'Trap',
+    'F3': 'Pick',
+    'h': 'Repair',
+    'g': 'Edit',
+    'Escape': 'End',
+    'Tab': 'Inventory',
+    'i': 'Inventory',
+    'f': 'Place?',
+    'l': 'Harvesting',
+    '<': 'Toggle',
+    'y': 'Map',
+    'b': 'Emote',
+    'm': 'Map'
   }
 ];
 
@@ -111,7 +115,7 @@ var keys = [
   { k: 'Shift', r: 3, c: 0.7, f: 0, w: 90 },
   { k: '<', r: 3, c: 2.1, f: 1 },
   { k: 'y', r: 3, c: 3.1, f: 2 },
-  { k: 'x', r: 3, c: 4.1, f: 3 },
+  { k: 'x', r: 3, c: 4.1, f: 4 },
   { k: 'c', r: 3, c: 5.1, f: 4 },
   { k: 'v', r: 3, c: 6.1, f: 4 },
   { k: 'b', r: 3, c: 7.1, f: 5 },
@@ -123,28 +127,21 @@ var keys = [
   { k: 'MouseLeft', r: 4, c: 11.5, f: 6, w: 120 },
   { k: 'MouseMiddle', r: 4, c: 13.3, f: 6, w: 100 },
   { k: 'MouseRight', r: 4, c: 14.85, f: 6, w: 120 },
-  { k: 'Mouse5', r: 5, c: 11.9, f: 6, w: 60 },
-  { k: 'Mouse4', r: 6, c: 11.9, f: 6, w: 60 }
+  { k: 'Mouse5', r: 5, c: 11.8, f: 6, w: 80 },
+  { k: 'Mouse4', r: 6, c: 11.8, f: 6, w: 80 }
 ];
-/*
-Equal Sign	Auto Run
-Left Mouse Button	Fire/Use Item/Place Structure/Select Edits
-Right Mouse Button	Aim Down Scope/Change Building Material/Reset Edit
-Mouse Wheel Up	Previous Slot
-Mouse Wheel Down	Next Slot
-L	Toggle Harvesting Tool
-R	Rotate Building
-*/
 
 var binding = bindings[1];
 var sequence = [
-  ['q', 'w', 'MouseLeft'],
-  ['w', 'e', 'MouseLeft'],
-  ['w', 'c', 'MouseLeft']
+  ['Forward', 'Fire', 'Ramp'],
+  ['Forward', 'Fire', 'Floor'],
+  ['Forward', 'Fire', 'Wall']
+  // ,['Forward', 'Fire', 'Jump']
 ];
 var seq = 0;
+var seqCnt = 0;
 var seqTime;
-var gapTime = 0;
+var gapTime = new Date().getTime();
 
 function init() {
   info = document.getElementById('info');
@@ -165,8 +162,8 @@ function init() {
   })
   document.addEventListener('keyup', onKeyUp);
   document.addEventListener('keydown', onKeyDown);
-  document.addEventListener('mousedown', onMouseDown);
-  document.addEventListener('mouseup', onMouseUp);
+  document.addEventListener('mousedown', onMouse);
+  document.addEventListener('mouseup', onMouse);
   document.addEventListener('contextmenu', onMouseMenu);
   keys.forEach(key => {
     key.e.setAttribute('fill', finger[key.f])
@@ -191,22 +188,15 @@ function onKeyDown(evt) {
 
 function onMouseMenu(evt) {
   evt.preventDefault();
-  keyPressed['mouseright'] = true;
-  show();
 }
 
-function onMouseUp(evt) {
+function onMouse(evt) {
   evt.preventDefault();
-  keyPressed[mouse[evt.button]] = false;
-  // keyPressed[mouse[Math.log2(evt.buttons)]] = false;
-  show();
-}
-
-function onMouseDown(evt) {
-  // console.log(evt.button, evt.which, evt.buttons, Math.log2(evt.buttons));
-  evt.preventDefault();
-  keyPressed[mouse[evt.button]] = true;
-  // keyPressed[mouse[Math.log2(evt.buttons)]] = true;
+  var b = 1;
+  mouse.forEach((m, i) => {
+    keyPressed[m] = evt.buttons & b;
+    b *= 2;
+  })
   show();
 }
 
@@ -215,25 +205,31 @@ function show() {
     key.e.setAttribute('stroke', keyPressed[key.k.toLowerCase()] ? '#FF0000' : '#C0C0C0')
   });
   //winfo.innerHTML = keys.filter(key => keyPressed[key.k.toLowerCase()]).map(key => binding[key.k]).join(', ');
-  var s = keys.filter(key => keyPressed[key.k.toLowerCase()]).map(key => key.k);
-  if (!sequence[seq].some((k, i) => k != s[i])) {
+  var actions = Object.keys(binding).filter(k => keyPressed[k.toLowerCase()]).map(k => binding[k]);
+  // console.log(actions);
+  if (actions.some(a => sequence[seq].indexOf(a) == -1)) {
+    seq = 0;
+    seqCnt = 0;
+    playSound(sounds[4]);
+    gapTime = new Date().getTime();
+    info.innerHTML = "😱";
+    console.log("WRONG")
+  } else {
     if (seq == 0) {
       seqTime = new Date().getTime();
     }
-    seq = (seq + 1) % sequence.length
-    playSound(sounds[seq == 0 ? 4 : 0]);
-    if (seq == 0) {
-      var now = new Date().getTime()
-      info.innerHTML = (seqTime - gapTime) + " - " + (now - seqTime);
-      gapTime = now;
-    }
-  } else {
-    if (s.length >= sequence[seq].length) {
-      seq = 0;
-      playSound(sounds[2]);
+    if (actions.length == sequence[seq].length) {
+      seq = (seq + 1) % sequence.length
+      playSound(sounds[seq == 0 ? 2 : 0]);
+      if (seq == 0) {
+        var now = new Date().getTime();
+        seqCnt++;
+        info.innerHTML = (seqTime - gapTime) + " - " + (now - seqTime) + " - " + seqCnt;
+        gapTime = now;
+      }
+      console.log("RIGHT")
     }
   }
-  //console.log(s, !sequence[seq].some((k, i) => k != s[i]));
 }
 
 function clearElement(elem) {
@@ -276,7 +272,7 @@ function loadSound(url, idx) {
   request.onload = function() {
     audioCtx.decodeAudioData(request.response, function(buffer) {
       sounds[idx] = buffer
-      console.log("loaded " + url + " at " + idx)
+      // console.log("loaded " + url + " at " + idx)
     }, function(err) {
       console.log(idx, err)
     });
