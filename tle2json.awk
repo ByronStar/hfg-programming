@@ -1,7 +1,16 @@
 BEGIN {
-  print "{"
+  print "[{"
+  l = ""
 }
 /^1/ {
+  g=substr($3,0,5)
+  if (g != l) {
+    if (l != "") {
+      print "}, {"
+    }
+    l=g
+  }
+  printf("  \"%s\": [\n", name)
   printf("    \"%s\",\n", $0)
   next
 }
@@ -10,8 +19,8 @@ BEGIN {
   next
 }
 {
-  printf("  \"%s\": [\n", $0)
+  name = $0
 }
 END {
-  print "}"
+  print "}]"
 }

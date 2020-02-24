@@ -1,54 +1,99 @@
-var camera, scene, light, renderer, canvas, controls, obs, gmst;
+var camera, scene, light, renderer, canvas, controls, earth, space, axis, gmst, info;
 var sats = [];
 var actDate = new Date();
+var matSats = {
+  "19029": new THREE.MeshPhongMaterial({
+    color: 0x00FF00
+  })
+}
 
-// Set the Observer at 9.01 East by 48.65 North
-var obsGeo = {
-  longitude: satellite.degreesToRadians(9.01),
+// Set the Observer
+var obsGeo = [{
+  latitude: satellite.degreesToRadians(90),
+  longitude: satellite.degreesToRadians(0),
+  height: 500.0
+}, {
+  latitude: satellite.degreesToRadians(-90),
+  longitude: satellite.degreesToRadians(0),
+  height: 500.0
+}, {
   latitude: satellite.degreesToRadians(48.65),
+  longitude: satellite.degreesToRadians(-9.01),
   height: 0.490
-};
-// var obsGeo = {
-//   longitude: satellite.degreesToRadians(0),
-//   latitude: satellite.degreesToRadians(90),
-//   height: 0
-// };
+}, {
+  latitude: satellite.degreesToRadians(27.9375740),
+  longitude: satellite.degreesToRadians(15.546011),
+  height: 0
+}, {
+  latitude: satellite.degreesToRadians(51.676368),
+  longitude: satellite.degreesToRadians(0.0),
+  height: 0
+}, {
+  latitude: satellite.degreesToRadians(49.517710),
+  longitude: satellite.degreesToRadians(-1.576054),
+  height: 0
+}];
 
 function init() {
   console.log("screen = " + screen.width + " x " + screen.height + ", " + window.innerWidth + " x " + window.innerHeight);
+  info = document.getElementById('info');
   sample();
   scene();
 }
 
 function scene() {
   scene = new THREE.Scene();
-  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 5000);
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 5000);
+  camera.position.z = 25;
+
+  earth = new THREE.Group();
+  space = new THREE.Group();
+  // earth.add(createBall(6.36, 16));
+  earth.add(createGlobe(6.36, 64));
+  earth.add(createMarker(obsGeo[0], 0x00FFFF));
+  earth.add(createMarker(obsGeo[1], 0x00FFFF));
+  earth.add(createMarker(obsGeo[2], 0xFF0000));
+  space.add(earth);
+
+  // space.rotation.z = satellite.degreesToRadians(-23.27);
+  // axis = new THREE.Vector3(0, satellite.degreesToRadians(-23.27), 0).normalize();
+  // // rotate to observer
+  // space.rotateOnAxis(axis, satellite.degreesToRadians(90) - obsGeo[2].longitude);
+  // space.rotateOnAxis(new THREE.Vector3(0, 0, satellite.degreesToRadians(-90)).normalize(), obsGeo[2].latitude);
+
+  // scene.add(new THREE.AmbientLight(0xFFFFFF));
+  // scene.add(new THREE.AmbientLight(0x3D4143));
+  scene.add(new THREE.AmbientLight(0x404040));
+  light = new THREE.DirectionalLight(0xffffff, 1.2);
+  light.position.set(5, 3, 5);
+  light.target.position.set(0, 0, 0);
+  // light.castShadow = true;
+  // var d = 300;
+  // light.shadow.camera = new THREE.OrthographicCamera(-d, d, d, -d, 500, 1600);
+  // light.shadow.bias = 0.0001;
+  // light.shadow.mapSize.width = light.shadow.mapSize.height = 1024;
+  scene.add(light);
+
+  geoSat = new THREE.BufferGeometry().fromGeometry(new THREE.BoxGeometry(0.06, 0.06, 0.02));
+  matSat = new THREE.MeshPhongMaterial({
+    color: 0x0ffff00,
+    // wireframe: true,
+  });
+
+  actDate = new Date();
+  gmst = satellite.gstime(actDate);
+  sats.push(addSatellite("STARLINK-29", starlink[0]));
+
+  addCurve(sats[0]);
+  // for (var satId in starlink[0]) {
+  //   sats.push(addSatellite(satId, starlink[0]));
+  // }
+
+  scene.add(space);
 
   renderer = new THREE.WebGLRenderer();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  document.body.appendChild(renderer.domElement);
-
-  // var geometry = new THREE.BoxGeometry();
-  var geometry = new THREE.BufferGeometry().fromGeometry(new THREE.SphereGeometry(6.36, 64, 32));
-  var material = new THREE.MeshPhongMaterial({
-    color: 0x004080,
-    // wireframe: true,
-  });
-  var globe = new THREE.Mesh(geometry, material);
-  scene.add(globe);
-
-  scene.add(new THREE.AmbientLight(0x3D4143));
-  light = new THREE.DirectionalLight(0xffffff, 1.4);
-  light.position.set(300, 1000, 500);
-  light.target.position.set(0, 0, 0);
-  light.castShadow = true;
-  var d = 300;
-  light.shadow.camera = new THREE.OrthographicCamera(-d, d, d, -d, 500, 1600);
-  light.shadow.bias = 0.0001;
-  light.shadow.mapSize.width = light.shadow.mapSize.height = 1024;
-  scene.add(light);
-
-  camera.position.z = 30;
+  document.getElementById('tracker').appendChild(renderer.domElement);
 
   controls = new THREE.OrbitControls(camera, renderer.domElement); //helper to rotate around in scene
   controls.addEventListener('change', render);
@@ -57,63 +102,25 @@ function scene() {
   controls.enableZoom = false;
   controls.noKeys = true;
 
+  // render();
 
-  geoSat = new THREE.BufferGeometry().fromGeometry(new THREE.BoxGeometry(0.04, 0.04, 0.04));
-  matSat = new THREE.MeshPhongMaterial({
-    color: 0x0ffff00,
-    // wireframe: true,
-  });
-  var geoObs = new THREE.BufferGeometry().fromGeometry(new THREE.SphereGeometry(0.1, 16, 10));
-
-  matObs = new THREE.MeshPhongMaterial({
-    color: 0x0ff0000,
-    // wireframe: true,
-  });
-  var ecf = satellite.geodeticToEcf(obsGeo);
-  obs = new THREE.Mesh(geoObs, matObs);
-  scene.add(obs);
-  obs.position.x = Math.floor(ecf.x / 1000);
-  obs.position.y = ecf.z / 1000;
-  obs.position.z = ecf.y / 1000;
-  console.log(ecf, obs.position);
-
-  // for (var s=20; s < 82; s++) {
-  for (var satId in starlink) {
-    //var satId = "STARLINK-" + s
-    if (starlink[satId]) {
-      sats.push(addSatellite(satId));
-    }
-  }
-  //render();
   animate();
 }
 
-function addSatellite(satId) {
-  var sat = new THREE.Mesh(geoSat, matSat);
-  scene.add(sat);
-  updateSatellite(satId, sat);
-  return {id: satId, body: sat};
-}
-
-function updateSatellite(satId, sat) {
-  var pos = getPosition(satId);
-  sat.position.x = pos.x / 1000;
-  sat.position.y = pos.z / 1000;
-  sat.position.z = pos.y / 1000;
-}
-
-var animate = function() {
+function animate() {
   requestAnimationFrame(animate);
 
   actDate = new Date();
+  // actDate.setTime(actDate.getTime() - 360000);
   // actDate.setTime(actDate.getTime() + 1000);
   gmst = satellite.gstime(actDate);
+  info.innerHTML = actDate;
+
   sats.forEach((s, i) => {
-    updateSatellite(s.id, s.body);
+    updateSatellite(s);
   });
 
-  // globe.rotation.x += 0.01;
-  // globe.rotation.y += 0.01;
+  // space.rotateOnAxis(axis, satellite.degreesToRadians(-0.1));
 
   render();
 };
@@ -123,18 +130,93 @@ function render() {
   // console.log( renderer.info );
 }
 
-function getPosition(satId) {
-  var satrec = satellite.twoline2satrec(starlink[satId][0], starlink[satId][1]);
-  var satOSV = satellite.propagate(satrec, actDate);
+function createBall(radius, segments) {
+  return new THREE.Mesh(
+    new THREE.BufferGeometry().fromGeometry(new THREE.SphereGeometry(radius, segments, segments)),
+    new THREE.MeshPhongMaterial({
+      color: 0x004080,
+      // wireframe: true,
+    }));
+}
 
-//  console.log(satellite.eciToGeodetic(satOSV.position, gmst));
-  // return satOSV.position;
+function createGlobe(radius, segments) {
+  // http://www.shadedrelief.com/natural3/pages/textures.html
+  return new THREE.Mesh(
+    new THREE.SphereGeometry(radius, segments, segments),
+    new THREE.MeshPhongMaterial({
+      map: new THREE.TextureLoader().load('img/globe/2_no_clouds_4k.jpg'),
+      bumpMap: new THREE.TextureLoader().load('img/globe/elev_bump_4k.jpg'),
+      bumpScale: 0.1,
+      // specularMap: new THREE.TextureLoader().load('img/globe/water_4k.png'),
+      // specular: new THREE.Color('grey')
+    })
+  );
+}
+
+function createMarker(at, color) {
+  var obs = new THREE.Mesh(
+    new THREE.BufferGeometry().fromGeometry(new THREE.BoxGeometry(0.03, 0.03, 1)),
+    new THREE.MeshPhongMaterial({
+      color: color,
+      // wireframe: true,
+    }));
+  var ecf = satellite.geodeticToEcf(at);
+  obs.position.x = Math.floor(ecf.x / 1000);
+  obs.position.y = ecf.z / 1000;
+  obs.position.z = ecf.y / 1000;
+  obs.lookAt(0.0, 0.0, 0.0);
+  //obs.rotation.y = Math.atan2( ( globe.position.x - obs.position.x ), ( globe.position.z - obs.position.z ) );
+  // console.log(ecf, obs.position);
+  return obs;
+}
+
+function addSatellite(satId, sats) {
+  var satBody = new THREE.Mesh(geoSat, matSat);
+  space.add(satBody);
+  sat = { id: satId, satrec: satellite.twoline2satrec(sats[satId][0], sats[satId][1]), body: satBody };
+  updateSatellite(sat);
+  return sat;
+}
+
+function updateSatellite(sat) {
+  var pos = getPosition(sat);
+  sat.body.position.x = pos.x / 1000;
+  sat.body.position.y = pos.z / 1000;
+  sat.body.position.z = pos.y / 1000;
+  sat.body.lookAt(0.0, 0.0, 0.0);
+}
+
+function getPosition(sat) {
+  var satOSV = satellite.propagate(sat.satrec, actDate);
   return satellite.eciToEcf(satOSV.position, gmst);
+}
+
+function addCurve(sat) {
+  console.log(sat);
+  var pos = getPosition(sat);
+  var d = new THREE.Vector3(pos.x / 1000, pos.y / 1000, pos.z / 1000).length();
+  console.log(pos, d);
+  var curve = new THREE.EllipseCurve(
+    0, 0, // ax, aY
+    d, d, // xRadius, yRadius
+    0, 2 * Math.PI, // aStartAngle, aEndAngle
+    false, // aClockwise
+    0 // aRotation
+  );
+
+  var points = curve.getPoints(100);
+  var geometry = new THREE.BufferGeometry().setFromPoints(points);
+
+  var material = new THREE.LineBasicMaterial({ color: 0xFF00FF });
+
+  // Create the final object to add to the scene
+  var ellipse = new THREE.Line(geometry, material);
+  space.add(ellipse);
 }
 
 function sample() {
   // Initialize a satellite record
-  var satrec = satellite.twoline2satrec(starlink["STARLINK-31"][0], starlink["STARLINK-31"][1]);
+  var satrec = satellite.twoline2satrec(starlink[0]["STARLINK-31"][0], starlink[0]["STARLINK-31"][1]);
   console.log(satrec);
 
   //  Propagate satellite using time since epoch (in minutes).
@@ -148,12 +230,13 @@ function sample() {
   // You will need GMST for some of the coordinate transforms.
   // http://en.wikipedia.org/wiki/Sidereal_time#Definition
   var gmst = satellite.gstime(new Date());
+  // console.log(gmst);
 
   // You can get ECF, Geodetic, Look Angles, and Doppler Factor.
   var positionEcf = satellite.eciToEcf(satOSV.position, gmst),
-    observerEcf = satellite.geodeticToEcf(obsGeo),
+    observerEcf = satellite.geodeticToEcf(obsGeo[2]),
     positionGd = satellite.eciToGeodetic(satOSV.position, gmst),
-    lookAngles = satellite.ecfToLookAngles(obsGeo, positionEcf),
+    lookAngles = satellite.ecfToLookAngles(obsGeo[2], positionEcf),
     dopplerFactor = satellite.dopplerFactor(observerEcf, positionEcf, satellite.eciToEcf(satOSV.velocity, gmst));
 
   console.log("Sat OSV", satOSV.position);
@@ -165,7 +248,7 @@ function sample() {
   console.log("Sat DOP", dopplerFactor);
 
 }
-var starlink = {
+var starlink = [{
   "STARLINK-31": [
     "1 44235C 19029A   20054.51727402  .00004054  00000-0  23203-3 0   546",
     "2 44235  53.0043  12.0179 0002342  63.6272 103.2428 15.12133055    19"
@@ -394,6 +477,7 @@ var starlink = {
     "1 44294C 19029BM  20054.52062247 -.00024264  00000-0 -13881-2 0   548",
     "2 44294  53.0006  10.9974 0002026  47.6476 353.4735 15.12178443    10"
   ],
+}, {
   "STARLINK-1007": [
     "1 44713C 19074A   20054.52430090 -.01079543  00000-0 -14658-1 0   542",
     "2 44713  53.0070  14.2530 0001000  38.0448 160.3244 15.58080864    15"
@@ -630,6 +714,7 @@ var starlink = {
     "1 44772C 19074BM  20054.52738501 -.00021476  00000-0 -14708-2 0   543",
     "2 44772  52.9991  30.4622 0002027  49.5330 218.2765 15.05606978    12"
   ],
+}, {
   "STARLINK-1073": [
     "1 44914C 20001A   20054.52721736 -.00000889  00000-0 -60868-4 0   540",
     "2 44914  52.9995 170.4691 0001249  67.7061 258.6232 15.05588535    18"
@@ -870,6 +955,7 @@ var starlink = {
     "1 44973C 20001BM  20054.53120276 -.00013737  00000-0 -97648-4 0   540",
     "2 44973  52.9960 160.8395 0001785   4.3018 178.7055 15.73213521    13"
   ],
+}, {
   "STARLINK-1132": [
     "1 45044C 20006A   20054.53311706 -.00473070  00000-0 -33339-2 0   540",
     "2 45044  52.9982 109.9548 0001341  68.8943 265.5573 15.73875355    10"
@@ -1110,6 +1196,7 @@ var starlink = {
     "1 45103C 20006BM  20054.53588442 -.00002670  00000-0 -18964-4 0   542",
     "2 45103  52.9963 111.4520 0002097 337.1955 346.5047 15.73217856    19"
   ],
+}, {
   "STARLINK-1105": [
     "1 71105C 20012A   20054.53763585  .00147929  00000-0  18010-3 0   549",
     "2 71105  53.0031 240.3909 0119993  66.5240  14.4464 15.94464844    13"
@@ -1350,4 +1437,4 @@ var starlink = {
     "1 71271C 20012BM  20054.21451487  .00237959  00000-0  28841-3 0   549",
     "2 71271  53.0030 242.0537 0121744  65.5469 317.3676 15.94215361    19"
   ],
-};
+}];
