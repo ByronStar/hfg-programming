@@ -1,5 +1,5 @@
 BEGIN {
-  print "[{"
+  print "var starlink = [{"
   l = ""
 }
 /^1/ {
@@ -22,5 +22,5 @@ BEGIN {
   name = $0
 }
 END {
-  print "}]"
+  print "}];"
 }
