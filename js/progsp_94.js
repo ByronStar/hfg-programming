@@ -32,6 +32,10 @@ var obsGeo = [{
   latitude: satellite.degreesToRadians(49.517710),
   longitude: satellite.degreesToRadians(-1.576054),
   height: 0
+}, {
+  longitude: -0.028871518386126307,
+  latitude: -1.2808969029552153,
+  height: 388.61429896926074
 }];
 
 function init() {
@@ -60,6 +64,7 @@ function scene() {
   earth.add(createMarker(obsGeo[0], 0x00FFFF));
   earth.add(createMarker(obsGeo[1], 0x00FFFF));
   earth.add(createMarker(obsGeo[2], 0xFF0000));
+  earth.add(createMarker(obsGeo[6], 0xFF00FF));
   space.add(earth);
 
   // axial tilt
@@ -97,11 +102,13 @@ function scene() {
     // wireframe: true,
   });
 
-  actDate = new Date();
+  // actDate = new Date();
+  actDate = new Date(2020, 2, 25, 16, 18, 0);
   gmst = satellite.gstime(actDate);
-  sats.push(addSatellites("STARLINK-29", starlink[0]));
+  sats.push(addSatellite("STARLINK-29", starlink[0]));
   // sats.push(addSatellite("STARLINK-29", starlink[0]));
 
+  addCurve(sats[0]);
   var equ = addCurve(sats[0]);
   equ.rotation.x = satellite.degreesToRadians(90);
   // for (var satId in starlink[0]) {
@@ -191,34 +198,6 @@ function createMarker(at, color) {
   return obs;
 }
 
-function addSatellites(satId, sats) {
-  var satBody = new THREE.Mesh(geoSat, new THREE.MeshPhongMaterial({ color: 0xff0000 }));
-  space.add(satBody);
-  sat = { id: satId, satrec: satellite.twoline2satrec(sats[satId][0], sats[satId][1]), body: satBody };
-  var pos = getPosition(sat);
-  // x=east, y=rotation axis: + x -> z, z=zero meridan -90deg
-  satBody.position.x = pos.x / 1000;
-  satBody.position.y = pos.y / 1000;
-  satBody.position.z = pos.z / 1000;
-  satBody.lookAt(0.0, 0.0, 0.0);
-
-  satBody = new THREE.Mesh(geoSat, new THREE.MeshPhongMaterial({ color: 0x00ff00 }));
-  space.add(satBody);
-  satBody.position.x = pos.x / 1000;
-  satBody.position.y = pos.z / 1000;
-  satBody.position.z = pos.y / 1000;
-  satBody.lookAt(0.0, 0.0, 0.0);
-
-  satBody = new THREE.Mesh(geoSat, new THREE.MeshPhongMaterial({ color: 0x00FFff }));
-  space.add(satBody);
-  satBody.position.x = pos.y / 1000;
-  satBody.position.y = pos.z / 1000;
-  satBody.position.z = pos.x / 1000;
-  satBody.lookAt(0.0, 0.0, 0.0);
-
-  return sat;
-}
-
 function addSatellite(satId, sats) {
   var satBody = new THREE.Mesh(geoSat, matSat);
   space.add(satBody);
@@ -231,7 +210,7 @@ function updateSatellite(sat) {
   // x=zero meridan, y=east, z=rotation axis: + x -> y "right"
   var pos = getPosition(sat);
   // x=east, y=rotation axis: + x -> z, z=zero meridan -90deg
-  sat.body.position.x = pos.y / 1000;
+  sat.body.position.x = -pos.y / 1000;
   sat.body.position.y = pos.x / 1000;
   sat.body.position.z = pos.z / 1000;
   sat.body.lookAt(0.0, 0.0, 0.0);
@@ -268,34 +247,38 @@ function addCurve(sat) {
 
 function sample() {
   // Initialize a satellite record
-  var satrec = satellite.twoline2satrec(starlink[0]["STARLINK-31"][0], starlink[0]["STARLINK-31"][1]);
+  var satrec = satellite.twoline2satrec(starlink[0]["STARLINK-29"][0], starlink[0]["STARLINK-29"][1]);
   console.log(satrec);
 
   //  Propagate satellite using time since epoch (in minutes).
   // var satOSV = satellite.sgp4(satrec, timeSinceTleEpochMinutes);
   // console.log(satOSV);
 
+  // 2020-02-25 15:18:00 Z Starlink 29 at zero meridan
+  var actDate = new Date(2020, 2, 25, 16, 18, 0);
   //  Or you can use a JavaScript Date
-  var satOSV = satellite.propagate(satrec, new Date());
+  var satOSV = satellite.propagate(satrec, actDate);
   // console.log("Sat OSV",satOSV);
 
   // You will need GMST for some of the coordinate transforms.
   // http://en.wikipedia.org/wiki/Sidereal_time#Definition
-  var gmst = satellite.gstime(new Date());
+  var gmst = satellite.gstime(actDate);
   // console.log(gmst);
 
   // You can get ECF, Geodetic, Look Angles, and Doppler Factor.
   var positionEcf = satellite.eciToEcf(satOSV.position, gmst),
-    observerEcf = satellite.geodeticToEcf(obsGeo[2]),
+    observerEcf = satellite.geodeticToEcf(obsGeo[1]),
     positionGd = satellite.eciToGeodetic(satOSV.position, gmst),
-    lookAngles = satellite.ecfToLookAngles(obsGeo[2], positionEcf),
+    lookAngles = satellite.ecfToLookAngles(obsGeo[1], positionEcf),
     dopplerFactor = satellite.dopplerFactor(observerEcf, positionEcf, satellite.eciToEcf(satOSV.velocity, gmst));
 
+  console.log("Date", actDate);
   console.log("Sat OSV", satOSV.position);
   console.log("Sat ECF", positionEcf);
-  console.log("Obs ECF", observerEcf);
   console.log("Sat GEO", positionGd);
   console.log("Sat GEO", satellite.degreesLong(positionGd.longitude), satellite.degreesLat(positionGd.latitude));
+  console.log("Obs GEO", obsGeo[1]);
+  console.log("Obs ECF", observerEcf);
   console.log("Sat ANG", lookAngles);
   console.log("Sat DOP", dopplerFactor);
 
