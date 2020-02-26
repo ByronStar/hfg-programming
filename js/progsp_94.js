@@ -1,7 +1,7 @@
-var camera, scene, renderer, controls, earth, space, axis, tilt, gmst;
+var camera, scene, renderer, controls, earth, space, axis, tilt, gmst, northPole;
 var dateElem, locElem, infoElem, msgElem, msgId;
 var sats = [];
-var selected, matsSat, matSatSelect, arrowHelper, homeMarker, orbitLine;
+var selected, matsSat, matSel, arrowHelper, homeMarker, orbitLine;
 var actDate = new Date();
 
 var dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'N'];
@@ -18,8 +18,9 @@ function init() {
 
   //getTles('iss.js').then(data => console.log(data));
 
-  locElem.value = homeGeo.latitude + ', ' + homeGeo.longitude;
   getLocation();
+  clearMessage();
+
   // sample();
   scene();
 }
@@ -31,6 +32,7 @@ function scene() {
 
   // scene.add(new THREE.AxesHelper(8));
 
+  northPole = new THREE.Vector3(0, 6.36, 0)
   earth = new THREE.Group();
   space = new THREE.Group();
   earth.add(createGlobe(6.36, 64));
@@ -50,7 +52,7 @@ function scene() {
 
   // axial tilt
   tilt = satellite.degreesToRadians(-23.27)
-  // space.rotation.z = tilt;
+  // earth.rotation.z = tilt;
   axis = new THREE.Vector3(0, tilt, 0).normalize();
 
   scene.add(new THREE.AmbientLight(0x808080));
@@ -66,12 +68,12 @@ function scene() {
   scene.add(light);
   // scene.add( new THREE.DirectionalLightHelper( light, 3 ) );
 
-  geoSat = new THREE.BufferGeometry().fromGeometry(new THREE.BoxGeometry(0.03, 0.03, 0.01));
-  geoLead = new THREE.BufferGeometry().fromGeometry(new THREE.BoxGeometry(0.05, 0.05, 0.01));
-  matsSat = satColors.map(c => new THREE.MeshPhongMaterial({
+  geoSat = new THREE.BufferGeometry().fromGeometry(new THREE.BoxGeometry(0.04, 0.01, 0.005));
+  geoLead = new THREE.BufferGeometry().fromGeometry(new THREE.BoxGeometry(0.06, 0.02, 0.005));
+  matsSat = satColors.map(c => new THREE.MeshBasicMaterial({
     color: c
   }));
-  matSatSelect = new THREE.MeshPhongMaterial({
+  matSel = new THREE.MeshBasicMaterial({
     color: 0xff00ff
   });
 
@@ -79,7 +81,7 @@ function scene() {
   gmst = satellite.gstime(actDate);
 
   tles.forEach((list, i) => {
-    if (i == 4) {
+    if (i != -1) {
       var cnt = 0;
       for (var satId in list) {
         var sat = addSatellite(satId, list, leaders.indexOf(satId) > -1 ? geoLead : geoSat, matsSat[i], i);
@@ -110,21 +112,110 @@ function scene() {
   document.addEventListener('keyup', onKeyUp);
 }
 
-function onKeyUp(evt) {
-  if (evt.key == ' ') {
-    if (homeMarker) {
-      earth.remove(homeMarker);
-      // controls.saveState();
-      controls.target.copy(homeMarker.position);
-      camera.position.copy(homeMarker.position);
-      camera.position.z += home.height / 1000;
-      controls.update();
-      homeMarker = null;
+function onMouseUp(evt) {
+  evt.preventDefault();
+  var mouse3D = new THREE.Vector3((evt.clientX / window.innerWidth) * 2 - 1, -(evt.clientY / window.innerHeight) * 2 + 1, 0.5);
+  raycaster.setFromCamera(mouse3D, camera);
+  var intersects = raycaster.intersectObjects(sats.map(sat => sat.mesh));
+  if (intersects.length > 0) {
+    if (selected) {
+      selected.mesh.material = selected.mat;
+      if (orbitLine) {
+        space.remove(orbitLine);
+      }
+    }
+    var newSelected = sats.find(sat => sat.mesh == intersects[0].object)
+    // if (arrowHelper) {
+    //   space.remove(arrowHelper);
+    // }
+    // arrowHelper = new THREE.ArrowHelper(ecf2Vector3(satellite.eciToEcf(selected.OSV.velocity, gmst)), ecf2Vector3(satellite.eciToEcf(selected.OSV.position, gmst)), 0.5, 0xFF0000);
+    // space.add(arrowHelper);
+    if (selected != newSelected) {
+      selected = newSelected;
+      selected.mesh.material = matSel;
+      orbitLine = orbit(selected)
+      space.add(orbitLine);
     } else {
-      // controls.reset();
-      markHome();
+      selected = null;
     }
   }
+}
+
+function onKeyUp(evt) {
+  switch (evt.key) {
+    case ' ':
+      if (homeMarker) {
+        // move controls and camera to noth pole for sky view
+        controls.target.copy(northPole);
+        camera.position.copy(northPole);
+        camera.position.z += 0.01;
+        controls.update();
+
+        // rotate home to noth pole
+        space.quaternion.setFromUnitVectors(
+          homeMarker.position.normalize(),
+          new THREE.Vector3(0, 1, 0).normalize(),
+        );
+
+        earth.remove(homeMarker);
+        homeMarker = null;
+      } else {
+        space.rotation.set(0, 0, 0);
+        markHome();
+      }
+      break;
+    case 'a':
+      var vector = new THREE.Vector3();
+      camera.getWorldDirection( vector );
+      console.log(satellite.radiansToDegrees(vector.x),satellite.radiansToDegrees(vector.y),satellite.radiansToDegrees(vector.z));
+      break;
+  }
+}
+
+function markHome() {
+  // -34.007113, 18.486086
+  if (!homeMarker) {
+    homeMarker = createMarkerGeo(homeGeo, 0xFF0000);
+    earth.add(homeMarker);
+  }
+  var vec = ecf2Vector3(satellite.geodeticToEcf(home));
+  homeMarker.position.copy(vec);
+  homeMarker.quaternion.setFromUnitVectors(
+    new THREE.Vector3(0, 1, 0),
+    vec.normalize()
+  );
+  // rotate to home position
+  controls.reset();
+  controls.rotateLeft(-home.longitude);
+  controls.rotateUp(home.latitude);
+  controls.update();
+}
+
+function createMarkerGeo(at, color) {
+  var ecf = satellite.geodeticToEcf({
+    latitude: satellite.degreesToRadians(at.latitude),
+    longitude: satellite.degreesToRadians(at.longitude),
+    height: 300.0
+  });
+  return createMarker(ecf2Vector3(ecf), color);
+}
+
+function createMarker(vec, color) {
+  var marker = new THREE.Mesh(
+    new THREE.BufferGeometry().fromGeometry(new THREE.CylinderGeometry(0.04, 0.001, 0.6, 16)),
+    new THREE.MeshPhongMaterial({
+      color: color
+    }));
+
+  marker.position.copy(vec);
+  // align object with given axis to a vector
+  marker.quaternion.setFromUnitVectors(
+    new THREE.Vector3(0, 1, 0),
+    vec.normalize()
+  );
+  // marker.position.copy(vector.clone().multiplyScalar(0.5));
+  // marker.lookAt(0.0, 0.0, 0.0);
+  return marker;
 }
 
 function animate() {
@@ -178,14 +269,15 @@ function createGlobe(radius, segments) {
     new THREE.SphereGeometry(radius, segments, segments),
     new THREE.MeshPhongMaterial({
       map: new THREE.TextureLoader().load('img/globe/2_no_clouds_4k.jpg'),
+      side: THREE.DoubleSide,
       bumpMap: new THREE.TextureLoader().load('img/globe/elev_bump_4k.jpg'),
       bumpScale: 0.1,
       // specularMap: new THREE.TextureLoader().load('img/globe/water_4k.png'),
       // specular: new THREE.Color('grey')
     })
   ));
-  globe.add(addCurve(radius + 0.01, 0x808080));
-  var equ = addCurve(radius + 0.01, 0x808080);
+  globe.add(addCurve(radius + 0.005, 0x808080));
+  var equ = addCurve(radius + 0.005, 0x808080);
   equ.rotation.x = satellite.degreesToRadians(90);
   globe.add(equ);
 
@@ -212,54 +304,11 @@ function createStars(radius, segments) {
       side: THREE.BackSide
     })
   ));
-  stars.add(addCurve(radius - 1.0, 0xFF00FF));
+  stars.add(addCurve(99, 0xFF00FF));
+  var ew = addCurve(99, 0x00FFFF);
+  ew.rotation.y = satellite.degreesToRadians(90);
+  stars.add(ew);
   return stars;
-}
-
-function markHome() {
-  // -34.007113, 18.486086
-  if (!homeMarker) {
-    homeMarker = createMarkerGeo(home, 0xFF0000);
-    earth.add(homeMarker);
-  }
-  var vec = ecf2Vector3(satellite.geodeticToEcf(home));
-  homeMarker.position.copy(vec);
-  homeMarker.quaternion.setFromUnitVectors(
-    new THREE.Vector3(0, 1, 0),
-    vec.normalize()
-  );
-  // rotate to home position
-  controls.reset();
-  controls.rotateLeft(-home.longitude);
-  controls.rotateUp(home.latitude);
-  controls.update();
-}
-
-function createMarkerGeo(at, color) {
-  var ecf = satellite.geodeticToEcf({
-    latitude: at.latitude,
-    longitude: at.longitude,
-    height: 300.0
-  });
-  return createMarker(ecf2Vector3(ecf), color);
-}
-
-function createMarker(vec, color) {
-  var marker = new THREE.Mesh(
-    new THREE.BufferGeometry().fromGeometry(new THREE.CylinderGeometry(0.04, 0.001, 0.6, 16)),
-    new THREE.MeshPhongMaterial({
-      color: color
-    }));
-
-  marker.position.copy(vec);
-  // align object with given axis to a vector
-  marker.quaternion.setFromUnitVectors(
-    new THREE.Vector3(0, 1, 0),
-    vec.normalize()
-  );
-  // marker.position.copy(vector.clone().multiplyScalar(0.5));
-  // marker.lookAt(0.0, 0.0, 0.0);
-  return marker;
 }
 
 function addSatellite(satId, sats, geo, mat, group) {
@@ -286,33 +335,6 @@ function ecf2Vector3(ecf) {
 
 function velo2Vector3(ecf) {
   return new THREE.Vector3(ecf.y / 1000, ecf.x / 1000, ecf.z / 1000);
-}
-
-function onMouseUp(evt) {
-  evt.preventDefault();
-  var mouse3D = new THREE.Vector3((evt.clientX / window.innerWidth) * 2 - 1, -(evt.clientY / window.innerHeight) * 2 + 1, 0.5);
-  raycaster.setFromCamera(mouse3D, camera);
-  var intersects = raycaster.intersectObjects(sats.map(sat => sat.mesh));
-  if (intersects.length > 0) {
-    if (selected) {
-      selected.mesh.material = selected.mat;
-    }
-    selected = sats.find(sat => sat.mesh == intersects[0].object)
-    selected.mesh.material = matSatSelect;
-    // camera.lookAt(ecf2Vector3(satellite.eciToEcf(selected.OSV.position, gmst)));
-    // camera.position.copy(ecf2Vector3(homeEcf));
-    // if (arrowHelper) {
-    //   space.remove(arrowHelper);
-    // }
-    // arrowHelper = new THREE.ArrowHelper(ecf2Vector3(satellite.eciToEcf(selected.OSV.velocity, gmst)), ecf2Vector3(satellite.eciToEcf(selected.OSV.position, gmst)), 0.5, 0xFF0000);
-    // space.add(arrowHelper);
-    if (orbitLine) {
-      space.remove(orbitLine);
-    }
-    orbitLine = orbit(selected)
-    space.add(orbitLine);
-    animate();
-  }
 }
 
 function orbit(sat) {
@@ -362,7 +384,7 @@ function clearMessage() {
     clearTimeout(msgId);
   }
   msgId = null;
-  msgElem.innerHTML = 'Use the mouse to change view and select satellites for details.';
+  msgElem.innerHTML = 'Use the mouse to change the view and to select satellites for details. "Space" toggles sky/earth perspective.';
 }
 
 function locChange(evt) {
@@ -392,6 +414,7 @@ function locChange(evt) {
 }
 
 function getLocation() {
+  locElem.value = homeGeo.latitude + ', ' + homeGeo.longitude;
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(setPosition);
   } else {
@@ -411,6 +434,7 @@ function setPosition(position) {
     longitude: satellite.degreesToRadians(homeGeo.longitude),
     height: homeGeo.height
   };
+  locElem.value = homeGeo.latitude + ', ' + homeGeo.longitude;
 }
 
 function getTles(tleData) {
@@ -476,32 +500,26 @@ function sample() {
 
   // Initialize a satellite record: ISS
   var satrec = satellite.twoline2satrec("1 25544U 98067A   20055.55157548  .00016717  00000-0  10270-3 0  9009", "2 25544  51.6415 190.7274 0005124 308.6091  51.4600 15.49221706 14393");
-  console.log(satrec);
 
   //  Propagate satellite using time since satellite epoch (in minutes) => Orbital State Vector
   var satOSV = satellite.sgp4(satrec, minutesSinceTleEpoch(actDate, satrec));
   //  Or you can use a JavaScript Date
   // var satOSV = satellite.propagate(satrec, actDate);
-  // console.log("Sat OSV",satOSV);
 
-  // console.log(gmst);
-
-  // You can get ECF, Geodetic, Look Angles, and Doppler Factor.
-  var positionEcf = satellite.eciToEcf(satOSV.position, gmst),
-    observerEcf = satellite.geodeticToEcf(home),
-    positionGd = satellite.eciToGeodetic(satOSV.position, gmst),
-    lookAngles = satellite.ecfToLookAngles(home, positionEcf),
-    dopplerFactor = satellite.dopplerFactor(observerEcf, positionEcf, satellite.eciToEcf(satOSV.velocity, gmst));
+  var satEcf = satellite.eciToEcf(satOSV.position, gmst),
+    satGeo = satellite.eciToGeodetic(satOSV.position, gmst),
+    homeEcf = satellite.geodeticToEcf(home);
 
   console.log("Date", actDate);
+  console.log("gmst", gmst);
   console.log("Sat OSV", satOSV.position);
-  console.log("Sat ECF", positionEcf);
-  console.log("Sat GEO", positionGd);
-  console.log("Sat GEO", satellite.degreesLat(positionGd.latitude), satellite.degreesLong(positionGd.longitude));
+  console.log("Sat ECF", satEcf);
+  console.log("Sat GEO", satGeo);
+  console.log("Sat GEO", satellite.degreesLat(satGeo.latitude), satellite.degreesLong(satGeo.longitude));
   console.log("Obs GEO", home);
   console.log("Sat GEO", satellite.degreesLat(home.latitude), satellite.degreesLong(home.longitude));
-  console.log("Obs ECF", observerEcf);
-  console.log("Sat ANG", lookAngles);
-  console.log("Sat DOP", dopplerFactor);
-
+  console.log("Obs ECF", homeEcf);
+  console.log("Sat ANG", satellite.ecfToLookAngles(home, satEcf));
+  console.log("Sat DOP", satellite.dopplerFactor(homeEcf, satEcf, satellite.eciToEcf(satOSV.velocity, gmst)));
+  console.log("Sat TLE", satrec);
 }
