@@ -1,4 +1,4 @@
-var camera, scene, renderer, controls, earth, space, axis, tilt, gmst, northPole;
+var camera, scene, renderer, controls, earth, space, axis, tilt, gmst, northPole, ball;
 var dateElem, locElem, infoElem, msgElem, msgId;
 var sats = [];
 var selected, matsSat, matSel, arrowHelper, homeMarker, orbitLine;
@@ -139,6 +139,12 @@ function onMouseUp(evt) {
       selected = null;
     }
   }
+  intersects = raycaster.intersectObjects([ball], true);
+  var p = {
+    latitude: satellite.radiansToDegrees(Math.asin(intersects[0].point.z / 6.36)),
+    longitude: satellite.radiansToDegrees(Math.atan2(intersects[0].point.y, intersects[0].point.x))
+  };
+  console.log(intersects[0].point, p);
 }
 
 function onKeyUp(evt) {
@@ -166,8 +172,8 @@ function onKeyUp(evt) {
       break;
     case 'a':
       var vector = new THREE.Vector3();
-      camera.getWorldDirection( vector );
-      console.log(satellite.radiansToDegrees(vector.x),satellite.radiansToDegrees(vector.y),satellite.radiansToDegrees(vector.z));
+      camera.getWorldDirection(vector);
+      console.log(satellite.radiansToDegrees(vector.x), satellite.radiansToDegrees(vector.y), satellite.radiansToDegrees(vector.z));
       break;
   }
 }
@@ -189,6 +195,16 @@ function markHome() {
   controls.rotateLeft(-home.longitude);
   controls.rotateUp(home.latitude);
   controls.update();
+  // var sunTimes = SunCalc.getTimes(actDate, homeGeo.latitude, homeGeo.longitude, homeGeo.height);
+  // console.log(sunTimes);
+  // //azimuth: 0 is south and Math.PI * 3/4 is northwest
+  // var sunPos = SunCalc.getPosition(actDate, homeGeo.latitude, homeGeo.longitude);
+  // console.log(sunPos);
+  // var moonPos = SunCalc.getMoonPosition(actDate, homeGeo.latitude, homeGeo.longitude);
+  // var moonPhase = SunCalc.getMoonIllumination(actDate);
+  // console.log(moonPos, moonPhase);
+  // var moonTimes = SunCalc.getMoonTimes(actDate, homeGeo.latitude, homeGeo.longitude, false);
+  // console.log(moonTimes);
 }
 
 function createMarkerGeo(at, color) {
@@ -265,7 +281,7 @@ function createBall(radius, segments) {
 function createGlobe(radius, segments) {
   // http://www.shadedrelief.com/natural3/pages/textures.html
   var globe = new THREE.Group();
-  globe.add(new THREE.Mesh(
+  ball = new THREE.Mesh(
     new THREE.SphereGeometry(radius, segments, segments),
     new THREE.MeshPhongMaterial({
       map: new THREE.TextureLoader().load('img/globe/2_no_clouds_4k.jpg'),
@@ -275,7 +291,8 @@ function createGlobe(radius, segments) {
       // specularMap: new THREE.TextureLoader().load('img/globe/water_4k.png'),
       // specular: new THREE.Color('grey')
     })
-  ));
+  )
+  globe.add(ball);
   globe.add(addCurve(radius + 0.005, 0x808080));
   var equ = addCurve(radius + 0.005, 0x808080);
   equ.rotation.x = satellite.degreesToRadians(90);
@@ -333,14 +350,10 @@ function ecf2Vector3(ecf) {
   return new THREE.Vector3(ecf.y / 1000, ecf.z / 1000, ecf.x / 1000);
 }
 
-function velo2Vector3(ecf) {
-  return new THREE.Vector3(ecf.y / 1000, ecf.x / 1000, ecf.z / 1000);
-}
-
 function orbit(sat) {
   var date = actDate;
   var geo = new THREE.Geometry();
-  for (var seg = 0; seg < 100; seg++) {
+  for (var seg = 0; seg < 120; seg++) {
     // var satOSV = satellite.sgp4(sat.satrec, startPos + seg * 5);
     var satOSV = satellite.propagate(sat.satrec, date);
     geo.vertices.push(ecf2Vector3(satellite.eciToEcf(satOSV.position, satellite.gstime(date))));
@@ -435,6 +448,7 @@ function setPosition(position) {
     height: homeGeo.height
   };
   locElem.value = homeGeo.latitude + ', ' + homeGeo.longitude;
+  markHome();
 }
 
 function getTles(tleData) {
