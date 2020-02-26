@@ -19,11 +19,9 @@
   <!-- satellite.js -->
   <script type="text/javascript" src="lib/satellite.js"></script>
 
-  <!-- poly-decomp.js -->
-  <!-- <script type="text/javascript" src="lib/decomp.min.js"></script> -->
-
   <!-- Program logic -->
-  <script type="text/javascript" src="js/starlink.js"></script>
+  <script type="text/javascript" src="data/starlink.js"></script>
+  <script type="text/javascript"  src="js/utils.js"></script>
   <script type="text/javascript" src="js/progsp_94.js"></script>
 
   <!-- Styles -->
@@ -35,6 +33,25 @@
       margin: 0;
     }
 
+    a {
+      color: #00a9fe;
+      text-decoration: none;
+    }
+
+    input {
+      /* color: #00a9fe; */
+      background: lightgray;
+      border-color: lightblue;
+    }
+
+    a:hover {
+      color: #ffa312;
+    }
+
+    #msg {
+      color: #ff0000;
+    }
+
     #tracker {
       position: absolute;
       top: 0;
@@ -44,6 +61,14 @@
       position: relative;
       margin: 40px;
     }
+
+    #impressum {
+      position: fixed;
+      bottom: 0;
+      right: 0;
+      margin: 40px;
+      font-size: small;
+    }
   </style>
 </head>
 
@@ -51,9 +76,21 @@
   <div id="tracker">
   </div>
   <div id="overlay">
-    <h1>Satellite Tracker (StarLink)</h1>
-    <div id="info">
-    Hallo
+    <h1>3D Satellite Tracker (Starlink)</h1>
+    <p id="msg">Use the mouse to change view and select satellites for details.</p>
+    <span id="date"></span> at
+    <input type="text" id="location" name="location" value="48.654685, 9.015906">
+    <label for="location"> (lat,lon)</label>
+    <button onclick="locChange(event)">Set</button>
+  </form>
+    <div id="info"></div>
+    <div id="impressum">
+      <p>
+        3D graphics by <a href="https://threejs.org/docs/index.html#manual/en/introduction/Creating-a-scene" target="_blank">three.js</a><br>
+        Satellite calculations <a href="https://github.com/shashwatak/satellite-js" target="_blank">satellite.js</a><br>
+        inspired by <a href="https://findstarlink.com" target="_blank">Track Starlink Satellites</a><br>
+        and <a href="http://www.shadedrelief.com/natural3/index.html" target="_blank">Natural Earth III</a>
+      </p>
     </div>
   </div>
 </body>

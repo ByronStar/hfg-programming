@@ -19,7 +19,7 @@ BEGIN {
   next
 }
 {
-  name = $0
+  name = $1
 }
 END {
   print "}];"
