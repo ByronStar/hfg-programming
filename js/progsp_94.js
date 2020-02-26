@@ -1,8 +1,9 @@
 var camera, scene, light, renderer, canvas, controls, earth, space, axis, gmst, info;
 var sats = [];
-var selected, matSat, matSatSelect;
+var selected, matSat, matSatSelect, arrowHelper;
 var actDate = new Date();
 
+var dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'N'];
 var satColors = [0xFF8000, 0x00A040, 0x0060FF, 0xFFFF00, 0x00FFFF];
 var raycaster = new THREE.Raycaster();
 
@@ -16,7 +17,7 @@ function init() {
 function scene() {
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 5000);
-  camera.position.z = 25;
+  camera.position.z = 20;
 
   // scene.add(new THREE.AxesHelper(8));
 
@@ -34,8 +35,8 @@ function scene() {
   // earth.add(createMarkerGeo(obsGeo[1], 0x00FFFF));
   // earth.add(createMarkerGeo(obsGeo[2], 0x00FFFF));
   // earth.add(createMarkerGeo(obsGeo[3], 0x00FFFF));
-  // space.add(createMarkerGeo(obsGeo[8], 0xFF00FF));
-  // space.add(createMarkerGeo(obsGeo[9], 0xFF00FF));
+  // space.add(createMarkerGeo(obsGeo[4], 0xFF00FF));
+  // space.add(createMarkerGeo(obsGeo[5], 0xFF00FF));
 
   space.add(earth);
 
@@ -43,18 +44,16 @@ function scene() {
   var tilt = satellite.degreesToRadians(-23.27)
   space.rotation.z = tilt;
   axis = new THREE.Vector3(0, tilt, 0).normalize();
-  // earth.rotateOnAxis(axis, satellite.degreesToRadians(160));
 
-  // rotate to observer
-  // space.rotateOnAxis(axis, satellite.degreesToRadians(90) - home.longitude);
-  // space.rotateOnAxis(new THREE.Vector3(0, 0, satellite.degreesToRadians(-90)).normalize(), home.latitude);
+  // rotate to observer - TODO: not correct
+  scene.rotateOnAxis(new THREE.Vector3(0, 1, 0), tilt - home.longitude / 3);
+  scene.rotateOnAxis(new THREE.Vector3(1, 0, 0), home.latitude);
 
   scene.add(new THREE.AmbientLight(0x808080));
   // scene.add(new THREE.AmbientLight(0x404040));
   light = new THREE.DirectionalLight(0xffffff, 1.2);
   light.position.set(0, 0, 8);
   light.target.position.set(0, 0, 0);
-  // light.rotation.x = satellite.degreesToRadians(-23.27);
   // light.castShadow = true;
   // var d = 300;
   // light.shadow.camera = new THREE.OrthographicCamera(-d, d, d, -d, 500, 1600);
@@ -63,10 +62,8 @@ function scene() {
   scene.add(light);
   // scene.add( new THREE.DirectionalLightHelper( light, 3 ) );
 
-  // light.rotateOnAxis(new THREE.Vector3(0, 0, 0).normalize(), satellite.degreesToRadians(90));
-  //scene.rotation.y = satellite.degreesToRadians(-60);
-
   geoSat = new THREE.BufferGeometry().fromGeometry(new THREE.BoxGeometry(0.03, 0.03, 0.01));
+  geoLead = new THREE.BufferGeometry().fromGeometry(new THREE.BoxGeometry(0.05, 0.05, 0.01));
   matSat = satColors.map(c => new THREE.MeshPhongMaterial({
     color: c
   }));
@@ -77,11 +74,12 @@ function scene() {
   actDate = new Date();
   gmst = satellite.gstime(actDate);
 
-  //sats.push(addSatellite("STARLINK-29", starlink[0]));
   starlink.forEach((list, i) => {
     var cnt = 0;
+    var geo = geoLead;
     for (var satId in list) {
-      var sat = addSatellite(satId, list, matSat[i]);
+      var sat = addSatellite(satId, list, geo, matSat[i], i);
+      geo = geoSat;
       sats.push(sat);
       cnt++;
     }
@@ -117,10 +115,13 @@ function animate() {
   info.innerHTML = actDate;
   if (selected) {
     var look = satellite.ecfToLookAngles(home, satellite.eciToEcf(selected.OSV.position, gmst));
-    info.innerHTML += "<br>" + selected.id + "<br>" + satellite.eciToGeodetic(selected.OSV.position, gmst).height;
-    info.innerHTML += "<br>" + look.azimuth;
-    info.innerHTML += "<br>" + look.elevation;
-    info.innerHTML += "<br>" + look.rangeSat;
+    var html = actDate + '<p><table>';
+    html += '<tr><td>Train ' + selected.train + '</td><td>' + selected.id + '</td></tr>'
+    html += '<tr><td>Height</td><td>' + satellite.eciToGeodetic(selected.OSV.position, gmst).height.toFixed(2) + 'km</td></tr>';
+    html += '<tr><td>Azimut</td><td>' + satellite.radiansToDegrees(look.azimuth).toFixed(2) + '° '+ dirs[Math.floor(satellite.radiansToDegrees(look.azimuth) / 45 + 0.5)] + '</td></tr>';
+    html += '<tr><td>Elevation</td><td>' + satellite.radiansToDegrees(look.elevation).toFixed(1) + '°</td></tr>';
+    html += '<tr><td>Range</td><td>' + look.rangeSat.toFixed(0) + 'km</td></tr></table>';
+    info.innerHTML = html;
   }
 
   sats.forEach((s, i) => {
@@ -159,8 +160,8 @@ function createGlobe(radius, segments) {
       // specular: new THREE.Color('grey')
     })
   );
-  globe.add(addCurve(radius + 0.01, 0x202020));
-  var equ = addCurve(radius + 0.01, 0x202020);
+  globe.add(addCurve(radius + 0.01, 0x808080));
+  var equ = addCurve(radius + 0.01, 0x808080);
   equ.rotation.x = satellite.degreesToRadians(90);
   globe.add(equ);
 
@@ -194,7 +195,7 @@ function createMarkerGeo(at, color) {
     longitude: at.longitude,
     height: 300.0
   });
-  return createMarker(ecf2THREE(ecf), color);
+  return createMarker(ecf2Vector3(ecf), color);
 }
 
 function createMarker(vec, color) {
@@ -215,9 +216,9 @@ function createMarker(vec, color) {
   return marker;
 }
 
-function addSatellite(satId, sats, mat) {
-  var satMesh = new THREE.Mesh(geoSat, mat);
-  sat = { id: satId, satrec: satellite.twoline2satrec(sats[satId][0], sats[satId][1]), mesh: satMesh, mat: mat };
+function addSatellite(satId, sats, geo, mat, train) {
+  var satMesh = new THREE.Mesh(geo, mat);
+  sat = { id: satId, satrec: satellite.twoline2satrec(sats[satId][0], sats[satId][1]), mesh: satMesh, mat: mat, train: train };
   updateSatellite(sat);
   space.add(satMesh);
   return sat;
@@ -230,11 +231,15 @@ function updateSatellite(sat) {
 
 function getVector(sat) {
   sat.OSV = satellite.propagate(sat.satrec, actDate);
-  return ecf2THREE(satellite.eciToEcf(sat.OSV.position, gmst));
+  return ecf2Vector3(satellite.eciToEcf(sat.OSV.position, gmst));
 }
 
-function ecf2THREE(ecf) {
+function ecf2Vector3(ecf) {
   return new THREE.Vector3(ecf.y / 1000, ecf.z / 1000, ecf.x / 1000);
+}
+
+function velo2Vector3(ecf) {
+  return new THREE.Vector3(ecf.y / 1000, ecf.x / 1000, ecf.z / 1000);
 }
 
 function onMouseUp(evt) {
@@ -248,7 +253,13 @@ function onMouseUp(evt) {
     }
     selected = sats.find(sat => sat.mesh == intersects[0].object)
     selected.mesh.material = matSatSelect;
-    console.log(selected.OSV);
+    // camera.lookAt(ecf2Vector3(satellite.eciToEcf(selected.OSV.position, gmst)));
+    // camera.position.copy(ecf2Vector3(homeEcf));
+    if (arrowHelper) {
+      space.remove(arrowHelper);
+    }
+    arrowHelper = new THREE.ArrowHelper(ecf2Vector3(satellite.eciToEcf(selected.OSV.velocity, gmst)), ecf2Vector3(satellite.eciToEcf(selected.OSV.position, gmst)), 0.5, 0xFF0000);
+    space.add(arrowHelper);
     // .material.color.setHex(Math.random() * 0xffffff);
     animate();
   }
@@ -339,17 +350,9 @@ var obsGeo = [{
   longitude: satellite.degreesToRadians(9.01),
   height: 0.490
 }, {
-  latitude: satellite.degreesToRadians(27.9375740),
-  longitude: satellite.degreesToRadians(15.546011),
-  height: 0
-}, {
   // Greenwitch Prime Meridian
   latitude: satellite.degreesToRadians(51.478067),
   longitude: satellite.degreesToRadians(0.0),
-  height: 0
-}, {
-  latitude: satellite.degreesToRadians(49.517710),
-  longitude: satellite.degreesToRadians(-1.576054),
   height: 0
 }, {
   // STARLINK-29 / 0 at Date(2020, 2, 25, 16, 18, 0)
