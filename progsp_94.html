@@ -23,8 +23,7 @@
   <script type="text/javascript" src="lib/suncalc.js"></script>
 
   <!-- Program logic -->
-  <script type="text/javascript" src="data/starlink.js"></script>
-  <script type="text/javascript"  src="js/utils.js"></script>
+  <script type="text/javascript" src="js/utils.js"></script>
   <script type="text/javascript" src="js/progsp_94.js"></script>
 
   <!-- Styles -->
@@ -34,6 +33,7 @@
       color: yellow;
       padding: 0;
       margin: 0;
+      background: black;
     }
 
     a {
@@ -51,6 +51,20 @@
       color: #ffa312;
     }
 
+    .doselect {
+      pointer-events: all;
+    }
+
+    .noselect {
+      -webkit-touch-callout: none; /* iOS Safari */
+      -webkit-user-select: none; /* Safari */
+       -khtml-user-select: none; /* Konqueror HTML */
+         -moz-user-select: none; /* Old versions of Firefox */
+          -ms-user-select: none; /* Internet Explorer/Edge */
+              user-select: none; /* Non-prefixed version, currently supported by Chrome, Opera and Firefox */
+      pointer-events: none;
+    }
+
     #msg {
       color: #ff0000;
     }
@@ -62,14 +76,15 @@
 
     #overlay {
       position: relative;
-      margin: 40px;
+      margin: 20px;
+      pointer-events: none;
     }
 
     #impressum {
       position: fixed;
       bottom: 0;
       right: 0;
-      margin: 40px;
+      margin: 20px;
       font-size: small;
     }
   </style>
@@ -79,20 +94,32 @@
   <div id="tracker">
   </div>
   <div id="overlay">
-    <h1>3D Satellite Tracker (Starlink)</h1>
+    <h1 style="display: inline">3D Satellite Tracker (<span id="name">Starlink</span>)</h1>
+    <select id="sats" class="doselect" onchange="selectedSat(event)">
+      <option value="starlink.js">STARLINK</option>
+      <option value="cpf.js">CPF</option>
+      <option value="glonass.js">GLONASS</option>
+      <option value="gps.js">GPS</option>
+      <option value="intelsat.js">INTELSAT</option>
+      <option value="iss.js">ISS</option>
+      <option value="meteosat.js">METEOSAT</option>
+      <option value="orbcomm.js">ORBCOMM</option>
+      <option value="ses.js">SES</option>
+    </select>
     <p id="msg"></p>
-    <span id="date"></span> at
-    <input type="text" id="location" name="location" value="48.654685, 9.015906">
-    <label for="location"> (lat,lon)</label>
-    <button onclick="locChange(event)">Set</button>
-  </form>
+    <div class="doselect">
+      <div id="date"></div>
+      <button onclick="locChange(event)">Set</button><input type="text" id="location" name="location" value="48.654685, 9.015906"><label for="location"> lat,lon or "ctrl-click" on earth</label><br>
+      <button id="sky" onclick="toggleSky(event)">Sky</button>View
+    </div>
     <div id="info"></div>
-    <div id="impressum">
+    <div id="impressum" class="doselect">
       <p>
         3D graphics by <a href="https://threejs.org/docs/index.html#manual/en/introduction/Creating-a-scene" target="_blank">three.js</a><br>
-        Satellite calculations <a href="https://github.com/shashwatak/satellite-js" target="_blank">satellite.js</a><br>
+        Satellite calculations from <a href="https://github.com/shashwatak/satellite-js" target="_blank">satellite.js</a><br>
         inspired by <a href="https://findstarlink.com" target="_blank">Track Starlink Satellites</a><br>
-        and <a href="http://www.shadedrelief.com/natural3/index.html" target="_blank">Natural Earth III</a>
+        and <a href="https://blog.mastermaps.com/2013/09/creating-webgl-earth-with-threejs.html" target="_blank">Creating a WebGL Earth with three.js</a><br>
+        and <a href="http://www.shadedrelief.com/natural3/index.html" target="_blank">Natural Earth III</a><br>
       </p>
     </div>
   </div>

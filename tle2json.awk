@@ -1,26 +1,46 @@
 BEGIN {
-  print "var starlink = [{"
   l = ""
+  c = 0
+  f = 1
+}
+FNR==1 {
+  file=FILENAME
+  sub(/\..*/,"",file)
+  printf("{\n  \"name\": \"%s\",\n  \"date\": \"%s\",\n  \"tles\": [{\n",toupper(file), d)
 }
 /^1/ {
   g=substr($3,0,5)
   if (g != l) {
-    if (l != "") {
-      print "}, {"
+    if (l != "" && c > 5) {
+      print "  }, {"
+      f = 1
     }
-    l=g
+    l = g
+    c = 0
   }
-  printf("  \"%s\": [\n", name)
-  printf("    \"%s\",\n", $0)
+  if (f == 1) {
+    printf("    \"%s\": [\n", name)
+  } else {
+    printf(",\n    \"%s\": [\n", name)
+  }
+  f = 0
+  printf("      \"%s\",\n", $0)
+  c++
   next
 }
 /^2/ {
-  printf("    \"%s\"\n  ],\n", $0)
+  printf("      \"%s\"\n    ]", $0)
   next
 }
 {
-  name = $1
+  name = $0
+  sub(/ *$/,"",name)
+  if (name in names) {
+    name = name "-" names[name]++
+  } else {
+    names[name] = 1;
+  }
 }
 END {
-  print "}];"
+  print "\n  }]\n}"
 }
