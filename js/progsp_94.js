@@ -8,7 +8,10 @@ var home, homeGeo, skyView = false;
 var dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'N'];
 var satColors = [0xFF8000, 0x00FF40, 0x0000FF, 0xFFFF00, 0x00FFFF];
 var sect;
-
+var eR = 6.36;
+/*
+ - upside down: directions correct?
+*/
 function init() {
   console.log("screen = " + screen.width + " x " + screen.height + ", " + window.innerWidth + " x " + window.innerHeight);
   dateElem = document.getElementById('date');
@@ -24,18 +27,34 @@ function init() {
 
 function scene() {
   sect = satellite.degreesToRadians(45);
+  actDate = new Date();
+  gmst = satellite.gstime(actDate);
+
   raycaster = new THREE.Raycaster();
   vector = new THREE.Vector3();
   scene = new THREE.Scene();
+  // scene.name = 'scene';
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 5000);
-  camera.position.z = 20;
+  camera.position.z = 60;
 
-  // scene.add(new THREE.AxesHelper(90));
+  scene.add(new THREE.AxesHelper(90));
 
-  northPole = new THREE.Vector3(0, 6.36, 0)
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.getElementById('tracker').appendChild(renderer.domElement);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.addEventListener('change', render);
+  // controls.enableDamping = true;
+  // controls.dampingFactor = 0.5;
+  controls.enableZoom = true;
+  controls.noKeys = true;
+
+  northPole = new THREE.Vector3(0, eR, 0)
   earth = new THREE.Group();
+  // earth.name = 'earth';
   space = new THREE.Group();
-  earth.add(createGlobe(6.36, 64));
+  earth.add(createGlobe(eR, 64));
   scene.add(createStars(100, 64))
 
   // scene.add(createMarker({x: 9000, y: 0, z: 0}, 0xFF4000));
@@ -50,15 +69,10 @@ function scene() {
 
   space.add(earth);
 
-  // axial tilt
-  tilt = satellite.degreesToRadians(-23.27)
-  // earth.rotation.z = tilt;
-  axis = new THREE.Vector3(0, tilt, 0).normalize();
-
   scene.add(new THREE.AmbientLight(0x808080));
   // scene.add(new THREE.AmbientLight(0x404040));
   light = new THREE.DirectionalLight(0xffffff, 1.2);
-  light.position.set(0, 0, 110);
+  light.position.set(0, 0, 10);
   light.target.position.set(0, 0, 0);
   // light.castShadow = true;
   // var d = 300;
@@ -68,9 +82,18 @@ function scene() {
   scene.add(light);
   // scene.add( new THREE.DirectionalLightHelper( light, 3 ) );
 
-  // sun = new THREE.Group();
-  // sun.add(createBall(1, 32, 0xFFFF00, light.position));
-  // scene.add(sun);
+  // axial tilt
+  tilt = satellite.degreesToRadians(-23.27)
+  // earth.rotation.z = tilt;
+  axis = new THREE.Vector3(0, tilt, 0).normalize();
+
+  sun = new THREE.Group();
+  sun.add(createBall(0.3, 32, 0xFFFF00, light.position));
+  space.add(sun);
+
+  checkSun(1);
+  // updateHome(obsGeo[0]);
+  // getLocation();
 
   geoSat = new THREE.BufferGeometry().fromGeometry(new THREE.BoxGeometry(0.04, 0.01, 0.005));
   geoLead = new THREE.BufferGeometry().fromGeometry(new THREE.BoxGeometry(0.06, 0.02, 0.005));
@@ -82,28 +105,50 @@ function scene() {
     color: 0xff00ff
   });
 
-  actDate = new Date();
-  gmst = satellite.gstime(actDate);
   scene.add(space);
 
-  renderer = new THREE.WebGLRenderer();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  document.getElementById('tracker').appendChild(renderer.domElement);
-
-  controls = new THREE.OrbitControls(camera, renderer.domElement);
-  controls.addEventListener('change', render);
-  // controls.enableDamping = true;
-  // controls.dampingFactor = 0.5;
-  controls.enableZoom = true;
-  controls.noKeys = true;
-
-  updateHome(obsGeo[4]);
-  getLocation();
   animate();
+  onKeyUp({ key: 'x' });
   // setTimeout(animate, 100);
   document.addEventListener('mouseup', onMouseUp);
   document.addEventListener('keyup', onKeyUp);
   getTles('starlink.js').then(data => addSatellites(data));
+}
+
+function checkSun(g) {
+  updateHome(obsGeo[g]);
+
+  // sun to actual position
+  var sunPos = SunCalc.getPosition(actDate, homeGeo.latitude, homeGeo.longitude);
+  sunPos.azimuth += Math.PI;
+  console.log(sunPos);
+
+  vector.set(0, 1, 0);
+  console.log(vector);
+  vector.applyAxisAngle(new THREE.Vector3(0, 0, 1), sunPos.altitude);
+  console.log(vector);
+  vector.applyAxisAngle(new THREE.Vector3(0, 1, 0), sunPos.azimuth);
+  console.log(vector);
+  vector.add(homeMarker.position.clone().normalize());
+  console.log(vector);
+
+  // vector.copy(homeMarker.position);
+
+  // console.log(homeMarker.position, sunPos, satellite.radiansToDegrees(sunPos.azimuth), satellite.radiansToDegrees(sunPos.altitude), light.position);
+  // vector.add(new THREE.Vector3(0, sunPos.azimuth + homeGeo.longitude, sunPos.altitude + homeGeo.latitude));
+  // vector.add(new THREE.Vector3(0, -Math.PI - sunPos.azimuth, 0));
+
+  //vector.add(new THREE.Vector3(0, Math.PI / 2 - sunPos.altitude, 0)).normalize().multiplyScalar(20);
+
+
+  //sun.children[0].position.copy(vector.normalize().multiplyScalar(10));
+
+  sun.quaternion.setFromUnitVectors(
+    sun.children[0].position.clone().normalize(), // new THREE.Vector3(0, 0, 1), // start position
+    vector.normalize(), // target position
+  );
+
+  onKeyUp({ key: 'x' });
 }
 
 function onMouseUp(evt) {
@@ -186,13 +231,13 @@ function toggleSky(evt) {
     // move controls and camera to noth pole for sky view
     controls.target.copy(northPole);
     camera.position.copy(northPole);
-    camera.position.z += 0.01;
+    camera.position.z += 0.008;
     controls.update();
 
     // rotate home to noth pole
     space.quaternion.setFromUnitVectors(
-      homeMarker.position.normalize(),
-      new THREE.Vector3(0, 1, 0).normalize(),
+      homeMarker.position.normalize(), // start position
+      new THREE.Vector3(0, 1, 0).normalize(), // target position
     );
 
     earth.remove(homeMarker);
@@ -205,10 +250,31 @@ function onKeyUp(evt) {
     case ' ':
       toggleSky()
       break;
-    case 's':
-      // light.position.set(fromX, fromY, fromZ);
-      // light.target.position.set(toX, toY, toZ);
-      light.position.set(0, 0, -80);
+    case '0':
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+    case '5':
+      checkSun(+evt.key);
+      break;
+    case 'x':
+      controls.reset();
+      controls.rotateLeft(-Math.PI / 2);
+      controls.rotateUp(0);
+      controls.update();
+      break;
+    case 'y':
+      controls.reset();
+      controls.rotateLeft(0);
+      controls.rotateUp(Math.PI / 2);
+      controls.update();
+      break;
+    case 'z':
+      controls.reset();
+      controls.rotateLeft(0);
+      controls.rotateUp(0);
+      controls.update();
       break;
     case 'a':
       camera.getWorldDirection(vector);
@@ -228,19 +294,19 @@ function markHome() {
   var vec = ecf2Vector3(satellite.geodeticToEcf(home));
   homeMarker.position.copy(vec);
   homeMarker.quaternion.setFromUnitVectors(
-    new THREE.Vector3(0, 1, 0),
-    vec.normalize()
+    new THREE.Vector3(0, 1, 0), // start position
+    vec.normalize() // target position
   );
   // rotate to home position
   controls.reset();
-  controls.rotateLeft(-home.longitude);
-  controls.rotateUp(home.latitude);
+  // controls.rotateLeft(-home.longitude);
+  // controls.rotateUp(home.latitude);
   controls.update();
   // var sunTimes = SunCalc.getTimes(actDate, homeGeo.latitude, homeGeo.longitude, homeGeo.height);
   // console.log(sunTimes);
   // //azimuth: 0 is south and Math.PI * 3/4 is northwest
   // var sunPos = SunCalc.getPosition(actDate, homeGeo.latitude, homeGeo.longitude);
-  // console.log(sunPos);
+  // console.log(sunPos, satellite.radiansToDegrees(sunPos.azimuth), satellite.radiansToDegrees(sunPos.altitude));
   // var moonPos = SunCalc.getMoonPosition(actDate, homeGeo.latitude, homeGeo.longitude);
   // var moonPhase = SunCalc.getMoonIllumination(actDate);
   // console.log(moonPos, moonPhase);
@@ -267,8 +333,8 @@ function createMarker(vec, color) {
   marker.position.copy(vec);
   // align object with given axis to a vector
   marker.quaternion.setFromUnitVectors(
-    new THREE.Vector3(0, 1, 0),
-    vec.normalize()
+    new THREE.Vector3(0, 1, 0), // start position
+    vec.normalize() // target position
   );
   // marker.position.copy(vector.clone().multiplyScalar(0.5));
   // marker.lookAt(0.0, 0.0, 0.0);
@@ -304,8 +370,8 @@ function animate() {
   // space.rotateOnAxis(axis, -satellite.degreesToRadians(1/60));
 
   // sun.rotation.y += 0.01;
-  // vector.setFromMatrixPosition( sun.children[0].matrixWorld );
-  // light.position.copy(vector);
+  vector.setFromMatrixPosition(sun.children[0].matrixWorld);
+  light.position.copy(vector);
   render();
 };
 
@@ -383,43 +449,43 @@ function createStars(radius, segments) {
     var geometry = new THREE.TextGeometry('N', fontOpts);
     var char = new THREE.Mesh(geometry, matFont);
     char.position.set(-0.4, posY, -posXZ);
-    char.lookAt(-0.4, 6.36, 0);
+    char.lookAt(-0.4, eR, 0);
     stars.add(char);
     geometry = new THREE.TextGeometry('O', fontOpts);
     char = new THREE.Mesh(geometry, matFont);
     char.position.set(posXZ, posY, -0.5);
-    char.lookAt(0, 6.36, -0.5);
+    char.lookAt(0, eR, -0.5);
     stars.add(char);
     geometry = new THREE.TextGeometry('S', fontOpts);
     char = new THREE.Mesh(geometry, matFont);
     char.position.set(0.4, posY, posXZ);
-    char.lookAt(0.4, 6.36, 0);
+    char.lookAt(0.4, eR, 0);
     stars.add(char);
     geometry = new THREE.TextGeometry('W', fontOpts);
     char = new THREE.Mesh(geometry, matFont);
     char.position.set(-posXZ, posY, 0.6);
-    char.lookAt(0, 6.36, 0.6);
+    char.lookAt(0, eR, 0.6);
     stars.add(char);
 
     geometry = new THREE.TextGeometry('NO', fontOpts);
     char = new THREE.Mesh(geometry, matFont);
     char.position.set(posXZm, posY, -posXZm);
-    char.lookAt(0, 6.36, 0);
+    char.lookAt(0, eR, 0);
     stars.add(char);
     geometry = new THREE.TextGeometry('SW', fontOpts);
     char = new THREE.Mesh(geometry, matFont);
     char.position.set(-posXZm, posY, posXZm);
-    char.lookAt(0, 6.36, 0);
+    char.lookAt(0, eR, 0);
     stars.add(char);
     geometry = new THREE.TextGeometry('NW', fontOpts);
     char = new THREE.Mesh(geometry, matFont);
     char.position.set(-posXZm, posY, -posXZm);
-    char.lookAt(0, 6.36, 0);
+    char.lookAt(0, eR, 0);
     stars.add(char);
     geometry = new THREE.TextGeometry('SO', fontOpts);
     char = new THREE.Mesh(geometry, matFont);
     char.position.set(posXZm, posY, posXZm);
-    char.lookAt(0, 6.36, 0);
+    char.lookAt(0, eR, 0);
     stars.add(char);
 
   });
@@ -598,27 +664,32 @@ var obsGeo = [{
   // North pole
   latitude: 90,
   longitude: 0,
-  height: 500.0
+  height: 0.5
+}, {
+  // East pole
+  latitude: 0,
+  longitude: 90,
+  height: 0.5
 }, {
   // South pole
   latitude: -90,
   longitude: 0,
-  height: 500.0
+  height: 0.5
 }, {
   // West pole
   latitude: 0,
-  longitude: 90,
-  height: 500.0
-}, {
-  // East pole
-  latitude: 0,
   longitude: -90,
-  height: 500.0
+  height: 0.5
+}, {
+  // Z pole
+  latitude: 0,
+  longitude: 0,
+  height: 0.5
 }, {
   // Home
   latitude: 48.650325,
   longitude: 9.014026,
-  height: 0.490
+  height: 0.49
 }, {
   // Greenwitch Prime Meridian
   latitude: 51.478067,
