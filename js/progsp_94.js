@@ -8,7 +8,7 @@ var home, homeGeo, skyView = false;
 var dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'N'];
 var satColors = [0xFF8000, 0x00FF40, 0x0000FF, 0xFFFF00, 0x00FFFF];
 var sect;
-var eR = 6.36;
+var eR = 6.378137;
 /*
  - upside down: directions correct?
 */
@@ -91,9 +91,13 @@ function scene() {
   sun.add(createBall(0.3, 32, 0xFFFF00, light.position));
   space.add(sun);
 
-  checkSun(1);
-  // updateHome(obsGeo[0]);
+  updateHome(obsGeo[4]);
   // getLocation();
+  checkSun({
+    latitude: 0,
+    longitude: 0,
+    height: 0
+  });
 
   geoSat = new THREE.BufferGeometry().fromGeometry(new THREE.BoxGeometry(0.04, 0.01, 0.005));
   geoLead = new THREE.BufferGeometry().fromGeometry(new THREE.BoxGeometry(0.06, 0.02, 0.005));
@@ -115,27 +119,36 @@ function scene() {
   getTles('starlink.js').then(data => addSatellites(data));
 }
 
-function checkSun(g) {
-  updateHome(obsGeo[g]);
+function checkSun(locGeo) {
+  loc = {
+    latitude: satellite.degreesToRadians(locGeo.latitude),
+    longitude: satellite.degreesToRadians(locGeo.longitude),
+    height: locGeo.height
+  }
+  var vec = ecf2Vector3(satellite.geodeticToEcf(loc));
+  var helper = new THREE.PlaneHelper( new THREE.Plane( vec, eR ), 4, 0xffff00 );
+  scene.add( helper );
 
   // sun to actual position
-  var sunPos = SunCalc.getPosition(actDate, homeGeo.latitude, homeGeo.longitude);
+  var sunPos = SunCalc.getPosition(actDate, locGeo.latitude, locGeo.longitude);
   sunPos.azimuth += Math.PI;
-  console.log(sunPos);
+  sunPos.azimuthD = satellite.radiansToDegrees(sunPos.azimuth)
+  sunPos.altitudeD = satellite.radiansToDegrees(sunPos.altitude)
+  console.log(sunPos, vec);
+
 
   vector.set(0, 1, 0);
-  console.log(vector);
   vector.applyAxisAngle(new THREE.Vector3(0, 0, 1), sunPos.altitude);
+  // console.log(vector);
+  // vector.applyAxisAngle(new THREE.Vector3(0, 1, 0), sunPos.azimuth);
   console.log(vector);
-  vector.applyAxisAngle(new THREE.Vector3(0, 1, 0), sunPos.azimuth);
-  console.log(vector);
-  vector.add(homeMarker.position.clone().normalize());
-  console.log(vector);
+  // vector.add(vec.clone().normalize());
+  // console.log(vector);
 
-  // vector.copy(homeMarker.position);
+  // vector.copy(vec);
 
-  // console.log(homeMarker.position, sunPos, satellite.radiansToDegrees(sunPos.azimuth), satellite.radiansToDegrees(sunPos.altitude), light.position);
-  // vector.add(new THREE.Vector3(0, sunPos.azimuth + homeGeo.longitude, sunPos.altitude + homeGeo.latitude));
+  // console.log(vec, sunPos, satellite.radiansToDegrees(sunPos.azimuth), satellite.radiansToDegrees(sunPos.altitude), light.position);
+  // vector.add(new THREE.Vector3(0, sunPos.azimuth + locGeo.longitude, sunPos.altitude + locGeo.latitude));
   // vector.add(new THREE.Vector3(0, -Math.PI - sunPos.azimuth, 0));
 
   //vector.add(new THREE.Vector3(0, Math.PI / 2 - sunPos.altitude, 0)).normalize().multiplyScalar(20);
@@ -143,10 +156,10 @@ function checkSun(g) {
 
   //sun.children[0].position.copy(vector.normalize().multiplyScalar(10));
 
-  sun.quaternion.setFromUnitVectors(
-    sun.children[0].position.clone().normalize(), // new THREE.Vector3(0, 0, 1), // start position
-    vector.normalize(), // target position
-  );
+  // sun.quaternion.setFromUnitVectors(
+  //   sun.children[0].position.clone().normalize(), // new THREE.Vector3(0, 0, 1), // start position
+  //   vector.normalize(), // target position
+  // );
 
   onKeyUp({ key: 'x' });
 }
@@ -299,8 +312,8 @@ function markHome() {
   );
   // rotate to home position
   controls.reset();
-  // controls.rotateLeft(-home.longitude);
-  // controls.rotateUp(home.latitude);
+  controls.rotateLeft(-home.longitude);
+  controls.rotateUp(home.latitude);
   controls.update();
   // var sunTimes = SunCalc.getTimes(actDate, homeGeo.latitude, homeGeo.longitude, homeGeo.height);
   // console.log(sunTimes);
