@@ -37,7 +37,7 @@ function scene() {
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 5000);
   camera.position.z = 30;
 
-  scene.add(new THREE.AxesHelper(90));
+  // scene.add(new THREE.AxesHelper(90));
 
   renderer = new THREE.WebGLRenderer();
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -72,7 +72,7 @@ function scene() {
   scene.add(new THREE.AmbientLight(0x808080));
   // scene.add(new THREE.AmbientLight(0x404040));
   light = new THREE.DirectionalLight(0xffffff, 1.2);
-  light.position.set(0, 0, 10);
+  light.position.set(0, 0, 80);
   light.target.position.set(0, 0, 0);
   // light.castShadow = true;
   // var d = 300;
@@ -93,17 +93,16 @@ function scene() {
 
   updateHome(obsGeo[5]);
   getLocation();
-  // checkSun({
+  // positionSun({
   //   latitude: 0,
-  //   longitude: 0,
-  //   height: 0
+  //   longitude: 180,
+  //   height: 0.0
   // });
-  // checkSun({
-  //   latitude: 60,
-  //   longitude: -70,
-  //   height: 0
+  // positionSun({
+  //   latitude: -14.104394,
+  //   longitude: -75.156210,
+  //   height: 0.5
   // });
-  checkSun(obsGeo[5]);
 
   geoSat = new THREE.BufferGeometry().fromGeometry(new THREE.BoxGeometry(0.04, 0.01, 0.005));
   geoLead = new THREE.BufferGeometry().fromGeometry(new THREE.BoxGeometry(0.06, 0.02, 0.005));
@@ -118,56 +117,9 @@ function scene() {
   scene.add(space);
 
   animate();
-  // onKeyUp({ key: 'x' });
-  // setTimeout(animate, 100);
   document.addEventListener('mouseup', onMouseUp);
   document.addEventListener('keyup', onKeyUp);
-  getTles('iss.js').then(data => addSatellites(data));
-}
-
-function checkSun(locGeo) {
-  loc = {
-    latitude: satellite.degreesToRadians(locGeo.latitude),
-    longitude: satellite.degreesToRadians(locGeo.longitude),
-    height: locGeo.height
-  }
-  var vecLoc = ecf2Vector3(satellite.geodeticToEcf(loc));
-  console.log(vecLoc);
-  scene.add(new THREE.PlaneHelper(new THREE.Plane(vecLoc.clone().negate(), eR), 1, 0xffff00));
-
-  // vector from location to northPole
-  var dir = northPole.clone().sub(vecLoc);
-  // project to the plane defined by normal vecLoc
-  var n = vecLoc.clone().normalize();
-  scene.add(new THREE.ArrowHelper(n, vecLoc, 2, 0x0000FF));
-  n.multiplyScalar(dir.dot(n) / n.length());
-  dir.sub(n).normalize();
-  scene.add(new THREE.ArrowHelper(dir, vecLoc, 2, 0x00FF00));
-
-  // sun to actual position
-  var sunPos = SunCalc.getPosition(actDate, locGeo.latitude, locGeo.longitude);
-  sunPos.azimuth += Math.PI;
-  sunPos.azimuthD = satellite.radiansToDegrees(sunPos.azimuth)
-  sunPos.altitudeD = satellite.radiansToDegrees(sunPos.altitude)
-  console.log(loc, sunPos, vecLoc);
-  var altAxis = dir.clone().cross(vecLoc).normalize();
-  var aziAxis = vecLoc.clone().normalize();
-
-  scene.add(new THREE.ArrowHelper(altAxis, vecLoc, 2, 0xFF0000));
-
-  // dir.applyAxisAngle(altAxis, sunPos.altitude);
-  // dir.applyAxisAngle(aziAxis, sunPos.azimuth);
-  dir.applyAxisAngle(aziAxis, Math.PI / 2);
-  scene.add(new THREE.ArrowHelper(dir.normalize(), vecLoc, 2, 0xFFFF00));
-
-  //sun.children[0].position.copy(vector.normalize().multiplyScalar(10));
-
-  sun.quaternion.setFromUnitVectors(
-    sun.children[0].position.clone().normalize(), // new THREE.Vector3(0, 0, 1), // start position
-    dir, // target position
-  );
-
-  // onKeyUp({ key: 'x' });
+  getTles('starlink.js').then(data => addSatellites(data));
 }
 
 function onMouseUp(evt) {
@@ -360,6 +312,45 @@ function createMarker(vec, color) {
   return marker;
 }
 
+function positionSun(locGeo) {
+  loc = {
+    latitude: satellite.degreesToRadians(locGeo.latitude),
+    longitude: satellite.degreesToRadians(locGeo.longitude),
+    height: locGeo.height
+  }
+  var vecLoc = ecf2Vector3(satellite.geodeticToEcf(loc));
+  // scene.add(new THREE.PlaneHelper(new THREE.Plane(vecLoc.clone().negate(), eR), 1, 0xffff00));
+
+  // vector from location to northPole
+  var dir = northPole.clone().sub(vecLoc);
+  // project to the plane defined by normal vecLoc
+  var n = vecLoc.clone().normalize();
+  // scene.add(new THREE.ArrowHelper(n, vecLoc, 2, 0x0000FF));
+  n.multiplyScalar(dir.dot(n) / n.length());
+  dir.sub(n).normalize();
+  // scene.add(new THREE.ArrowHelper(dir, vecLoc, 2, 0x00FF00));
+
+  // sun to actual position
+  var sunPos = SunCalc.getPosition(actDate, locGeo.latitude, locGeo.longitude);
+  sunPos.azimuth += Math.PI;
+  sunPos.azimuthD = satellite.radiansToDegrees(sunPos.azimuth)
+  sunPos.altitudeD = satellite.radiansToDegrees(sunPos.altitude)
+  console.log(loc, sunPos, vecLoc);
+
+  var altAxis = dir.clone().cross(vecLoc).normalize();
+  // scene.add(new THREE.ArrowHelper(altAxis, vecLoc, 2, 0xFF0000));
+  var aziAxis = vecLoc.clone().normalize();
+
+  dir.applyAxisAngle(altAxis, sunPos.altitude);
+  dir.applyAxisAngle(aziAxis, -sunPos.azimuth);
+  // scene.add(new THREE.ArrowHelper(dir.normalize(), vecLoc, 80, 0xFFFF00, 0.5, 0.5));
+
+  sun.quaternion.setFromUnitVectors(
+    sun.children[0].position.clone().normalize(), // new THREE.Vector3(0, 0, 1), // start position
+    dir.normalize(), // target position
+  );
+}
+
 function animate() {
   requestAnimationFrame(animate);
 
@@ -423,7 +414,7 @@ function createGlobe(radius, segments) {
       // specular: new THREE.Color('grey')
     }));
   // ball = new THREE.Mesh(
-  //   new THREE.SphereGeometry(radius, segments/4, segments/4),
+  //   new THREE.SphereGeometry(radius, segments/2, segments/2),
   //   new THREE.MeshPhongMaterial({
   //     color: 0x0000FF,
   //     wireframe: true
@@ -646,6 +637,7 @@ function updateHome(latLon) {
   };
   locElem.value = homeGeo.latitude + ', ' + homeGeo.longitude;
   markHome();
+  positionSun(homeGeo);
 }
 
 function getLocation() {
