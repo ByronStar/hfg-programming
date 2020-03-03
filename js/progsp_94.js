@@ -128,26 +128,7 @@ function onMouseUp(evt) {
   raycaster.setFromCamera(mouse3D, camera);
   var intersects = raycaster.intersectObjects(sats.map(sat => sat.mesh));
   if (intersects.length > 0) {
-    if (selected) {
-      selected.mesh.material = selected.mat;
-      if (orbitLine) {
-        space.remove(orbitLine);
-      }
-    }
-    var newSelected = sats.find(sat => sat.mesh == intersects[0].object)
-    // if (arrowHelper) {
-    //   space.remove(arrowHelper);
-    // }
-    // arrowHelper = new THREE.ArrowHelper(ecf2Vector3(satellite.eciToEcf(selected.OSV.velocity, gmst)), ecf2Vector3(satellite.eciToEcf(selected.OSV.position, gmst)), 0.5, 0xFF0000);
-    // space.add(arrowHelper);
-    if (selected != newSelected) {
-      selected = newSelected;
-      selected.mesh.material = matSel;
-      orbitLine = orbit(selected)
-      space.add(orbitLine);
-    } else {
-      selected = null;
-    }
+    select(sats.find(sat => sat.mesh == intersects[0].object));
   }
   if (evt.ctrlKey) {
     intersects = raycaster.intersectObjects([ball], true);
@@ -156,6 +137,37 @@ function onMouseUp(evt) {
       var loc = xyz2Geo(new THREE.Vector3(pt.x, pt.y, pt.z));
       updateHome(loc);
     }
+  }
+}
+
+function find(name) {
+  sat = sats.find(sat => sat.id == name)
+  if (sat) {
+    select(sat);
+  }
+}
+
+function select(newSelected) {
+  if (selected) {
+    selected.mesh.material = selected.mat;
+    if (orbitLine) {
+      space.remove(orbitLine);
+    }
+    if (arrowHelper) {
+      space.remove(arrowHelper);
+    }
+  }
+  if (selected != newSelected) {
+    selected = newSelected;
+    selected.mesh.material = matSel;
+    orbitLine = orbit(selected)
+    space.add(orbitLine);
+    var vec = ecf2Vector3(satellite.eciToEcf(selected.OSV.velocity, gmst));
+    var len = vec.length();
+    arrowHelper = new THREE.ArrowHelper(vec.normalize(), ecf2Vector3(satellite.eciToEcf(selected.OSV.position, gmst)), len*100, 0xFF0000);
+    space.add(arrowHelper);
+  } else {
+    selected = null;
   }
 }
 
@@ -516,9 +528,6 @@ function addSatellites(data) {
     space.remove(sat.mesh);
   });
   sats = [];
-  if (orbitLine) {
-    space.remove(orbitLine);
-  }
   satData.tles.forEach((list, i) => {
     var cnt = 0
     for (var satId in list) {
@@ -526,10 +535,7 @@ function addSatellites(data) {
     }
     console.log(i, cnt);
   });
-  selected = sats[0];
-  selected.mesh.material = matSel;
-  orbitLine = orbit(selected)
-  space.add(orbitLine);
+  select(sats[0]);
 }
 
 function addSatellite(satId, tles, group, num) {
@@ -565,7 +571,7 @@ function ecf2Vector3(ecf) {
 function orbit(sat) {
   var date = actDate;
   var geo = new THREE.Geometry();
-  for (var seg = 0; seg < 120; seg++) {
+  for (var seg = 0; seg < 8*60; seg++) {
     // var satOSV = satellite.sgp4(sat.satrec, startPos + seg * 5);
     var satOSV = satellite.propagate(sat.satrec, date);
     geo.vertices.push(ecf2Vector3(satellite.eciToEcf(satOSV.position, satellite.gstime(date))));
