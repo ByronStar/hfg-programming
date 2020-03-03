@@ -87,6 +87,26 @@
       margin: 20px;
       font-size: small;
     }
+
+    #date {
+      display: inline-block;
+      max-width: 330px;
+      min-width: 330px;
+    }
+
+    .btn {
+      font-size: 1.5em;
+      display: inline-block;
+      cursor: pointer;
+      /* border-width: 1px; */
+      /* border-color: yellow;
+      border-style: outset; */
+    }
+
+    .btn:active {
+      /* border-style: inset; */
+    }
+
   </style>
 </head>
 
@@ -95,7 +115,7 @@
   </div>
   <div id="overlay">
     <h1 style="display: inline">3D Satellite Tracker (<span id="name">Starlink</span>)</h1>
-    <select id="sats" class="doselect" onchange="selectedSat(event)">
+    <select id="sats" class="doselect" onchange="selectedSatGroup(event)">
       <option value="starlink.js">STARLINK</option>
       <option value="cpf.js">CPF</option>
       <option value="glonass.js">GLONASS</option>
@@ -108,19 +128,33 @@
     </select>
     <p id="msg"></p>
     <div class="doselect">
-      <div id="date"></div>
-      <button onclick="locChange(event)">Set</button><input type="text" id="location" name="location" value="48.654685, 9.015906"><label for="location"> lat,lon or "ctrl-click" on earth</label><br>
-      <button id="sky" onclick="toggleSky(event)">Sky</button>View
+      <div><div id="date"></div>
+        <div class="btn" id="clock" onclick="startTime(event)">🕰</div>
+        <div id="pause" class="btn" onclick="stopTime(event)">⏸</div>
+        <div class="btn" onclick="backTime(event)">◀️</div> <span id="timer">0</span> min
+        <div class="btn" onclick="forwardTime(event)">▶️</div>
+      </div>
+      <div id="sun"></div> 
+      <div class="btn" onclick="locChange(event)">🏡</div>
+      <input type="text" id="location" name="location" value="48.654685, 9.015906"><label for="location"> lat,lon or "ctrl-click" on earth</label><br>
+      <div class="btn" onclick="findSat(event)">🔭</div><input type="text" id="find" size="20"><br>
+      <div class="btn" id="sky" onclick="toggleSky(event)">🛰</div>View
     </div>
     <div id="info"></div>
     <div id="impressum" class="doselect">
       <p>
+        Developed by Benno Stäbler<br>
         3D graphics by <a href="https://threejs.org/docs/index.html#manual/en/introduction/Creating-a-scene" target="_blank">three.js</a><br>
-        Satellite calculations from <a href="https://github.com/shashwatak/satellite-js" target="_blank">satellite.js</a><br>
-        inspired by <a href="https://findstarlink.com" target="_blank">Track Starlink Satellites</a><br>
-        and <a href="https://blog.mastermaps.com/2013/09/creating-webgl-earth-with-threejs.html" target="_blank">Creating a WebGL Earth with three.js</a><br>
-        and <a href="http://www.shadedrelief.com/natural3/index.html" target="_blank">Natural Earth III</a><br>
+        Satellite data (TLEs) from <a href="https://www.celestrak.com/NORAD/elements/supplemental/" target="_blank">CelesTrak</a><br>
+        Satellite calculations with <a href="https://github.com/shashwatak/satellite-js" target="_blank">satellite.js</a><br>
+        Sun and Moon calculations with <a href="https://github.com/mourner/suncalc" target="_blank">suncalc.js</a>
       </p>
+      Inspired by:
+      <ul>
+        <li><a href="https://findstarlink.com" target="_blank">Track Starlink Satellites</a>
+        <li>and <a href="https://blog.mastermaps.com/2013/09/creating-webgl-earth-with-threejs.html" target="_blank">Creating a WebGL Earth with three.js</a>
+        <li>and <a href="http://www.shadedrelief.com/natural3/index.html" target="_blank">Natural Earth III</a>
+      </ul>
     </div>
   </div>
 </body>

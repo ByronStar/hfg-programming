@@ -1,14 +1,22 @@
-var camera, scene, renderer, controls, earth, space, axis, tilt, gmst, northPole, ball, sun, light, raycaster, vector;
-var dateElem, locElem, infoElem, msgElem, nameElem, skyElem, msgId;
+var camera, scene, renderer, controls, earth, space, axis, tilt, gmst, northPole, ball, sun, light, rose, lathe, raycaster, vector;
+var dateElem, locElem, infoElem, msgElem, nameElem, skyElem, findElem, timerElem, pauseElem, sunElem, msgId;
 var sats = [];
 var selected, matsSat, matSel, matFont, arrowHelper, homeMarker, orbitLine, satData;
 var actDate = new Date();
+var timeStep = 0;
 var home, homeGeo, skyView = false;
+var spotting = [];
+var actSpot = 0;
 
 var dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'N'];
-var satColors = [0xFF8000, 0x00FF40, 0x0000FF, 0xFFFF00, 0x00FFFF];
+var satColors = [0xFF8000, 0x00FF40, 0x0040FF, 0xFFFF00, 0x00FFFF];
 var sect;
 var eR = 6.378137;
+var fps = 60;
+var time = 0;
+var clocked = true;
+var paused = false;
+var sunDay, sunTimes;
 /*
  - upside down: directions correct?
 */
@@ -20,6 +28,11 @@ function init() {
   infoElem = document.getElementById('info');
   nameElem = document.getElementById('name');
   skyElem = document.getElementById('sky');
+  findElem = document.getElementById('find');
+  timerElem = document.getElementById('timer');
+  pauseElem = document.getElementById('pause');
+  clockElem = document.getElementById('clock');
+  sunElem = document.getElementById('sun');
   clearMessage();
   // sample();
   scene();
@@ -33,9 +46,14 @@ function scene() {
   raycaster = new THREE.Raycaster();
   vector = new THREE.Vector3();
   scene = new THREE.Scene();
-  // scene.name = 'scene';
+
+  // var fogColor = new THREE.Color(0xffffff);
+  // scene.background = fogColor;
+  // scene.fog = new THREE.Fog(fogColor, 0.0025, 20);
+
+
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 5000);
-  camera.position.z = 30;
+  camera.position.z = 20;
 
   // scene.add(new THREE.AxesHelper(90));
 
@@ -69,8 +87,8 @@ function scene() {
 
   space.add(earth);
 
-  scene.add(new THREE.AmbientLight(0x808080));
-  // scene.add(new THREE.AmbientLight(0x404040));
+  // scene.add(new THREE.AmbientLight(0x808080));
+  scene.add(new THREE.AmbientLight(0x404040));
   light = new THREE.DirectionalLight(0xffffff, 1.2);
   light.position.set(0, 0, 80);
   light.target.position.set(0, 0, 0);
@@ -108,20 +126,25 @@ function scene() {
   geoLead = new THREE.BufferGeometry().fromGeometry(new THREE.BoxGeometry(0.06, 0.02, 0.005));
   geoBig = new THREE.BufferGeometry().fromGeometry(new THREE.BoxGeometry(0.2, 0.2, 0.1));
   matsSat = satColors.map(c => new THREE.MeshPhongMaterial({
-    color: c
+    color: c,
+    emissive: c
   }));
   matSel = new THREE.MeshPhongMaterial({
-    color: 0xff00ff
+    color: 0xFF00FF,
+    emissive: 0xFF00FF
   });
 
   scene.add(space);
 
+  time = new Date().getTime();
   animate();
   document.addEventListener('mouseup', onMouseUp);
   document.addEventListener('keyup', onKeyUp);
   getTles('starlink.js').then(data => addSatellites(data));
 }
-
+/*
+  User input
+*/
 function onMouseUp(evt) {
   evt.preventDefault();
   var mouse3D = new THREE.Vector3((evt.clientX / window.innerWidth) * 2 - 1, -(evt.clientY / window.innerHeight) * 2 + 1, 0.5);
@@ -140,10 +163,150 @@ function onMouseUp(evt) {
   }
 }
 
-function find(name) {
-  sat = sats.find(sat => sat.id == name)
-  if (sat) {
-    select(sat);
+function onKeyUp(evt) {
+  switch (evt.key) {
+    case ' ':
+      toggleSky()
+      break;
+    case 'x':
+      controls.reset();
+      controls.rotateLeft(-Math.PI / 2);
+      controls.rotateUp(0);
+      controls.update();
+      break;
+    case 'y':
+      controls.reset();
+      controls.rotateLeft(0);
+      controls.rotateUp(Math.PI / 2);
+      controls.update();
+      break;
+    case 'z':
+      controls.reset();
+      controls.rotateLeft(0);
+      controls.rotateUp(0);
+      controls.update();
+      break;
+    case 'a':
+      camera.getWorldDirection(vector);
+      console.log(satellite.radiansToDegrees(vector.x), satellite.radiansToDegrees(vector.y), satellite.radiansToDegrees(vector.z));
+      break;
+  }
+}
+
+function findSat(evt) {
+  if (findElem.value != "") {
+    sat = sats.find(sat => sat.id.includes(name))
+    if (sat) {
+      select(sat);
+    } else {
+      showMessage("Satellite '" + name + "' not found", 8)
+    }
+  } else {
+    if (spottings.length > 0) {
+      // if (!paused) {
+      //   stopTime();
+      // }
+      // actDate = new Date(spottings[actSpot].times[0].beg.date);
+      // gmst = satellite.gstime(actDate);
+      select(spottings[actSpot])
+      actSpot++;
+    }
+  }
+}
+
+function selectedSatGroup(evt) {
+  console.log(evt.target.value);
+  getTles(evt.target.value).then(data => addSatellites(data));
+}
+
+function toggleSky(evt) {
+  if (skyView) {
+    markHome();
+    skyElem.innerHTML = '🛰';
+  } else {
+    skyElem.innerHTML = '🌍';
+    skyView = true;
+    // move controls and camera to noth pole for sky view
+    controls.target.copy(northPole);
+    camera.position.copy(northPole);
+    camera.position.z += 0.008;
+    controls.update();
+
+    // rotate home to noth pole
+    space.quaternion.setFromUnitVectors(
+      homeMarker.position.normalize(), // start position
+      new THREE.Vector3(0, 1, 0).normalize(), // target position
+    );
+
+    earth.remove(homeMarker);
+    homeMarker = null;
+    rose.visible = true;
+    lathe.visible = true;
+  }
+}
+
+function startTime(evt) {
+  clocked = true;
+  clockElem.innerHTML = '🕰';
+  timeStep = 0;
+  timerElem.innerHTML = (timeStep > 0 ? "+" : "") + timeStep
+  if (paused) {
+    actDate = new Date();
+  }
+}
+
+function stopTime(evt) {
+  paused = !paused;
+  pauseElem.innerHTML = paused ? '⏯' : '⏸';
+}
+
+function backTime(evt) {
+  clocked = false;
+  clockElem.innerHTML = '⏱';
+  if (timeStep > -5 && timeStep <= 5) {
+    timeStep--;
+  } else {
+    if (timeStep > -30 && timeStep <= 30) {
+      timeStep -= 5;
+    } else {
+      timeStep -= 30;
+    }
+  }
+  timerElem.innerHTML = (timeStep > 0 ? "+" : "") + timeStep
+  paused = paused || timeStep == 0
+  pauseElem.innerHTML = paused ? '⏯' : '⏸';
+}
+
+function forwardTime(evt) {
+  clocked = false;
+  clockElem.innerHTML = '⏱';
+  if (timeStep >= -5 && timeStep < 5) {
+    timeStep++;
+  } else {
+    if (timeStep >= -30 && timeStep < 30) {
+      timeStep += 5;
+    } else {
+      timeStep += 30;
+    }
+  }
+  timerElem.innerHTML = (timeStep > 0 ? "+" : "") + timeStep
+  paused = paused || timeStep == 0
+  pauseElem.innerHTML = paused ? '⏯' : '⏸';
+}
+
+function locChange(evt) {
+  var value = locElem.value;
+  console.log(value);
+  if (value.match(/^ *[+-]?[0-9]+\.[0-9]+, *[+-]?[0-9]+\.[0-9]+ *$/)) {
+    clearMessage();
+    var coords = value.split(',')
+    updateHome({
+      latitude: coords[0].trim(),
+      longitude: coords[1].trim(),
+      height: 0.5
+    });
+  } else {
+    showMessage('Use valid "latitude,longitude" values like "48.650325, 9.014026"', 8)
   }
 }
 
@@ -162,10 +325,13 @@ function select(newSelected) {
     selected.mesh.material = matSel;
     orbitLine = orbit(selected)
     space.add(orbitLine);
-    var vec = ecf2Vector3(satellite.eciToEcf(selected.OSV.velocity, gmst));
-    var len = vec.length();
-    arrowHelper = new THREE.ArrowHelper(vec.normalize(), ecf2Vector3(satellite.eciToEcf(selected.OSV.position, gmst)), len*100, 0xFF0000);
-    space.add(arrowHelper);
+    if (selected.times.length > 0) {
+      showMessage("Satellite '" + selected.id + "' is visible in " + Math.max(0, Math.floor((selected.times[0].beg.date - actDate.getTime()) / 60000)) + "min", 15);
+    }
+    // var vec = ecf2Vector3(satellite.eciToEcf(selected.OSV.velocity, gmst));
+    // var len = vec.length();
+    // arrowHelper = new THREE.ArrowHelper(vec.normalize(), ecf2Vector3(satellite.eciToEcf(selected.OSV.position, gmst)), len * 100, 0xFF0000);
+    // space.add(arrowHelper);
   } else {
     selected = null;
   }
@@ -199,77 +365,12 @@ function xyz2Geo(vec) {
   };
 }
 
-function selectedSat(evt) {
-  console.log(evt.target.value);
-  getTles(evt.target.value).then(data => addSatellites(data));
-}
-
-function toggleSky(evt) {
-  if (skyView) {
-    markHome();
-    skyElem.innerHTML = 'Sky';
-  } else {
-    skyElem.innerHTML = 'Earth';
-    skyView = true;
-    // move controls and camera to noth pole for sky view
-    controls.target.copy(northPole);
-    camera.position.copy(northPole);
-    camera.position.z += 0.008;
-    controls.update();
-
-    // rotate home to noth pole
-    space.quaternion.setFromUnitVectors(
-      homeMarker.position.normalize(), // start position
-      new THREE.Vector3(0, 1, 0).normalize(), // target position
-    );
-
-    earth.remove(homeMarker);
-    homeMarker = null;
-  }
-}
-
-function onKeyUp(evt) {
-  switch (evt.key) {
-    case ' ':
-      toggleSky()
-      break;
-    case '0':
-    case '1':
-    case '2':
-    case '3':
-    case '4':
-    case '5':
-      checkSun(+evt.key);
-      break;
-    case 'x':
-      controls.reset();
-      controls.rotateLeft(-Math.PI / 2);
-      controls.rotateUp(0);
-      controls.update();
-      break;
-    case 'y':
-      controls.reset();
-      controls.rotateLeft(0);
-      controls.rotateUp(Math.PI / 2);
-      controls.update();
-      break;
-    case 'z':
-      controls.reset();
-      controls.rotateLeft(0);
-      controls.rotateUp(0);
-      controls.update();
-      break;
-    case 'a':
-      camera.getWorldDirection(vector);
-      console.log(satellite.radiansToDegrees(vector.x), satellite.radiansToDegrees(vector.y), satellite.radiansToDegrees(vector.z));
-      break;
-  }
-}
-
 function markHome() {
   // -34.007113, 18.486086
   space.rotation.set(0, 0, 0);
   skyView = false;
+  rose.visible = false;
+  lathe.visible = false;
   if (!homeMarker) {
     homeMarker = createMarkerGeo(homeGeo, 0xFF0000);
     earth.add(homeMarker);
@@ -297,6 +398,105 @@ function markHome() {
   // console.log(moonTimes);
 }
 
+function animate() {
+  requestAnimationFrame(animate);
+
+  var next = new Date().getTime();
+  if (!paused) {
+    if (clocked) {
+      actDate = new Date();
+    } else {
+      // actDate.setTime(actDate.getTime() + timeStep * 60000 / fps);
+      actDate.setTime(actDate.getTime() + timeStep * 60 * (next - time));
+    }
+    gmst = satellite.gstime(actDate);
+    if (actDate.getDay() != sunDay) {
+      sunDay = actDate.getDay();
+      updateSunInfo();
+    }
+    var html = '';
+    if (selected) {
+      var look = satellite.ecfToLookAngles(home, satellite.eciToEcf(selected.OSV.position, gmst));
+      html += '<p><table>';
+      html += '<tr><td>Group ' + selected.group + '</td><td>' + selected.id + '</td></tr>'
+      html += '<tr><td>Height</td><td>' + satellite.eciToGeodetic(selected.OSV.position, gmst).height.toFixed(2) + 'km</td></tr>';
+      html += '<tr><td>Azimut</td><td>' + satellite.radiansToDegrees(look.azimuth).toFixed(2) + '° ' + dirs[Math.floor((look.azimuth + sect / 2) / sect)] + '</td></tr>';
+      html += '<tr><td>Elevation</td><td>' + satellite.radiansToDegrees(look.elevation).toFixed(1) + '°</td></tr>';
+      html += '<tr><td>Range</td><td>' + look.rangeSat.toFixed(0) + 'km</td></tr></table>';
+    }
+    dateElem.innerHTML = actDate;
+    infoElem.innerHTML = html;
+
+    sats.forEach((s, i) => {
+      updateSatellite(s);
+    });
+
+    // 5184000 ticks per day
+    // space.rotateOnAxis(axis, -satellite.degreesToRadians(0.000069444));
+    // space.rotateOnAxis(axis, -satellite.degreesToRadians(1/60));
+
+    // sun.rotation.y += 0.01;
+    positionSun(homeGeo);
+    vector.setFromMatrixPosition(sun.children[0].matrixWorld);
+    light.position.copy(vector);
+  }
+  time = next;
+
+  render();
+};
+
+function render() {
+  renderer.render(scene, camera);
+}
+
+function updateSunInfo() {
+  sunTimes = SunCalc.getTimes(actDate, homeGeo.latitude, homeGeo.longitude, homeGeo.height);
+  console.log(sunTimes);
+  sunElem.innerHTML = '🌞 ' + sunTimes.sunrise.toLocaleTimeString() + ' 🌙 ' + sunTimes.sunset.toLocaleTimeString();
+}
+
+function positionSun(locGeo) {
+  loc = {
+    latitude: satellite.degreesToRadians(locGeo.latitude),
+    longitude: satellite.degreesToRadians(locGeo.longitude),
+    height: locGeo.height
+  }
+  var vecLoc = ecf2Vector3(satellite.geodeticToEcf(loc));
+  // scene.add(new THREE.PlaneHelper(new THREE.Plane(vecLoc.clone().negate(), eR), 1, 0xffff00));
+
+  // vector from location to northPole
+  var dir = northPole.clone().sub(vecLoc);
+  // project to the plane defined by normal vecLoc
+  var n = vecLoc.clone().normalize();
+  // scene.add(new THREE.ArrowHelper(n, vecLoc, 2, 0x0000FF));
+  n.multiplyScalar(dir.dot(n) / n.length());
+  dir.sub(n).normalize();
+  // scene.add(new THREE.ArrowHelper(dir, vecLoc, 2, 0x00FF00));
+
+  // sun to actual position
+  var sunPos = SunCalc.getPosition(actDate, locGeo.latitude, locGeo.longitude);
+  sunPos.azimuth += Math.PI;
+  sunPos.azimuthD = satellite.radiansToDegrees(sunPos.azimuth)
+  sunPos.altitudeD = satellite.radiansToDegrees(sunPos.altitude)
+  // console.log(loc, sunPos, vecLoc);
+
+  var altAxis = dir.clone().cross(vecLoc).normalize();
+  // scene.add(new THREE.ArrowHelper(altAxis, vecLoc, 2, 0xFF0000));
+  var aziAxis = vecLoc.clone().normalize();
+
+  dir.applyAxisAngle(altAxis, sunPos.altitude);
+  dir.applyAxisAngle(aziAxis, -sunPos.azimuth);
+  // scene.add(new THREE.ArrowHelper(dir.normalize(), vecLoc, 80, 0xFFFF00, 0.5, 0.5));
+
+  sun.quaternion.setFromUnitVectors(
+    sun.children[0].position.clone().normalize(), // new THREE.Vector3(0, 0, 1), // start position
+    dir.normalize(), // target position
+  );
+}
+
+/*
+  Object creation
+*/
 function createMarkerGeo(at, color) {
   var ecf = satellite.geodeticToEcf({
     latitude: satellite.degreesToRadians(at.latitude),
@@ -324,83 +524,6 @@ function createMarker(vec, color) {
   return marker;
 }
 
-function positionSun(locGeo) {
-  loc = {
-    latitude: satellite.degreesToRadians(locGeo.latitude),
-    longitude: satellite.degreesToRadians(locGeo.longitude),
-    height: locGeo.height
-  }
-  var vecLoc = ecf2Vector3(satellite.geodeticToEcf(loc));
-  // scene.add(new THREE.PlaneHelper(new THREE.Plane(vecLoc.clone().negate(), eR), 1, 0xffff00));
-
-  // vector from location to northPole
-  var dir = northPole.clone().sub(vecLoc);
-  // project to the plane defined by normal vecLoc
-  var n = vecLoc.clone().normalize();
-  // scene.add(new THREE.ArrowHelper(n, vecLoc, 2, 0x0000FF));
-  n.multiplyScalar(dir.dot(n) / n.length());
-  dir.sub(n).normalize();
-  // scene.add(new THREE.ArrowHelper(dir, vecLoc, 2, 0x00FF00));
-
-  // sun to actual position
-  var sunPos = SunCalc.getPosition(actDate, locGeo.latitude, locGeo.longitude);
-  sunPos.azimuth += Math.PI;
-  sunPos.azimuthD = satellite.radiansToDegrees(sunPos.azimuth)
-  sunPos.altitudeD = satellite.radiansToDegrees(sunPos.altitude)
-  console.log(loc, sunPos, vecLoc);
-
-  var altAxis = dir.clone().cross(vecLoc).normalize();
-  // scene.add(new THREE.ArrowHelper(altAxis, vecLoc, 2, 0xFF0000));
-  var aziAxis = vecLoc.clone().normalize();
-
-  dir.applyAxisAngle(altAxis, sunPos.altitude);
-  dir.applyAxisAngle(aziAxis, -sunPos.azimuth);
-  // scene.add(new THREE.ArrowHelper(dir.normalize(), vecLoc, 80, 0xFFFF00, 0.5, 0.5));
-
-  sun.quaternion.setFromUnitVectors(
-    sun.children[0].position.clone().normalize(), // new THREE.Vector3(0, 0, 1), // start position
-    dir.normalize(), // target position
-  );
-}
-
-function animate() {
-  requestAnimationFrame(animate);
-
-  actDate = new Date();
-  // actDate.setTime(actDate.getTime() - 360000);
-  // actDate.setTime(actDate.getTime() + 6000);
-  gmst = satellite.gstime(actDate);
-  var html = '';
-  if (selected) {
-    var look = satellite.ecfToLookAngles(home, satellite.eciToEcf(selected.OSV.position, gmst));
-    html += '<p><table>';
-    html += '<tr><td>Group ' + selected.group + '</td><td>' + selected.id + '</td></tr>'
-    html += '<tr><td>Height</td><td>' + satellite.eciToGeodetic(selected.OSV.position, gmst).height.toFixed(2) + 'km</td></tr>';
-    html += '<tr><td>Azimut</td><td>' + satellite.radiansToDegrees(look.azimuth).toFixed(2) + '° ' + dirs[Math.floor((look.azimuth + sect / 2) / sect)] + '</td></tr>';
-    html += '<tr><td>Elevation</td><td>' + satellite.radiansToDegrees(look.elevation).toFixed(1) + '°</td></tr>';
-    html += '<tr><td>Range</td><td>' + look.rangeSat.toFixed(0) + 'km</td></tr></table>';
-  }
-  dateElem.innerHTML = actDate;
-  infoElem.innerHTML = html;
-
-  sats.forEach((s, i) => {
-    updateSatellite(s);
-  });
-
-  // 5184000 ticks per day
-  // space.rotateOnAxis(axis, -satellite.degreesToRadians(0.000069444));
-  // space.rotateOnAxis(axis, -satellite.degreesToRadians(1/60));
-
-  // sun.rotation.y += 0.01;
-  vector.setFromMatrixPosition(sun.children[0].matrixWorld);
-  light.position.copy(vector);
-  render();
-};
-
-function render() {
-  renderer.render(scene, camera);
-}
-
 function createBall(radius, segments, color, pos) {
   var ball = new THREE.Mesh(
     new THREE.BufferGeometry().fromGeometry(new THREE.SphereGeometry(radius, segments, segments)),
@@ -415,27 +538,44 @@ function createBall(radius, segments, color, pos) {
 function createGlobe(radius, segments) {
   // http://www.shadedrelief.com/natural3/pages/textures.html
   var globe = new THREE.Group();
-  ball = new THREE.Mesh(
-    new THREE.SphereGeometry(radius, segments, segments),
-    new THREE.MeshPhongMaterial({
-      map: new THREE.TextureLoader().load('img/globe/2_no_clouds_4k.jpg'),
-      // side: THREE.DoubleSide,
-      bumpMap: new THREE.TextureLoader().load('img/globe/elev_bump_4k.jpg'),
-      bumpScale: 0.1,
-      // specularMap: new THREE.TextureLoader().load('img/globe/water_4k.png'),
-      // specular: new THREE.Color('grey')
-    }));
-  // ball = new THREE.Mesh(
-  //   new THREE.SphereGeometry(radius, segments/2, segments/2),
-  //   new THREE.MeshPhongMaterial({
-  //     color: 0x0000FF,
-  //     wireframe: true
-  //   }));
+  if (true) {
+    ball = new THREE.Mesh(
+      new THREE.SphereGeometry(radius, segments, segments),
+      new THREE.MeshPhongMaterial({
+        map: new THREE.TextureLoader().load('img/globe/2_no_clouds_4k.jpg'),
+        // side: THREE.DoubleSide,
+        bumpMap: new THREE.TextureLoader().load('img/globe/elev_bump_4k.jpg'),
+        bumpScale: 0.1,
+        // specularMap: new THREE.TextureLoader().load('img/globe/water_4k.png'),
+        // specular: new THREE.Color('grey')
+      }));
+  } else {
+    ball = new THREE.Mesh(
+      new THREE.SphereGeometry(radius, segments / 2, segments / 2),
+      new THREE.MeshPhongMaterial({
+        color: 0x0000FF,
+        wireframe: true
+      }));
+  }
   globe.add(ball);
   globe.add(addCurve(radius + 0.005, 0x808080));
   var equ = addCurve(radius + 0.005, 0x808080);
   equ.rotation.x = satellite.degreesToRadians(90);
   globe.add(equ);
+
+  var points = [new THREE.Vector2(1.0, 0.0), new THREE.Vector2(1.0, 0.4)];
+  lathe = new THREE.Mesh(
+    new THREE.LatheGeometry(points, 32),
+    new THREE.MeshBasicMaterial({
+      color: 0x808080,
+      opacity: 0.3,
+      transparent: true,
+      side: THREE.DoubleSide
+    })
+  );
+  lathe.position.y = eR - 0.25;
+  lathe.visible = false;
+  scene.add(lathe);
 
   globe.rotation.y = satellite.degreesToRadians(-90);
   return globe;
@@ -468,6 +608,9 @@ function createStars(radius, segments) {
   var matFont = new THREE.MeshBasicMaterial({
     color: 0x00FF00
   });
+  rose = new THREE.Group();
+  rose.visible = false;
+  stars.add(rose);
   loader.load('fonts/droid/droid_sans_bold.typeface.json', function(font) {
     fontOpts.font = font;
     var posY = 35;
@@ -477,43 +620,43 @@ function createStars(radius, segments) {
     var char = new THREE.Mesh(geometry, matFont);
     char.position.set(-0.4, posY, -posXZ);
     char.lookAt(-0.4, eR, 0);
-    stars.add(char);
+    rose.add(char);
     geometry = new THREE.TextGeometry('O', fontOpts);
     char = new THREE.Mesh(geometry, matFont);
     char.position.set(posXZ, posY, -0.5);
     char.lookAt(0, eR, -0.5);
-    stars.add(char);
+    rose.add(char);
     geometry = new THREE.TextGeometry('S', fontOpts);
     char = new THREE.Mesh(geometry, matFont);
     char.position.set(0.4, posY, posXZ);
     char.lookAt(0.4, eR, 0);
-    stars.add(char);
+    rose.add(char);
     geometry = new THREE.TextGeometry('W', fontOpts);
     char = new THREE.Mesh(geometry, matFont);
     char.position.set(-posXZ, posY, 0.6);
     char.lookAt(0, eR, 0.6);
-    stars.add(char);
+    rose.add(char);
 
     geometry = new THREE.TextGeometry('NO', fontOpts);
     char = new THREE.Mesh(geometry, matFont);
     char.position.set(posXZm, posY, -posXZm);
     char.lookAt(0, eR, 0);
-    stars.add(char);
+    rose.add(char);
     geometry = new THREE.TextGeometry('SW', fontOpts);
     char = new THREE.Mesh(geometry, matFont);
     char.position.set(-posXZm, posY, posXZm);
     char.lookAt(0, eR, 0);
-    stars.add(char);
+    rose.add(char);
     geometry = new THREE.TextGeometry('NW', fontOpts);
     char = new THREE.Mesh(geometry, matFont);
     char.position.set(-posXZm, posY, -posXZm);
     char.lookAt(0, eR, 0);
-    stars.add(char);
+    rose.add(char);
     geometry = new THREE.TextGeometry('SO', fontOpts);
     char = new THREE.Mesh(geometry, matFont);
     char.position.set(posXZm, posY, posXZm);
     char.lookAt(0, eR, 0);
-    stars.add(char);
+    rose.add(char);
 
   });
   return stars;
@@ -535,7 +678,7 @@ function addSatellites(data) {
     }
     console.log(i, cnt);
   });
-  select(sats[0]);
+  setTimeout(findTimes, 4000);
 }
 
 function addSatellite(satId, tles, group, num) {
@@ -548,7 +691,7 @@ function addSatellite(satId, tles, group, num) {
   var geo = height > 20000 ? geoBig : (num == 0 ? geoLead : geoSat);
 
   var satMesh = new THREE.Mesh(geo, mat);
-  sat = { id: satId, satrec: satrec, OSV: osv, mesh: satMesh, mat: mat, group: group };
+  sat = { id: satId, satrec: satrec, OSV: osv, mesh: satMesh, mat: mat, group: group, times: [], visible: false };
   updateSatellite(sat);
   space.add(satMesh);
   return sat;
@@ -568,10 +711,56 @@ function ecf2Vector3(ecf) {
   return new THREE.Vector3(ecf.y / 1000, ecf.z / 1000, ecf.x / 1000);
 }
 
+function findTimes() {
+  var begTime = new Date().getTime();
+  var minEle = satellite.degreesToRadians(10);
+  var date = new Date(Math.floor(actDate.getTime() / 60000) * 60000);
+  var gmst = satellite.gstime(date);
+
+  var cnt = 0;
+  for (var h = 0; h < 24; h++) {
+    // var sunPos = SunCalc.getPosition(date, homeGeo.latitude, homeGeo.longitude);
+    // sunPos.azimuth += Math.PI;
+    var sunTimes = SunCalc.getTimes(date, homeGeo.latitude, homeGeo.longitude, homeGeo.height);
+    for (var min = 0; min < 60; min++) {
+      if (date < new Date(sunTimes.sunrise) || date > new Date(sunTimes.sunset)) {
+        sats.forEach(sat => {
+          var satOSV = satellite.propagate(sat.satrec, date);
+          var satECF = satellite.eciToEcf(satOSV.position, gmst);
+          var look = satellite.ecfToLookAngles(home, satECF, gmst);
+          if (look.elevation >= minEle) {
+            look.elevationD = satellite.radiansToDegrees(look.elevation);
+            look.azimuthD = satellite.radiansToDegrees(look.azimuth);
+            if (!sat.visible) {
+              cnt++;
+              sat.info = { beg: { date: date.getTime(), look: look }, max: { date: date.toLocaleString(), look: look } };
+              sat.times.push(sat.info);
+              sat.visible = true;
+            } else {
+              sat.info.end = { date: date.getTime(), look: look };
+              if (look.elevation > sat.info.max.look.elevation) {
+                sat.info.max = { date: date.getTime(), look: look };
+              }
+            }
+          } else {
+            sat.visible = false;
+          }
+        });
+      }
+      date = new Date(date.getTime() + 60000);
+      gmst = satellite.gstime(date);
+    }
+  }
+  spottings = sats.filter(sat => sat.times.length > 0).sort((sata, satb) => sata.times[0].beg.date - satb.times[0].beg.date);
+  select(spottings[0]);
+  actSpot = 1;
+  console.log((new Date().getTime() - begTime) + "ms - found " + cnt + " viewings");
+}
+
 function orbit(sat) {
   var date = actDate;
   var geo = new THREE.Geometry();
-  for (var seg = 0; seg < 8*60; seg++) {
+  for (var seg = 0; seg < 2 * 60; seg++) {
     // var satOSV = satellite.sgp4(sat.satrec, startPos + seg * 5);
     var satOSV = satellite.propagate(sat.satrec, date);
     geo.vertices.push(ecf2Vector3(satellite.eciToEcf(satOSV.position, satellite.gstime(date))));
@@ -602,11 +791,11 @@ function minutesSinceTleEpoch(date, satrec) {
   return ((date / 86400000) + 2440587.5 - satrec.jdsatepoch) * 1440
 }
 
-function showMessage(txt) {
+function showMessage(txt, delay) {
   if (msgId) {
     clearTimeout(msgId);
   }
-  msgId = setTimeout(clearMessage, 8000);
+  msgId = setTimeout(clearMessage, delay * 1000);
   msgElem.innerHTML = txt;
 }
 
@@ -616,22 +805,6 @@ function clearMessage() {
   }
   msgId = null;
   msgElem.innerHTML = 'Use the mouse to change the view and to select satellites';
-}
-
-function locChange(evt) {
-  var value = locElem.value;
-  console.log(value);
-  if (value.match(/^ *[+-]?[0-9]+\.[0-9]+, *[+-]?[0-9]+\.[0-9]+ *$/)) {
-    clearMessage();
-    var coords = value.split(',')
-    updateHome({
-      latitude: coords[0].trim(),
-      longitude: coords[1].trim(),
-      height: 0.5
-    });
-  } else {
-    showMessage('Use valid "latitude,longitude" values like "48.650325, 9.014026"')
-  }
 }
 
 function updateHome(latLon) {
@@ -644,6 +817,7 @@ function updateHome(latLon) {
   locElem.value = homeGeo.latitude + ', ' + homeGeo.longitude;
   markHome();
   positionSun(homeGeo);
+  updateSunInfo();
 }
 
 function getLocation() {
