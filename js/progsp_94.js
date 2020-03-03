@@ -106,7 +106,7 @@ function scene() {
   axis = new THREE.Vector3(0, tilt, 0).normalize();
 
   sun = new THREE.Group();
-  sun.add(createBall(0.3, 32, 0xFFFF00, light.position));
+  sun.add(createBall(1.0, 32, 0xFFFF00, light.position));
   space.add(sun);
 
   updateHome(obsGeo[5]);
@@ -167,6 +167,12 @@ function onKeyUp(evt) {
   switch (evt.key) {
     case ' ':
       toggleSky()
+      break;
+    case 'n':
+      controls.reset();
+      controls.rotateLeft(tilt);
+      controls.rotateUp(0);
+      controls.update();
       break;
     case 'x':
       controls.reset();
@@ -527,8 +533,9 @@ function createMarker(vec, color) {
 function createBall(radius, segments, color, pos) {
   var ball = new THREE.Mesh(
     new THREE.BufferGeometry().fromGeometry(new THREE.SphereGeometry(radius, segments, segments)),
-    new THREE.MeshPhongMaterial({
-      color: color
+    new THREE.MeshBasicMaterial({
+      color: color,
+      emissive: color
       // ,wireframe: true
     }));
   ball.position.copy(pos);
