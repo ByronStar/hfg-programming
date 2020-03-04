@@ -94,6 +94,12 @@
       min-width: 330px;
     }
 
+    .btns {
+      font-size: 0.8em;
+      display: inline-block;
+      cursor: pointer;
+    }
+
     .btn {
       font-size: 1.5em;
       display: inline-block;
@@ -128,16 +134,17 @@
     </select>
     <p id="msg"></p>
     <div class="doselect">
-      <div><div id="date"></div>
+      <div>
+        <div id="date"></div>
         <div class="btn" id="clock" onclick="startTime(event)">🕰</div>
         <div id="pause" class="btn" onclick="stopTime(event)">⏸</div>
-        <div class="btn" onclick="backTime(event)">◀️</div> <span id="timer">0</span> min
+        <div class="btn" onclick="backTime(event)">◀️</div> <span id="timer"></span>
         <div class="btn" onclick="forwardTime(event)">▶️</div>
       </div>
-      <div id="sun"></div> 
+      <div id="sun"></div>
       <div class="btn" onclick="locChange(event)">🏡</div>
       <input type="text" id="location" name="location" value="48.654685, 9.015906"><label for="location"> lat,lon or "ctrl-click" on earth</label><br>
-      <div class="btn" onclick="findSat(event)">🔭</div><input type="text" id="find" size="20"><br>
+      <div class="btn" onclick="findSat(event)">🔭</div><input type="text" id="find" size="20"><div id="goto" style="display: none;"><div class="btn" onclick="setTime()">⏱</div>Forward to</div><br>
       <div class="btn" id="sky" onclick="toggleSky(event)">🛰</div>View
     </div>
     <div id="info"></div>

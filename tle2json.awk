@@ -4,7 +4,9 @@ BEGIN {
   f = 1
 }
 FNR==1 {
-  file=FILENAME
+  if (FILENAME) {
+    file=FILENAME
+  }
   sub(/\..*/,"",file)
   printf("{\n  \"name\": \"%s\",\n  \"date\": \"%s\",\n  \"tles\": [{\n",toupper(file), d)
 }

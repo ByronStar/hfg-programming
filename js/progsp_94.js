@@ -1,5 +1,5 @@
-var camera, scene, renderer, controls, earth, space, axis, tilt, gmst, northPole, ball, sun, light, rose, lathe, raycaster, vector;
-var dateElem, locElem, infoElem, msgElem, nameElem, skyElem, findElem, timerElem, pauseElem, sunElem, msgId;
+var camera, scene, renderer, controls, earth, space, axis, tilt, gmst, northPole, ball, sun, light, rose, wall, raycaster, vector;
+var dateElem, locElem, infoElem, msgElem, nameElem, skyElem, findElem, gotoElem, timerElem, pauseElem, sunElem, msgId;
 var sats = [];
 var selected, matsSat, matSel, matFont, arrowHelper, homeMarker, orbitLine, satData;
 var actDate = new Date();
@@ -9,14 +9,14 @@ var spotting = [];
 var actSpot = 0;
 
 var dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'N'];
+var dirsAngle, minEle;
 var satColors = [0xFF8000, 0x00FF40, 0x0040FF, 0xFFFF00, 0x00FFFF];
-var sect;
 var eR = 6.378137;
 var fps = 60;
 var time = 0;
 var clocked = true;
 var paused = false;
-var sunDay, sunTimes;
+var sunDate, homeSun;
 /*
  - upside down: directions correct?
 */
@@ -29,6 +29,7 @@ function init() {
   nameElem = document.getElementById('name');
   skyElem = document.getElementById('sky');
   findElem = document.getElementById('find');
+  gotoElem = document.getElementById('goto');
   timerElem = document.getElementById('timer');
   pauseElem = document.getElementById('pause');
   clockElem = document.getElementById('clock');
@@ -39,23 +40,18 @@ function init() {
 }
 
 function scene() {
-  sect = satellite.degreesToRadians(45);
+  dirsAngle = satellite.degreesToRadians(45);
+  minEle = satellite.degreesToRadians(10);
   actDate = new Date();
   gmst = satellite.gstime(actDate);
 
   raycaster = new THREE.Raycaster();
   vector = new THREE.Vector3();
   scene = new THREE.Scene();
-
-  // var fogColor = new THREE.Color(0xffffff);
-  // scene.background = fogColor;
-  // scene.fog = new THREE.Fog(fogColor, 0.0025, 20);
-
+  // scene.add(new THREE.AxesHelper(90));
 
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 5000);
   camera.position.z = 20;
-
-  // scene.add(new THREE.AxesHelper(90));
 
   renderer = new THREE.WebGLRenderer();
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -63,16 +59,17 @@ function scene() {
 
   controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.addEventListener('change', render);
-  // controls.enableDamping = true;
-  // controls.dampingFactor = 0.5;
   controls.enableZoom = true;
   controls.noKeys = true;
+  // needs controls.update();
+  // controls.enableDamping = true;
+  // controls.dampingFactor = 0.5;
 
   northPole = new THREE.Vector3(0, eR, 0)
   earth = new THREE.Group();
-  // earth.name = 'earth';
   space = new THREE.Group();
   earth.add(createGlobe(eR, 64));
+  // earth.add(createClouds(eR, 64));
   scene.add(createStars(100, 64))
 
   // scene.add(createMarker({x: 9000, y: 0, z: 0}, 0xFF4000));
@@ -111,16 +108,6 @@ function scene() {
 
   updateHome(obsGeo[5]);
   getLocation();
-  // positionSun({
-  //   latitude: 0,
-  //   longitude: 180,
-  //   height: 0.0
-  // });
-  // positionSun({
-  //   latitude: -14.104394,
-  //   longitude: -75.156210,
-  //   height: 0.5
-  // });
 
   geoSat = new THREE.BufferGeometry().fromGeometry(new THREE.BoxGeometry(0.04, 0.01, 0.005));
   geoLead = new THREE.BufferGeometry().fromGeometry(new THREE.BoxGeometry(0.06, 0.02, 0.005));
@@ -142,8 +129,9 @@ function scene() {
   document.addEventListener('keyup', onKeyUp);
   getTles('starlink.js').then(data => addSatellites(data));
 }
+
 /*
-  User input
+  User input and UI changes
 */
 function onMouseUp(evt) {
   evt.preventDefault();
@@ -161,6 +149,34 @@ function onMouseUp(evt) {
       updateHome(loc);
     }
   }
+}
+
+function xyz2Geo(vec) {
+  vec.normalize();
+  //longitude = angle of the vector around the Y axis
+  //-( ) : negate to flip the longitude (3d space specific )
+  //- PI / 2 to face the Z axis
+  var lng = -Math.atan2(-vec.z, -vec.x) - Math.PI / 2;
+  //to bind between -PI / PI
+  if (lng < -Math.PI) {
+    lng += Math.PI * 2;
+  }
+  //latitude : angle between the vector & the vector projected on the XZ plane on a unit sphere
+  //project on the XZ plane
+  var p = new THREE.Vector3(vec.x, 0, vec.z);
+  //project on the unit sphere
+  p.normalize();
+  //commpute the angle ( both vectors are normalized, no division by the sum of lengths )
+  var lat = Math.acos(p.dot(vec));
+  //invert if Y is negative to ensure teh latitude is comprised between -PI/2 & PI / 2
+  if (vec.y < 0) {
+    lat = -lat;
+  }
+  return {
+    latitude: satellite.radiansToDegrees(lat).toFixed(6),
+    longitude: satellite.radiansToDegrees(lng).toFixed(6),
+    height: 250
+  };
 }
 
 function onKeyUp(evt) {
@@ -200,12 +216,12 @@ function onKeyUp(evt) {
 }
 
 function findSat(evt) {
-  if (findElem.value != "") {
-    sat = sats.find(sat => sat.id.includes(name))
+  if (findElem.value != '' && selected && findElem.value != selected.id) {
+    sat = sats.find(sat => sat.id.includes(findElem.value))
     if (sat) {
       select(sat);
     } else {
-      showMessage("Satellite '" + name + "' not found", 8)
+      showMessage("Satellite '" + findElem.value + "' not found", 8)
     }
   } else {
     if (spottings.length > 0) {
@@ -236,6 +252,13 @@ function toggleSky(evt) {
     controls.target.copy(northPole);
     camera.position.copy(northPole);
     camera.position.z += 0.008;
+    if (selected) {
+      var look = satellite.ecfToLookAngles(home, satellite.eciToEcf(selected.OSV.position, gmst));
+      if (look.elevation > 0) {
+        controls.rotateLeft(look.azimuth - minEle);
+        controls.rotateUp(-look.elevation);
+      }
+    }
     controls.update();
 
     // rotate home to noth pole
@@ -247,7 +270,7 @@ function toggleSky(evt) {
     earth.remove(homeMarker);
     homeMarker = null;
     rose.visible = true;
-    lathe.visible = true;
+    wall.visible = true;
   }
 }
 
@@ -255,7 +278,7 @@ function startTime(evt) {
   clocked = true;
   clockElem.innerHTML = '🕰';
   timeStep = 0;
-  timerElem.innerHTML = (timeStep > 0 ? "+" : "") + timeStep
+  updateTimer();
   if (paused) {
     actDate = new Date();
   }
@@ -264,6 +287,16 @@ function startTime(evt) {
 function stopTime(evt) {
   paused = !paused;
   pauseElem.innerHTML = paused ? '⏯' : '⏸';
+}
+
+function setTime(evt) {
+  if (selected && selected.times.length > 0) {
+    clocked = false;
+    clockElem.innerHTML = '⏱';
+    timeStep = 0;
+    updateTimer();
+    actDate = new Date(selected.times[0].beg.date);
+  }
 }
 
 function backTime(evt) {
@@ -278,9 +311,7 @@ function backTime(evt) {
       timeStep -= 30;
     }
   }
-  timerElem.innerHTML = (timeStep > 0 ? "+" : "") + timeStep
-  paused = paused || timeStep == 0
-  pauseElem.innerHTML = paused ? '⏯' : '⏸';
+  updateTimer();
 }
 
 function forwardTime(evt) {
@@ -295,9 +326,11 @@ function forwardTime(evt) {
       timeStep += 30;
     }
   }
-  timerElem.innerHTML = (timeStep > 0 ? "+" : "") + timeStep
-  paused = paused || timeStep == 0
-  pauseElem.innerHTML = paused ? '⏯' : '⏸';
+  updateTimer();
+}
+
+function updateTimer() {
+  timerElem.innerHTML = clocked ? '' : timeStep == 0 ? '+1s' : (timeStep > 0 ? '+' + timeStep : timeStep) + 'm';
 }
 
 function locChange(evt) {
@@ -316,6 +349,22 @@ function locChange(evt) {
   }
 }
 
+function showMessage(txt, delay) {
+  if (msgId) {
+    clearTimeout(msgId);
+  }
+  msgId = setTimeout(clearMessage, delay * 1000);
+  msgElem.innerHTML = txt;
+}
+
+function clearMessage() {
+  if (msgId) {
+    clearTimeout(msgId);
+  }
+  msgId = null;
+  msgElem.innerHTML = 'Use the mouse to change the view and to select satellites';
+}
+
 function select(newSelected) {
   if (selected) {
     selected.mesh.material = selected.mat;
@@ -326,13 +375,19 @@ function select(newSelected) {
       space.remove(arrowHelper);
     }
   }
+  findElem.value = '';
+  gotoElem.style.display = 'none';
   if (selected != newSelected) {
     selected = newSelected;
     selected.mesh.material = matSel;
     orbitLine = orbit(selected)
     space.add(orbitLine);
     if (selected.times.length > 0) {
-      showMessage("Satellite '" + selected.id + "' is visible in " + Math.max(0, Math.floor((selected.times[0].beg.date - actDate.getTime()) / 60000)) + "min", 15);
+      var nextVisible = selected.times[0].beg.date;
+      var mins = Math.max(0, Math.floor((nextVisible - actDate.getTime()) / 60000));
+      showMessage("Satellite '" + selected.id + "' is visible in " + Math.floor(mins / 60) + 'h ' + mins % 60 + 'm at ' + new Date(nextVisible).toLocaleString(), 15);
+      findElem.value = selected.id
+      gotoElem.style.display = 'inline-block';
     }
     // var vec = ecf2Vector3(satellite.eciToEcf(selected.OSV.velocity, gmst));
     // var len = vec.length();
@@ -343,40 +398,11 @@ function select(newSelected) {
   }
 }
 
-function xyz2Geo(vec) {
-  vec.normalize();
-  //longitude = angle of the vector around the Y axis
-  //-( ) : negate to flip the longitude (3d space specific )
-  //- PI / 2 to face the Z axis
-  var lng = -Math.atan2(-vec.z, -vec.x) - Math.PI / 2;
-  //to bind between -PI / PI
-  if (lng < -Math.PI) {
-    lng += Math.PI * 2;
-  }
-  //latitude : angle between the vector & the vector projected on the XZ plane on a unit sphere
-  //project on the XZ plane
-  var p = new THREE.Vector3(vec.x, 0, vec.z);
-  //project on the unit sphere
-  p.normalize();
-  //commpute the angle ( both vectors are normalized, no division by the sum of lengths )
-  var lat = Math.acos(p.dot(vec));
-  //invert if Y is negative to ensure teh latitude is comprised between -PI/2 & PI / 2
-  if (vec.y < 0) {
-    lat = -lat;
-  }
-  return {
-    latitude: satellite.radiansToDegrees(lat).toFixed(6),
-    longitude: satellite.radiansToDegrees(lng).toFixed(6),
-    height: 250
-  };
-}
-
 function markHome() {
-  // -34.007113, 18.486086
   space.rotation.set(0, 0, 0);
   skyView = false;
   rose.visible = false;
-  lathe.visible = false;
+  wall.visible = false;
   if (!homeMarker) {
     homeMarker = createMarkerGeo(homeGeo, 0xFF0000);
     earth.add(homeMarker);
@@ -392,16 +418,10 @@ function markHome() {
   controls.rotateLeft(-home.longitude);
   controls.rotateUp(home.latitude);
   controls.update();
-  // var sunTimes = SunCalc.getTimes(actDate, homeGeo.latitude, homeGeo.longitude, homeGeo.height);
-  // console.log(sunTimes);
-  // //azimuth: 0 is south and Math.PI * 3/4 is northwest
-  // var sunPos = SunCalc.getPosition(actDate, homeGeo.latitude, homeGeo.longitude);
-  // console.log(sunPos, satellite.radiansToDegrees(sunPos.azimuth), satellite.radiansToDegrees(sunPos.altitude));
-  // var moonPos = SunCalc.getMoonPosition(actDate, homeGeo.latitude, homeGeo.longitude);
-  // var moonPhase = SunCalc.getMoonIllumination(actDate);
-  // console.log(moonPos, moonPhase);
-  // var moonTimes = SunCalc.getMoonTimes(actDate, homeGeo.latitude, homeGeo.longitude, false);
-  // console.log(moonTimes);
+}
+
+function azimuth2Dir(azimuth) {
+  return dirs[Math.floor((azimuth + dirsAngle / 2) / dirsAngle)]
 }
 
 function animate() {
@@ -413,11 +433,15 @@ function animate() {
       actDate = new Date();
     } else {
       // actDate.setTime(actDate.getTime() + timeStep * 60000 / fps);
-      actDate.setTime(actDate.getTime() + timeStep * 60 * (next - time));
+      if (timeStep == 0) {
+        actDate.setTime(actDate.getTime() + (next - time));
+      } else {
+        actDate.setTime(actDate.getTime() + timeStep * 60 * (next - time));
+      }
     }
     gmst = satellite.gstime(actDate);
-    if (actDate.getDay() != sunDay) {
-      sunDay = actDate.getDay();
+    if (actDate.getUTCDate() != sunDate) {
+      sunDate = actDate.getUTCDate();
       updateSunInfo();
     }
     var html = '';
@@ -426,13 +450,21 @@ function animate() {
       html += '<p><table>';
       html += '<tr><td>Group ' + selected.group + '</td><td>' + selected.id + '</td></tr>'
       html += '<tr><td>Height</td><td>' + satellite.eciToGeodetic(selected.OSV.position, gmst).height.toFixed(2) + 'km</td></tr>';
-      html += '<tr><td>Azimut</td><td>' + satellite.radiansToDegrees(look.azimuth).toFixed(2) + '° ' + dirs[Math.floor((look.azimuth + sect / 2) / sect)] + '</td></tr>';
-      html += '<tr><td>Elevation</td><td>' + satellite.radiansToDegrees(look.elevation).toFixed(1) + '°</td></tr>';
-      html += '<tr><td>Range</td><td>' + look.rangeSat.toFixed(0) + 'km</td></tr></table>';
+      html += '<tr><td>Azimut</td><td>' + satellite.radiansToDegrees(look.azimuth).toFixed(2) + '° ' + azimuth2Dir(look.azimuth) + '</td></tr>';
+      html += '<tr><td>Altitude</td><td>' + satellite.radiansToDegrees(look.elevation).toFixed(1) + '°</td></tr>';
+      html += '<tr><td>Range</td><td>' + look.rangeSat.toFixed(0) + 'km</td></tr>';
+      if (selected.times.length > 0) {
+        var nextVisible = selected.times[0].beg.date;
+        var mins = Math.max(0, Math.floor((nextVisible - actDate.getTime()) / 60000));
+        html += '<tr><td>Visible in</td><td> ' + Math.floor(mins / 60) + 'h ' + mins % 60 + 'm</td></tr>';
+        html += '<tr><td>Azimut</td><td> ' + azimuth2Dir(selected.times[0].beg.look.azimuth) + ' -> ' + azimuth2Dir(selected.times[0].end.look.azimuth) + '</td></tr>';
+        html += '<tr><td>Altitude</td><td> ' + selected.times[0].beg.look.elevationD.toFixed(1) + '°, ' + selected.times[0].max.look.elevationD.toFixed(1) + '°, ' + selected.times[0].end.look.elevationD.toFixed(1) + '°</td></tr>';
+      }
+      html += '</table>';
     }
     dateElem.innerHTML = actDate;
     infoElem.innerHTML = html;
-
+    // console.log(document.getElementById("dynamic")); // .addEventListener("click", setTime);
     sats.forEach((s, i) => {
       updateSatellite(s);
     });
@@ -456,9 +488,9 @@ function render() {
 }
 
 function updateSunInfo() {
-  sunTimes = SunCalc.getTimes(actDate, homeGeo.latitude, homeGeo.longitude, homeGeo.height);
-  console.log(sunTimes);
-  sunElem.innerHTML = '🌞 ' + sunTimes.sunrise.toLocaleTimeString() + ' 🌙 ' + sunTimes.sunset.toLocaleTimeString();
+  homeSun = SunCalc.getTimes(actDate, homeGeo.latitude, homeGeo.longitude, homeGeo.height);
+  console.log(homeSun);
+  sunElem.innerHTML = '🌞 ' + homeSun.dawn.toLocaleTimeString() + ' 🌙 ' + homeSun.dusk.toLocaleTimeString();
 }
 
 function positionSun(locGeo) {
@@ -533,7 +565,7 @@ function createMarker(vec, color) {
 function createBall(radius, segments, color, pos) {
   var ball = new THREE.Mesh(
     new THREE.BufferGeometry().fromGeometry(new THREE.SphereGeometry(radius, segments, segments)),
-    new THREE.MeshBasicMaterial({
+    new THREE.MeshPhongMaterial({
       color: color,
       emissive: color
       // ,wireframe: true
@@ -565,13 +597,13 @@ function createGlobe(radius, segments) {
       }));
   }
   globe.add(ball);
-  globe.add(addCurve(radius + 0.005, 0x808080));
-  var equ = addCurve(radius + 0.005, 0x808080);
-  equ.rotation.x = satellite.degreesToRadians(90);
-  globe.add(equ);
+  // globe.add(addCurve(radius + 0.005, 0x808080));
+  // var equ = addCurve(radius + 0.005, 0x808080);
+  // equ.rotation.x = satellite.degreesToRadians(90);
+  // globe.add(equ);
 
   var points = [new THREE.Vector2(1.0, 0.0), new THREE.Vector2(1.0, 0.4)];
-  lathe = new THREE.Mesh(
+  wall = new THREE.Mesh(
     new THREE.LatheGeometry(points, 32),
     new THREE.MeshBasicMaterial({
       color: 0x808080,
@@ -580,9 +612,9 @@ function createGlobe(radius, segments) {
       side: THREE.DoubleSide
     })
   );
-  lathe.position.y = eR - 0.25;
-  lathe.visible = false;
-  scene.add(lathe);
+  wall.position.y = eR - 0.25;
+  wall.visible = false;
+  scene.add(wall);
 
   globe.rotation.y = satellite.degreesToRadians(-90);
   return globe;
@@ -685,7 +717,7 @@ function addSatellites(data) {
     }
     console.log(i, cnt);
   });
-  setTimeout(findTimes, 4000);
+  setTimeout(findVisible, 1000);
 }
 
 function addSatellite(satId, tles, group, num) {
@@ -718,50 +750,101 @@ function ecf2Vector3(ecf) {
   return new THREE.Vector3(ecf.y / 1000, ecf.z / 1000, ecf.x / 1000);
 }
 
-function findTimes() {
+function findVisible() {
   var begTime = new Date().getTime();
-  var minEle = satellite.degreesToRadians(10);
-  var date = new Date(Math.floor(actDate.getTime() / 60000) * 60000);
+  // round to minute
+  var cut = 60 * 1000;
+  // round to day
+  cut = 24 * 60 * 60 * 1000;
+  var dtime = Math.floor(begTime / cut) * cut;
+  var date = new Date(dtime);
+  var sat = sats.find(s => s.id == 'STARLINK-1066');
+
+  // 04 March	STARLINK-1066	2.7	05:08:21	77°	E	05:08:21	77°	E	05:11:07	10°	ESE
+  var homeSun = SunCalc.getTimes(date, homeGeo.latitude, homeGeo.longitude, homeGeo.height);
+  for (var m = 4 * 60 * 60 + 8 * 60 + 18; m < 4 * 60 * 60 + 8 * 60 + 25; m += 1) {
+    date = new Date(dtime + m * 1000);
+    var gmst = satellite.gstime(date);
+    var satOSV = satellite.propagate(sat.satrec, date);
+    var satECF = satellite.eciToEcf(satOSV.position, gmst);
+    var look = satellite.ecfToLookAngles(home, satECF, gmst);
+    var satGeo = satellite.eciToGeodetic(satOSV.position, gmst)
+    var satSun = SunCalc.getTimes(date, satGeo.latitude, satGeo.longitude, satGeo.height);
+    // if ((date < homeSun.dawn || date > homeSun.dusk) && date > satSun.sunrise && date < satSun.sunset) {
+    //   console.log(sat, date, homeSun.dawn, homeSun.dusk, satSun.sunrise, satSun.sunset);
+    // }
+    // if ((date < homeSun.sunrise || date > homeSun.sunset) && date > satSun.sunrise && date < satSun.sunset) {
+    if ((date < homeSun.dawn || date > homeSun.dusk)) {
+    // if ((date > homeSun.nightEnd && date < homeSun.dawn || date > homeSun.dusk && date < homeSun.night)) {
+      console.log(sat, date, homeSun.nightEnd, homeSun.dawn, homeSun.dusk, homeSun.night, satSun, satellite.radiansToDegrees(look.elevation));
+    }
+    // console.log(date, date.getDate(), date.getUTCDate());
+  }
+}
+
+function findVisibleX() {
+  var begTime = new Date().getTime();
+
+  // round to minute
+  var cut = 60 * 1000;
+  // round to day
+  var cut = 24 * 60 * 60 * 1000;
+  var dtime = Math.floor(actDate.getTime() / cut) * cut;
+  var date = new Date(dtime);
   var gmst = satellite.gstime(date);
+  console.log(minEle);
 
   var cnt = 0;
   for (var h = 0; h < 24; h++) {
     // var sunPos = SunCalc.getPosition(date, homeGeo.latitude, homeGeo.longitude);
     // sunPos.azimuth += Math.PI;
-    var sunTimes = SunCalc.getTimes(date, homeGeo.latitude, homeGeo.longitude, homeGeo.height);
+    var homeSun = SunCalc.getTimes(date, homeGeo.latitude, homeGeo.longitude, homeGeo.height);
     for (var min = 0; min < 60; min++) {
-      if (date < new Date(sunTimes.sunrise) || date > new Date(sunTimes.sunset)) {
+      if (date < homeSun.dawn || date > homeSun.dusk) {
+        // homeGeo is in the dark
         sats.forEach(sat => {
           var satOSV = satellite.propagate(sat.satrec, date);
+
           var satECF = satellite.eciToEcf(satOSV.position, gmst);
           var look = satellite.ecfToLookAngles(home, satECF, gmst);
           if (look.elevation >= minEle) {
-            look.elevationD = satellite.radiansToDegrees(look.elevation);
-            look.azimuthD = satellite.radiansToDegrees(look.azimuth);
-            if (!sat.visible) {
-              cnt++;
-              sat.info = { beg: { date: date.getTime(), look: look }, max: { date: date.toLocaleString(), look: look } };
-              sat.times.push(sat.info);
-              sat.visible = true;
-            } else {
-              sat.info.end = { date: date.getTime(), look: look };
-              if (look.elevation > sat.info.max.look.elevation) {
-                sat.info.max = { date: date.getTime(), look: look };
+            // the satellite could be visible from home position
+            var satGeo = satellite.eciToGeodetic(satOSV.position, gmst)
+            var satSun = SunCalc.getTimes(date, satGeo.latitude, satGeo.longitude, satGeo.height);
+            if (date > satSun.sunrise && date < satSun.sunset) {
+              // satGeo is still in the sun
+              look.elevationD = satellite.radiansToDegrees(look.elevation);
+              look.azimuthD = satellite.radiansToDegrees(look.azimuth);
+              if (!sat.visible) {
+                cnt++;
+                sat.info = { beg: { date: dtime, dd: new Date(dtime).toLocaleString(), look: look }, max: { date: dtime, dd: new Date(dtime).toLocaleString(), look: look } };
+                sat.times.push(sat.info);
+                sat.visible = true;
+              } else {
+                sat.info.end = { date: dtime, dd: new Date(dtime).toLocaleString(), look: look };
+                if (look.elevation > sat.info.max.look.elevation) {
+                  sat.info.max = { date: dtime, dd: new Date(dtime).toLocaleString(), look: look };
+                }
               }
+            } else {
+              sat.visible = false;
             }
           } else {
             sat.visible = false;
           }
         });
       }
-      date = new Date(date.getTime() + 60000);
+      dtime += 60000;
+      date = new Date(dtime);
       gmst = satellite.gstime(date);
     }
   }
-  spottings = sats.filter(sat => sat.times.length > 0).sort((sata, satb) => sata.times[0].beg.date - satb.times[0].beg.date);
+  spottings = sats.filter(sat => sat.times.length > 0).sort((a, b) => a.times[0].beg.date - b.times[0].beg.date);
   select(spottings[0]);
   actSpot = 1;
   console.log((new Date().getTime() - begTime) + "ms - found " + cnt + " viewings");
+  // console.log(spottings.filter(s => s.group == 2).map((s) => { return { id: s.id, times: s.times } }));
+  console.log(spottings.map((s) => { return { id: s.id, times: s.times } }));
 }
 
 function orbit(sat) {
@@ -798,22 +881,6 @@ function minutesSinceTleEpoch(date, satrec) {
   return ((date / 86400000) + 2440587.5 - satrec.jdsatepoch) * 1440
 }
 
-function showMessage(txt, delay) {
-  if (msgId) {
-    clearTimeout(msgId);
-  }
-  msgId = setTimeout(clearMessage, delay * 1000);
-  msgElem.innerHTML = txt;
-}
-
-function clearMessage() {
-  if (msgId) {
-    clearTimeout(msgId);
-  }
-  msgId = null;
-  msgElem.innerHTML = 'Use the mouse to change the view and to select satellites';
-}
-
 function updateHome(latLon) {
   homeGeo = latLon;
   home = {
@@ -839,9 +906,9 @@ function getLocation() {
 function setPosition(position) {
   console.log(position);
   updateHome({
-    latitude: position.coords.latitude,
-    longitude: position.coords.longitude,
-    height: position.coords.altitude ? position.coords.altitude : 250
+    latitude: position.coords.latitude.toFixed(6),
+    longitude: position.coords.longitude.toFixed(6),
+    height: position.coords.altitude / 1000 ? position.coords.altitude : 0.25
   });
 }
 
