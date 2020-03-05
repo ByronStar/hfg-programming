@@ -760,26 +760,123 @@ function findVisible() {
   var date = new Date(dtime);
   var sat = sats.find(s => s.id == 'STARLINK-1066');
 
+
   // 04 March	STARLINK-1066	2.7	05:08:21	77°	E	05:08:21	77°	E	05:11:07	10°	ESE
   var homeSun = SunCalc.getTimes(date, homeGeo.latitude, homeGeo.longitude, homeGeo.height);
-  for (var m = 4 * 60 * 60 + 8 * 60 + 18; m < 4 * 60 * 60 + 8 * 60 + 25; m += 1) {
+  for (var m = 4 * 60 * 60 + 8 * 60 + 16; m < 4 * 60 * 60 + 8 * 60 + 20; m += 1) {
     date = new Date(dtime + m * 1000);
     var gmst = satellite.gstime(date);
+    var sol = calcSoloarPos(date.getTime());
     var satOSV = satellite.propagate(sat.satrec, date);
     var satECF = satellite.eciToEcf(satOSV.position, gmst);
     var look = satellite.ecfToLookAngles(home, satECF, gmst);
     var satGeo = satellite.eciToGeodetic(satOSV.position, gmst)
+    satOSV.position.R = 6378.135 + satGeo.height;
+    console.log(sol, satOSV.position, satEclipsed(satOSV.position, sol));
     var satSun = SunCalc.getTimes(date, satGeo.latitude, satGeo.longitude, satGeo.height);
     // if ((date < homeSun.dawn || date > homeSun.dusk) && date > satSun.sunrise && date < satSun.sunset) {
     //   console.log(sat, date, homeSun.dawn, homeSun.dusk, satSun.sunrise, satSun.sunset);
     // }
     // if ((date < homeSun.sunrise || date > homeSun.sunset) && date > satSun.sunrise && date < satSun.sunset) {
     if ((date < homeSun.dawn || date > homeSun.dusk)) {
-    // if ((date > homeSun.nightEnd && date < homeSun.dawn || date > homeSun.dusk && date < homeSun.night)) {
+      // if ((date > homeSun.nightEnd && date < homeSun.dawn || date > homeSun.dusk && date < homeSun.night)) {
       console.log(sat, date, homeSun.nightEnd, homeSun.dawn, homeSun.dusk, homeSun.night, satSun, satellite.radiansToDegrees(look.elevation));
     }
     // console.log(date, date.getDate(), date.getUTCDate());
   }
+}
+
+/*
+  Function Sat_Eclipsed(sat,sol : vector;
+                      var depth : double) : boolean;
+    var
+      sd_sun,sd_earth : double;
+      delta           : double;
+      rho,earth       : vector;
+    begin
+  { Determine partial eclipse }
+    sd_earth := ArcSin(xkmper/sat[4]);
+    Vec_Sub(sol,sat,rho);
+    sd_sun := ArcSin(sr/rho[4]);
+    Scalar_Multiply(-1,sat,earth);
+    delta := Angle(sol,earth);
+    depth := sd_earth - sd_sun - delta;
+    if sd_earth < sd_sun then
+      Sat_Eclipsed := false
+    else
+      if depth >= 0 then
+        Sat_Eclipsed := true
+      else
+        Sat_Eclipsed := false;
+    end; {Function Sat_Eclipsed}
+*/
+const twopi = Math.PI * 2;
+
+function satEclipsed(sat, sol) {
+  const xkmper = 6378.135; // Earth equatorial radius - kilometers (WGS '72)
+  const sr = 696000.0; // Solar radius - kilometers (IAU 76)
+  var sd_sun, sd_earth, delta, earth;
+  sd_earth = Math.asin(xkmper / sat.R);
+  sd_sun = Math.asin(sr / (sol.R - sat.R));
+  earth = { x: -sat.x, y: -sat.y, z: -sat.z };
+  delta = Math.acos();
+  depth = sd_earth - sd_sun - delta;
+  console.log(sd_earth, sd_sun, delta, satellite.radiansToDegrees(delta), depth);
+  if (sd_earth < sd_sun) {
+    return false
+  } else {
+    if (depth >= 0) {
+      return true
+    } else {
+      return false;
+    }
+  }
+}
+
+function calcSoloarPos(date) {
+  const sr = 696000.0; // Solar radius - kilometers (IAU 76)
+  const AU = 1.49597870E8; // Astronomical unit - kilometers (IAU 76)
+  const secday = 86400.0; // Seconds per day
+  const msday = secday * 1000; // Milliseconds per day
+
+  var jdate, mjd, year, T, M, L, e, C, O, Lsa, nu, R, eps;
+
+  jdate = date.valueOf() / msday - 0.5 + 2440588;
+
+  mjd = jdate - 2415020.0;
+  year = 1900 + mjd / 365.25;
+  T = (mjd + Delta_ET(year) / secday) / 36525.0;
+  M = satellite.degreesToRadians(((358.47583 + ((35999.04975 * T) % 360.0) - (0.000150 + 0.0000033 * T) * Math.sqrt(T)) % 360.0));
+  L = satellite.degreesToRadians(((279.69668 + ((36000.76892 * T) % 360.0) + 0.0003025 * Math.sqrt(T)) % 360.0));
+  e = 0.01675104 - (0.0000418 + 0.000000126 * T) * T;
+  C = satellite.degreesToRadians((1.919460 - (0.004789 + 0.000014 * T) * T) * Math.sin(M) + (0.020094 - 0.000100 * T) * Math.sin(2 * M) + 0.000293 * Math.sin(3 * M));
+  O = satellite.degreesToRadians(((259.18 - 1934.142 * T) % 360.0));
+  Lsa = ((L + C - satellite.degreesToRadians(0.00569 - 0.00479 * Math.sin(O))) % twopi);
+  nu = ((M + C) % twopi);
+  R = 1.0000002 * (1 - Math.sqrt(e)) / (1 + e * Math.cos(nu));
+  eps = satellite.degreesToRadians(23.452294 - (0.0130125 + (0.00000164 - 0.000000503 * T) * T) * T + 0.00256 * Math.cos(O));
+  R = AU * R;
+  // console.log(date, jdate, mjd, year, T, M, L, e, C, O, Lsa, nu, R, eps);
+  // date, 1583363617646 (4.3.2020)
+  // jdate,      2458913.4677968286
+  // mjd,          43893.4677968286
+  // year,          2020.1737653575046
+  // T,                1.2017376790246472
+  // M,                1.0452803920932854
+  // L,                5.989577235040236
+  // e,                0.01670062539916217
+  // C,                0.029195863513032057
+  // O,               -4.627763514824815
+  // Lsa,              6.018757091414635
+  // nu,               1.0744762556063174
+  // R,        129237439.75784697
+  // eps,              0.40904301694534384
+  return { x: R * Math.cos(Lsa), y: R * Math.sin(Lsa) * Math.cos(eps), z: R * Math.sin(Lsa) * Math.sin(eps), R: R };
+}
+
+function Delta_ET(year) {
+  // Values determined using data from 1950-1991 in the 1990 Astronomical Almanac.  See DELTA_ET.WQ1 for details.
+  return 26.465 + 0.747622 * (year - 1950) + 1.886913 * Math.sin(twopi * (year - 1975) / 33);
 }
 
 function findVisibleX() {
