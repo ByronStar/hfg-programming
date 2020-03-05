@@ -8,7 +8,7 @@ var home, homeGeo, skyView = false;
 var spotting = [];
 var actSpot = 0;
 
-var dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'N'];
+var dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW', 'N'];
 var dirsAngle, minEle;
 var satColors = [0xFF8000, 0x00FF40, 0x0040FF, 0xFFFF00, 0x00FFFF];
 var eR = 6.378137;
@@ -17,6 +17,7 @@ var time = 0;
 var clocked = true;
 var paused = false;
 var sunDate, homeSun;
+var spottings = [];
 /*
  - upside down: directions correct?
 */
@@ -40,7 +41,7 @@ function init() {
 }
 
 function scene() {
-  dirsAngle = satellite.degreesToRadians(45);
+  dirsAngle = satellite.degreesToRadians(45 / 2);
   minEle = satellite.degreesToRadians(10);
   actDate = new Date();
   gmst = satellite.gstime(actDate);
@@ -216,8 +217,9 @@ function onKeyUp(evt) {
 }
 
 function findSat(evt) {
-  if (findElem.value != '' && selected && findElem.value != selected.id) {
+  if (findElem.value != '' && (!selected || findElem.value != selected.id)) {
     sat = sats.find(sat => sat.id.includes(findElem.value))
+    console.log(sat, findElem.value)
     if (sat) {
       select(sat);
     } else {
@@ -228,7 +230,7 @@ function findSat(evt) {
       // if (!paused) {
       //   stopTime();
       // }
-      // actDate = new Date(spottings[actSpot].times[0].beg.date);
+      // actDate = new Date(spottings[actSpot].visible[0].beg.date);
       // gmst = satellite.gstime(actDate);
       select(spottings[actSpot])
       actSpot++;
@@ -290,12 +292,15 @@ function stopTime(evt) {
 }
 
 function setTime(evt) {
-  if (selected && selected.times.length > 0) {
+  if (selected && selected.visible.length > 0) {
     clocked = false;
     clockElem.innerHTML = '⏱';
     timeStep = 0;
+    // if (!skyView) {
+    //   toggleSky();
+    // }
     updateTimer();
-    actDate = new Date(selected.times[0].beg.date);
+    actDate = new Date(selected.visible[0].beg.date);
   }
 }
 
@@ -382,9 +387,10 @@ function select(newSelected) {
     selected.mesh.material = matSel;
     orbitLine = orbit(selected)
     space.add(orbitLine);
-    if (selected.times.length > 0) {
-      var nextVisible = selected.times[0].beg.date;
-      var mins = Math.max(0, Math.floor((nextVisible - actDate.getTime()) / 60000));
+    if (selected.visible.length > 0) {
+      refineVisibility(selected);
+      var nextVisible = selected.visible[0].beg.date;
+      var mins = Math.floor((nextVisible - actDate.getTime()) / 60000);
       showMessage("Satellite '" + selected.id + "' is visible in " + Math.floor(mins / 60) + 'h ' + mins % 60 + 'm at ' + new Date(nextVisible).toLocaleString(), 15);
       findElem.value = selected.id
       gotoElem.style.display = 'inline-block';
@@ -453,12 +459,12 @@ function animate() {
       html += '<tr><td>Azimut</td><td>' + satellite.radiansToDegrees(look.azimuth).toFixed(2) + '° ' + azimuth2Dir(look.azimuth) + '</td></tr>';
       html += '<tr><td>Altitude</td><td>' + satellite.radiansToDegrees(look.elevation).toFixed(1) + '°</td></tr>';
       html += '<tr><td>Range</td><td>' + look.rangeSat.toFixed(0) + 'km</td></tr>';
-      if (selected.times.length > 0) {
-        var nextVisible = selected.times[0].beg.date;
-        var mins = Math.max(0, Math.floor((nextVisible - actDate.getTime()) / 60000));
-        html += '<tr><td>Visible in</td><td> ' + Math.floor(mins / 60) + 'h ' + mins % 60 + 'm</td></tr>';
-        html += '<tr><td>Azimut</td><td> ' + azimuth2Dir(selected.times[0].beg.look.azimuth) + ' -> ' + azimuth2Dir(selected.times[0].end.look.azimuth) + '</td></tr>';
-        html += '<tr><td>Altitude</td><td> ' + selected.times[0].beg.look.elevationD.toFixed(1) + '°, ' + selected.times[0].max.look.elevationD.toFixed(1) + '°, ' + selected.times[0].end.look.elevationD.toFixed(1) + '°</td></tr>';
+      if (selected.visible.length > 0) {
+        var nextVisible = selected.visible[0].beg.date;
+        var mins = Math.floor((nextVisible - actDate.getTime()) / 60000);
+        html += '<tr><td>Visible in</td><td> ' + Math.round(mins / 60) + 'h ' + mins % 60 + 'm</td></tr>';
+        html += '<tr><td>Azimut</td><td> ' + azimuth2Dir(selected.visible[0].beg.look.azimuth) + ' -> ' + azimuth2Dir(selected.visible[0].end.look.azimuth) + '</td></tr>';
+        html += '<tr><td>Altitude</td><td> ' + selected.visible[0].beg.look.elevationD.toFixed(1) + '°, ' + selected.visible[0].max.look.elevationD.toFixed(1) + '°, ' + selected.visible[0].end.look.elevationD.toFixed(1) + '°</td></tr>';
       }
       html += '</table>';
     }
@@ -489,7 +495,7 @@ function render() {
 
 function updateSunInfo() {
   homeSun = SunCalc.getTimes(actDate, homeGeo.latitude, homeGeo.longitude, homeGeo.height);
-  console.log(homeSun);
+  // console.log(homeSun);
   sunElem.innerHTML = '🌞 ' + homeSun.dawn.toLocaleTimeString() + ' 🌙 ' + homeSun.dusk.toLocaleTimeString();
 }
 
@@ -704,7 +710,7 @@ function createStars(radius, segments) {
 function addSatellites(data) {
   satData = JSON.parse(data);
   nameElem.innerHTML = satData.name
-  console.log(satData.tles.length);
+  // console.log(satData.tles.length);
 
   sats.forEach(sat => {
     space.remove(sat.mesh);
@@ -715,9 +721,10 @@ function addSatellites(data) {
     for (var satId in list) {
       sats.push(addSatellite(satId, list, i, cnt++));
     }
-    console.log(i, cnt);
+    // console.log(i, cnt);
   });
-  setTimeout(findVisible, 1000);
+  spottings = [];
+  setTimeout(findVisible, 1000, actDate, 24 * 60, 60000);
 }
 
 function addSatellite(satId, tles, group, num) {
@@ -730,7 +737,7 @@ function addSatellite(satId, tles, group, num) {
   var geo = height > 20000 ? geoBig : (num == 0 ? geoLead : geoSat);
 
   var satMesh = new THREE.Mesh(geo, mat);
-  sat = { id: satId, satrec: satrec, OSV: osv, mesh: satMesh, mat: mat, group: group, times: [], visible: false };
+  sat = { id: satId, satrec: satrec, OSV: osv, mesh: satMesh, mat: mat, group: group, visible: [] };
   updateSatellite(sat);
   space.add(satMesh);
   return sat;
@@ -750,84 +757,170 @@ function ecf2Vector3(ecf) {
   return new THREE.Vector3(ecf.y / 1000, ecf.z / 1000, ecf.x / 1000);
 }
 
-function findVisible() {
+function findVisible(startDate, max, step) {
   var begTime = new Date().getTime();
   // round to minute
   var cut = 60 * 1000;
   // round to day
-  cut = 24 * 60 * 60 * 1000;
-  var dtime = Math.floor(begTime / cut) * cut;
-  var date = new Date(dtime);
-  var sat = sats.find(s => s.id == 'STARLINK-1066');
+  // cut = 24 * 60 * 60 * 1000;
+  // var sat = sats.find(s => s.id == 'STARLINK-1066');
 
-
-  // 04 March	STARLINK-1066	2.7	05:08:21	77°	E	05:08:21	77°	E	05:11:07	10°	ESE
-  var homeSun = SunCalc.getTimes(date, homeGeo.latitude, homeGeo.longitude, homeGeo.height);
-  for (var m = 4 * 60 * 60 + 8 * 60 + 16; m < 4 * 60 * 60 + 8 * 60 + 20; m += 1) {
-    date = new Date(dtime + m * 1000);
-    var gmst = satellite.gstime(date);
-    var sol = calcSoloarPos(date.getTime());
-    var satOSV = satellite.propagate(sat.satrec, date);
-    var satECF = satellite.eciToEcf(satOSV.position, gmst);
-    var look = satellite.ecfToLookAngles(home, satECF, gmst);
-    var satGeo = satellite.eciToGeodetic(satOSV.position, gmst)
-    satOSV.position.R = 6378.135 + satGeo.height;
-    console.log(sol, satOSV.position, satEclipsed(satOSV.position, sol));
-    var satSun = SunCalc.getTimes(date, satGeo.latitude, satGeo.longitude, satGeo.height);
-    // if ((date < homeSun.dawn || date > homeSun.dusk) && date > satSun.sunrise && date < satSun.sunset) {
-    //   console.log(sat, date, homeSun.dawn, homeSun.dusk, satSun.sunrise, satSun.sunset);
-    // }
-    // if ((date < homeSun.sunrise || date > homeSun.sunset) && date > satSun.sunrise && date < satSun.sunset) {
-    if ((date < homeSun.dawn || date > homeSun.dusk)) {
-      // if ((date > homeSun.nightEnd && date < homeSun.dawn || date > homeSun.dusk && date < homeSun.night)) {
-      console.log(sat, date, homeSun.nightEnd, homeSun.dawn, homeSun.dusk, homeSun.night, satSun, satellite.radiansToDegrees(look.elevation));
+  var dtime = Math.floor(new Date(startDate).getTime() / cut) * cut;
+  var date, gmst, sunDate, homeSun;
+  var info = {};
+  for (var s = 0; s < max; s++) {
+    date = new Date(dtime);
+    gmst = satellite.gstime(date);
+    if (date.getUTCDate() != sunDate) {
+      sunDate = date.getUTCDate();
+      homeSun = SunCalc.getTimes(date, homeGeo.latitude, homeGeo.longitude, homeGeo.height);
     }
-    // console.log(date, date.getDate(), date.getUTCDate());
+    // if ((date > homeSun.nightEnd && date < homeSun.dawn || date > homeSun.dusk && date < homeSun.night)) {
+    if (date < homeSun.dawn || date > homeSun.dusk) {
+      sats.forEach(sat => {
+        var satOSV = satellite.propagate(sat.satrec, date);
+        var eciSol = calcSoloarPos(dtime);
+        if (!isEclipsed(satOSV.position, eciSol)) {
+          var satECF = satellite.eciToEcf(satOSV.position, gmst);
+          var look = satellite.ecfToLookAngles(home, satECF, gmst);
+          look.elevationD = satellite.radiansToDegrees(look.elevation);
+          look.azimuthD = satellite.radiansToDegrees(look.azimuth);
+          if (look.elevation >= minEle) {
+            // findVisibleSlot(dtime - step, sat, 600, 1000);
+            if (!(sat.id in info)) {
+              info[sat.id] = { final: false, beg: { date: dtime - step, dd: new Date(dtime - step).toLocaleString(), look: look }, max: { date: dtime, dd: new Date(dtime - step).toLocaleString(), look: look } };
+              sat.visible.push(info[sat.id]);
+              // console.log("BEG");
+            } else {
+              // console.log("END", info);
+              // info[sat.id].end = { date: dtime, dd: new Date(dtime).toLocaleString(), look: look };
+              if (look.elevation > info[sat.id].max.look.elevation) {
+                info[sat.id].max = { date: dtime, dd: new Date(dtime).toLocaleString(), look: look };
+              }
+            }
+          } else {
+            if (info[sat.id]) {
+              // if (!info[sat.id].end) {
+              info[sat.id].end = { date: dtime, dd: new Date(dtime).toLocaleString(), look: look };
+              // }
+              delete info[sat.id];
+            }
+          }
+        } else {
+          if (info[sat.id]) {
+            // if (!info[sat.id].end) {
+            info[sat.id].end = { date: dtime, dd: new Date(dtime).toLocaleString(), look: look };
+            // }
+            delete info[sat.id];
+          }
+        }
+      });
+    } else {
+      info = {};
+    }
+    dtime += step;
+    // if ((new Date().getTime() - begTime) > 500) {
+    //   // console.log(new Date(startDate), s, max);
+    //   if (s + 1 < max) {
+    //     setTimeout(findVisible, 1000, dtime, max - s - 1, step);
+    //   }
+    //   break;
+    // }
   }
+  spottings = sats.filter(sat => sat.visible.length > 0).sort((a, b) => a.visible[0].beg.date - b.visible[0].beg.date);
+  if (!selected) {
+    select(spottings[0]);
+    actSpot = 1;
+  }
+  console.log((new Date().getTime() - begTime) + "ms - found " + spottings.length + " visible");
+  // console.log(spottings);
+  // console.log(spottings.filter(s => s.group == 2).map((s) => { return { id: s.id, visible: s.visible } }));
+  // console.log(spottings.map((s) => { return { id: s.id, visible: s.visible } }));
 }
 
-/*
-  Function Sat_Eclipsed(sat,sol : vector;
-                      var depth : double) : boolean;
-    var
-      sd_sun,sd_earth : double;
-      delta           : double;
-      rho,earth       : vector;
-    begin
-  { Determine partial eclipse }
-    sd_earth := ArcSin(xkmper/sat[4]);
-    Vec_Sub(sol,sat,rho);
-    sd_sun := ArcSin(sr/rho[4]);
-    Scalar_Multiply(-1,sat,earth);
-    delta := Angle(sol,earth);
-    depth := sd_earth - sd_sun - delta;
-    if sd_earth < sd_sun then
-      Sat_Eclipsed := false
-    else
-      if depth >= 0 then
-        Sat_Eclipsed := true
-      else
-        Sat_Eclipsed := false;
-    end; {Function Sat_Eclipsed}
-*/
-const twopi = Math.PI * 2;
+function refineVisibility(sat) {
+  sat.visible.forEach((visible, v) => {
+    if (!visible.final) {
+      var date, gmst, sunDate, homeSun, info;
+      for (dtime = visible.beg.date; dtime < visible.end.date; dtime += 1000) {
+        date = new Date(dtime);
+        if (date.getUTCDate() != sunDate) {
+          sunDate = date.getUTCDate();
+          homeSun = SunCalc.getTimes(date, homeGeo.latitude, homeGeo.longitude, homeGeo.height);
+        }
+        if (date < homeSun.dawn || date > homeSun.dusk) {
+          var satOSV = satellite.propagate(sat.satrec, date);
+          var eciSol = calcSoloarPos(dtime);
+          if (!isEclipsed(satOSV.position, eciSol)) {
+            var gmst = satellite.gstime(date);
+            var satECF = satellite.eciToEcf(satOSV.position, gmst);
+            var look = satellite.ecfToLookAngles(home, satECF, gmst);
+            look.elevationD = satellite.radiansToDegrees(look.elevation);
+            look.azimuthD = satellite.radiansToDegrees(look.azimuth);
+            if (look.elevation >= minEle) {
+              if (!info) {
+                info = { beg: { date: dtime, dd: new Date(dtime).toLocaleString(), look: look }, max: { date: dtime, dd: new Date(dtime).toLocaleString(), look: look } };
+              } else {
+                info.end = { date: dtime, dd: new Date(dtime).toLocaleString(), look: look };
+                if (look.elevation > info.max.look.elevation) {
+                  info.max = { date: dtime, dd: new Date(dtime).toLocaleString(), look: look };
+                }
+              }
+            } else {
+              if (info) {
+                break;
+              }
+            }
+          } else {
+            if (info) {
+              break;
+            }
+          }
+        } else {
+          if (info) {
+            break;
+          }
+        }
+      }
+      info.final = true;
+      sat.visible[v] = info;
+    }
+  })
+}
 
-function satEclipsed(sat, sol) {
+function isEclipsed(sat, sol) {
   const xkmper = 6378.135; // Earth equatorial radius - kilometers (WGS '72)
   const sr = 696000.0; // Solar radius - kilometers (IAU 76)
   var sd_sun, sd_earth, delta, earth;
-  sd_earth = Math.asin(xkmper / sat.R);
-  sd_sun = Math.asin(sr / (sol.R - sat.R));
-  earth = { x: -sat.x, y: -sat.y, z: -sat.z };
-  delta = Math.acos();
+
+  // length of sat vector
+  sat.l = Math.sqrt(sat.x * sat.x + sat.y * sat.y + sat.z * sat.z)
+  sd_earth = Math.asin(xkmper / sat.l);
+
+  // subtract sat vector from sol vector
+  rho = { x: sol.x - sat.x, y: sol.y - sat.y, z: sol.z - sat.z };
+  // length of rho (result) vector
+  rho.l = Math.sqrt(rho.x * rho.x + rho.y * rho.y + rho.z * rho.z);
+
+  sd_sun = Math.asin(sr / rho.l);
+  // earth is the inverse of sat vector
+  earth = { x: -1 * sat.x, y: -1 * sat.y, z: -1 * sat.z, l: 1 * sat.l };
+
+  // angle between sol and earth vectors
+  var dot = sol.x * earth.x + sol.y * earth.y + sol.z * earth.z;
+  delta = Math.acos(dot / (sol.l * earth.l));
+
   depth = sd_earth - sd_sun - delta;
-  console.log(sd_earth, sd_sun, delta, satellite.radiansToDegrees(delta), depth);
+  // console.log(sd_earth, sd_sun, delta, depth);
   if (sd_earth < sd_sun) {
+    // not eclipsed
     return false
   } else {
     if (depth >= 0) {
+      // is eclipsed
       return true
     } else {
+      // not eclipsed
       return false;
     }
   }
@@ -838,23 +931,28 @@ function calcSoloarPos(date) {
   const AU = 1.49597870E8; // Astronomical unit - kilometers (IAU 76)
   const secday = 86400.0; // Seconds per day
   const msday = secday * 1000; // Milliseconds per day
+  const twopi = Math.PI * 2;
+  const rad = Math.PI / 180;
 
-  var jdate, mjd, year, T, M, L, e, C, O, Lsa, nu, R, eps;
+  var jdate, mjd, year, delta_et, T, M, L, e, C, O, Lsa, nu, R, eps;
 
   jdate = date.valueOf() / msday - 0.5 + 2440588;
 
   mjd = jdate - 2415020.0;
   year = 1900 + mjd / 365.25;
-  T = (mjd + Delta_ET(year) / secday) / 36525.0;
-  M = satellite.degreesToRadians(((358.47583 + ((35999.04975 * T) % 360.0) - (0.000150 + 0.0000033 * T) * Math.sqrt(T)) % 360.0));
-  L = satellite.degreesToRadians(((279.69668 + ((36000.76892 * T) % 360.0) + 0.0003025 * Math.sqrt(T)) % 360.0));
+  // Values determined using data from 1950-1991 in the 1990 Astronomical Almanac.
+  // See DELTA_ET.WQ1 for details.
+  var delta_et = 26.465 + 0.747622 * (year - 1950) + 1.886913 * Math.sin(twopi * (year - 1975) / 33);
+  T = (mjd + delta_et / secday) / 36525.0;
+  M = rad * (((358.47583 + ((35999.04975 * T) % 360.0) - (0.000150 + 0.0000033 * T) * Math.sqrt(T)) % 360.0));
+  L = rad * (((279.69668 + ((36000.76892 * T) % 360.0) + 0.0003025 * Math.sqrt(T)) % 360.0));
   e = 0.01675104 - (0.0000418 + 0.000000126 * T) * T;
-  C = satellite.degreesToRadians((1.919460 - (0.004789 + 0.000014 * T) * T) * Math.sin(M) + (0.020094 - 0.000100 * T) * Math.sin(2 * M) + 0.000293 * Math.sin(3 * M));
-  O = satellite.degreesToRadians(((259.18 - 1934.142 * T) % 360.0));
-  Lsa = ((L + C - satellite.degreesToRadians(0.00569 - 0.00479 * Math.sin(O))) % twopi);
+  C = rad * ((1.919460 - (0.004789 + 0.000014 * T) * T) * Math.sin(M) + (0.020094 - 0.000100 * T) * Math.sin(2 * M) + 0.000293 * Math.sin(3 * M));
+  O = rad * (((259.18 - 1934.142 * T) % 360.0));
+  Lsa = ((L + C - rad * (0.00569 - 0.00479 * Math.sin(O))) % twopi);
   nu = ((M + C) % twopi);
   R = 1.0000002 * (1 - Math.sqrt(e)) / (1 + e * Math.cos(nu));
-  eps = satellite.degreesToRadians(23.452294 - (0.0130125 + (0.00000164 - 0.000000503 * T) * T) * T + 0.00256 * Math.cos(O));
+  eps = rad * (23.452294 - (0.0130125 + (0.00000164 - 0.000000503 * T) * T) * T + 0.00256 * Math.cos(O));
   R = AU * R;
   // console.log(date, jdate, mjd, year, T, M, L, e, C, O, Lsa, nu, R, eps);
   // date, 1583363617646 (4.3.2020)
@@ -871,77 +969,7 @@ function calcSoloarPos(date) {
   // nu,               1.0744762556063174
   // R,        129237439.75784697
   // eps,              0.40904301694534384
-  return { x: R * Math.cos(Lsa), y: R * Math.sin(Lsa) * Math.cos(eps), z: R * Math.sin(Lsa) * Math.sin(eps), R: R };
-}
-
-function Delta_ET(year) {
-  // Values determined using data from 1950-1991 in the 1990 Astronomical Almanac.  See DELTA_ET.WQ1 for details.
-  return 26.465 + 0.747622 * (year - 1950) + 1.886913 * Math.sin(twopi * (year - 1975) / 33);
-}
-
-function findVisibleX() {
-  var begTime = new Date().getTime();
-
-  // round to minute
-  var cut = 60 * 1000;
-  // round to day
-  var cut = 24 * 60 * 60 * 1000;
-  var dtime = Math.floor(actDate.getTime() / cut) * cut;
-  var date = new Date(dtime);
-  var gmst = satellite.gstime(date);
-  console.log(minEle);
-
-  var cnt = 0;
-  for (var h = 0; h < 24; h++) {
-    // var sunPos = SunCalc.getPosition(date, homeGeo.latitude, homeGeo.longitude);
-    // sunPos.azimuth += Math.PI;
-    var homeSun = SunCalc.getTimes(date, homeGeo.latitude, homeGeo.longitude, homeGeo.height);
-    for (var min = 0; min < 60; min++) {
-      if (date < homeSun.dawn || date > homeSun.dusk) {
-        // homeGeo is in the dark
-        sats.forEach(sat => {
-          var satOSV = satellite.propagate(sat.satrec, date);
-
-          var satECF = satellite.eciToEcf(satOSV.position, gmst);
-          var look = satellite.ecfToLookAngles(home, satECF, gmst);
-          if (look.elevation >= minEle) {
-            // the satellite could be visible from home position
-            var satGeo = satellite.eciToGeodetic(satOSV.position, gmst)
-            var satSun = SunCalc.getTimes(date, satGeo.latitude, satGeo.longitude, satGeo.height);
-            if (date > satSun.sunrise && date < satSun.sunset) {
-              // satGeo is still in the sun
-              look.elevationD = satellite.radiansToDegrees(look.elevation);
-              look.azimuthD = satellite.radiansToDegrees(look.azimuth);
-              if (!sat.visible) {
-                cnt++;
-                sat.info = { beg: { date: dtime, dd: new Date(dtime).toLocaleString(), look: look }, max: { date: dtime, dd: new Date(dtime).toLocaleString(), look: look } };
-                sat.times.push(sat.info);
-                sat.visible = true;
-              } else {
-                sat.info.end = { date: dtime, dd: new Date(dtime).toLocaleString(), look: look };
-                if (look.elevation > sat.info.max.look.elevation) {
-                  sat.info.max = { date: dtime, dd: new Date(dtime).toLocaleString(), look: look };
-                }
-              }
-            } else {
-              sat.visible = false;
-            }
-          } else {
-            sat.visible = false;
-          }
-        });
-      }
-      dtime += 60000;
-      date = new Date(dtime);
-      gmst = satellite.gstime(date);
-    }
-  }
-  spottings = sats.filter(sat => sat.times.length > 0).sort((a, b) => a.times[0].beg.date - b.times[0].beg.date);
-  select(spottings[0]);
-  actSpot = 1;
-  console.log((new Date().getTime() - begTime) + "ms - found " + cnt + " viewings");
-  // console.log(spottings.filter(s => s.group == 2).map((s) => { return { id: s.id, times: s.times } }));
-  console.log(spottings.map((s) => { return { id: s.id, times: s.times } }));
+  return { x: R * Math.cos(Lsa), y: R * Math.sin(Lsa) * Math.cos(eps), z: R * Math.sin(Lsa) * Math.sin(eps), l: R };
 }
 
 function orbit(sat) {
