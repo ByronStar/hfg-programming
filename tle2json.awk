@@ -4,7 +4,7 @@ BEGIN {
   f = 1
 }
 FNR==1 {
-  if (FILENAME) {
+  if (FILENAME && FILENAME != "-") {
     file=FILENAME
   }
   sub(/\..*/,"",file)

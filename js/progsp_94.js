@@ -283,6 +283,8 @@ function startTime(evt) {
   updateTimer();
   if (paused) {
     actDate = new Date();
+    paused = !paused;
+    pauseElem.innerHTML = paused ? '⏯' : '⏸';
   }
 }
 
@@ -300,7 +302,14 @@ function setTime(evt) {
     //   toggleSky();
     // }
     updateTimer();
+    var actSelected = selected;
     actDate = new Date(selected.visible[0].beg.date);
+    select(selected);
+    select(actSelected);
+    if (paused) {
+      paused = !paused;
+      pauseElem.innerHTML = paused ? '⏯' : '⏸';
+    }
   }
 }
 
@@ -470,16 +479,10 @@ function animate() {
     }
     dateElem.innerHTML = actDate;
     infoElem.innerHTML = html;
-    // console.log(document.getElementById("dynamic")); // .addEventListener("click", setTime);
     sats.forEach((s, i) => {
       updateSatellite(s);
     });
 
-    // 5184000 ticks per day
-    // space.rotateOnAxis(axis, -satellite.degreesToRadians(0.000069444));
-    // space.rotateOnAxis(axis, -satellite.degreesToRadians(1/60));
-
-    // sun.rotation.y += 0.01;
     positionSun(homeGeo);
     vector.setFromMatrixPosition(sun.children[0].matrixWorld);
     light.position.copy(vector);
@@ -658,51 +661,14 @@ function createStars(radius, segments) {
   stars.add(rose);
   loader.load('fonts/droid/droid_sans_bold.typeface.json', function(font) {
     fontOpts.font = font;
-    var posY = 35;
-    var posXZ = 90;
-    var posXZm = 64;
-    var geometry = new THREE.TextGeometry('N', fontOpts);
-    var char = new THREE.Mesh(geometry, matFont);
-    char.position.set(-0.4, posY, -posXZ);
-    char.lookAt(-0.4, eR, 0);
-    rose.add(char);
-    geometry = new THREE.TextGeometry('O', fontOpts);
-    char = new THREE.Mesh(geometry, matFont);
-    char.position.set(posXZ, posY, -0.5);
-    char.lookAt(0, eR, -0.5);
-    rose.add(char);
-    geometry = new THREE.TextGeometry('S', fontOpts);
-    char = new THREE.Mesh(geometry, matFont);
-    char.position.set(0.4, posY, posXZ);
-    char.lookAt(0.4, eR, 0);
-    rose.add(char);
-    geometry = new THREE.TextGeometry('W', fontOpts);
-    char = new THREE.Mesh(geometry, matFont);
-    char.position.set(-posXZ, posY, 0.6);
-    char.lookAt(0, eR, 0.6);
-    rose.add(char);
-
-    geometry = new THREE.TextGeometry('NO', fontOpts);
-    char = new THREE.Mesh(geometry, matFont);
-    char.position.set(posXZm, posY, -posXZm);
-    char.lookAt(0, eR, 0);
-    rose.add(char);
-    geometry = new THREE.TextGeometry('SW', fontOpts);
-    char = new THREE.Mesh(geometry, matFont);
-    char.position.set(-posXZm, posY, posXZm);
-    char.lookAt(0, eR, 0);
-    rose.add(char);
-    geometry = new THREE.TextGeometry('NW', fontOpts);
-    char = new THREE.Mesh(geometry, matFont);
-    char.position.set(-posXZm, posY, -posXZm);
-    char.lookAt(0, eR, 0);
-    rose.add(char);
-    geometry = new THREE.TextGeometry('SO', fontOpts);
-    char = new THREE.Mesh(geometry, matFont);
-    char.position.set(posXZm, posY, posXZm);
-    char.lookAt(0, eR, 0);
-    rose.add(char);
-
+    dirs.forEach((dir, a) => {
+      var geometry = new THREE.TextGeometry(dir, fontOpts);
+      var char = new THREE.Mesh(geometry, matFont);
+      char.position.set(90 * Math.cos(a * dirsAngle), 35, 90 * Math.sin(a * dirsAngle));
+      char.lookAt(-0.4, eR, 0);
+      rose.add(char);
+    });
+    rose.rotation.y = Math.PI / 2
   });
   return stars;
 }
@@ -712,10 +678,23 @@ function addSatellites(data) {
   nameElem.innerHTML = satData.name
   // console.log(satData.tles.length);
 
+  if (orbitLine) {
+    space.remove(orbitLine);
+  }
+  if (arrowHelper) {
+    space.remove(arrowHelper);
+  }
+  findElem.value = '';
+  gotoElem.style.display = 'none';
+  spottings = [];
+  selected = null;
+
   sats.forEach(sat => {
     space.remove(sat.mesh);
   });
   sats = [];
+
+
   satData.tles.forEach((list, i) => {
     var cnt = 0
     for (var satId in list) {
@@ -723,7 +702,6 @@ function addSatellites(data) {
     }
     // console.log(i, cnt);
   });
-  spottings = [];
   setTimeout(findVisible, 1000, actDate, 24 * 60, 60000);
 }
 
@@ -786,31 +764,24 @@ function findVisible(startDate, max, step) {
           look.elevationD = satellite.radiansToDegrees(look.elevation);
           look.azimuthD = satellite.radiansToDegrees(look.azimuth);
           if (look.elevation >= minEle) {
-            // findVisibleSlot(dtime - step, sat, 600, 1000);
             if (!(sat.id in info)) {
               info[sat.id] = { final: false, beg: { date: dtime - step, dd: new Date(dtime - step).toLocaleString(), look: look }, max: { date: dtime, dd: new Date(dtime - step).toLocaleString(), look: look } };
               sat.visible.push(info[sat.id]);
-              // console.log("BEG");
             } else {
-              // console.log("END", info);
-              // info[sat.id].end = { date: dtime, dd: new Date(dtime).toLocaleString(), look: look };
               if (look.elevation > info[sat.id].max.look.elevation) {
                 info[sat.id].max = { date: dtime, dd: new Date(dtime).toLocaleString(), look: look };
+                info[sat.id].end = { date: dtime, dd: new Date(dtime).toLocaleString(), look: look };
               }
             }
           } else {
             if (info[sat.id]) {
-              // if (!info[sat.id].end) {
               info[sat.id].end = { date: dtime, dd: new Date(dtime).toLocaleString(), look: look };
-              // }
               delete info[sat.id];
             }
           }
         } else {
           if (info[sat.id]) {
-            // if (!info[sat.id].end) {
             info[sat.id].end = { date: dtime, dd: new Date(dtime).toLocaleString(), look: look };
-            // }
             delete info[sat.id];
           }
         }
