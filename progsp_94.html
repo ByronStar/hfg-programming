@@ -94,6 +94,21 @@
       min-width: 330px;
     }
 
+    .btn_plain {
+      display: inline-block;
+      cursor: pointer;
+      pointer-events: all;
+    }
+
+    input {
+      line-height: 20px;
+      padding: 0 0 0 5px;
+      border-width: 2px;
+      border-color: #0c12ff;
+      background-color: #4ac2ff;
+      pointer-events: all;
+    }
+
     .btn {
       display: inline-block;
       cursor: pointer;
@@ -102,14 +117,14 @@
       border-width: 1px;
       border-color: #0c12ff;
       background-color: #4ac2ff;
-      padding: 0 0 0 px;
       line-height: 32px;
       text-align: center;
       height: 30px;
       width: 30px;
+      pointer-events: all;
     }
 
-    .btn:hover {
+    .btn:hover, input:hover {
       border-color: #ff0000;
     }
 
@@ -124,20 +139,25 @@
   <div id="tracker">
   </div>
   <div id="overlay">
-    <h1 style="display: inline">3D Satellite Tracker (<span id="name">Starlink</span>)</h1>
+    <div class="btn_plain" id="menu" onclick="toggleMenu(event)">ℹ️</div><h1 style="display: inline;">3D Satellite Tracker</h1>
     <select id="sats" class="doselect" onchange="selectedSatGroup(event)">
-      <option value="starlink.js">STARLINK</option>
+      <option value="starlink.js">Starlink</option>
+      <option value="galileo.js">Galileo</option>
       <option value="cpf.js">CPF</option>
       <option value="glonass.js">GLONASS</option>
+      <option value="glo-ops.js">GLONASS Operational</option>
       <option value="gps.js">GPS</option>
-      <option value="intelsat.js">INTELSAT</option>
+      <option value="gps-ops.js">GPS Operational</option>
+      <option value="intelsat.js">Intelsat</option>
       <option value="iss.js">ISS</option>
-      <option value="meteosat.js">METEOSAT</option>
-      <option value="orbcomm.js">ORBCOMM</option>
+      <option value="meteosat.js">Meteosat</option>
+      <option value="orbcomm.js">Orbcomm</option>
       <option value="ses.js">SES</option>
-    </select>
-    <p id="msg"></p>
-    <div class="doselect">
+      <option value="iridium.js">Iridium</option>
+      <option value="iridium-33-debris.js">Iridium33 Debris</option>
+    </select> <span id="name" style="font-size: 0.75em;">-</span>
+    <div id="details">
+      <p id="msg"></p>
       <div>
         <div id="date"></div>
         <div class="btn" id="clock" onclick="startTime(event)">🕰</div>
@@ -150,11 +170,29 @@
       <input type="text" id="location" name="location" value="48.654685, 9.015906"><label for="location"> lat,lon or "ctrl-click" on earth</label><br>
       <div class="btn" onclick="findSat(event)">🔭</div><input type="text" id="find" size="20"><div id="goto" style="display: none;"><div class="btn" onclick="setTime()">⏱</div>Jump to</div><br>
       <div class="btn" id="sky" onclick="toggleSky(event)">🛰</div>View
+      <div id="info"></div>
     </div>
-    <div id="info"></div>
+    <div id="help" class="noselect" style="display:none">
+      <p>Usage info:</p>
+      <ul>
+        <li>🌞 Dawn (sun 6° below horizon)
+        <li>🌙 Dusk (sun 6° below horizon)
+        <li>🕰 The current time is used
+        <li>⏱ The time has been actively offset
+        <li>⏸ ⏯ with 🕰 pause/start the current time
+        <li>⏸ ⏯ with ⏱ pause/start the offset time
+        <li>◀️ ▶️ switch to ⏱ and decrease/increase speed of time
+        <li>⏱ on the 🔭 field switch to ⏱ and offset time to the selected satellites visibility
+        <li>🏡 Set/reset the home location and rotate the view accordingly
+        <li>🔭 Search for a satellite - without user input cycles through the satellites by next visibilits
+        <li>🛰 and 🌍 Toggle between sky (and rotate to selected satellite) and earth view
+        <li>The dropdown button switches between serveral satellite groups
+        <li>The whole view ran be rotated (drag with the mouse) and zoomed (mouse-wheel/magic mouse/trackpad)
+      </ul>
+    </div>
     <div id="impressum" class="doselect">
       <p>
-        Developed by Benno Stäbler - V1.0<br>
+        Developed by Benno Stäbler - V1.1<br>
         3D graphics by <a href="https://threejs.org/docs/index.html#manual/en/introduction/Creating-a-scene" target="_blank">three.js</a><br>
         Satellite data (TLEs) from <a href="https://www.celestrak.com/NORAD/elements/supplemental/" target="_blank">CelesTrak</a><br>
         Satellite calculations with <a href="https://github.com/shashwatak/satellite-js" target="_blank">satellite.js</a><br>

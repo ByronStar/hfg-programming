@@ -1,5 +1,5 @@
 var camera, scene, renderer, controls, earth, space, axis, tilt, gmst, northPole, ball, sun, light, rose, wall, raycaster, vector;
-var dateElem, locElem, infoElem, msgElem, nameElem, skyElem, findElem, gotoElem, timerElem, pauseElem, sunElem, msgId;
+var dateElem, locElem, infoElem, msgElem, nameElem, skyElem, findElem, gotoElem, timerElem, pauseElem, sunElem, menuElem, detailsElem, helpsElem, msgId;
 var sats = [];
 var selected, matsSat, matSel, matFont, arrowHelper, homeMarker, orbitLine, satData;
 var actDate = new Date();
@@ -7,6 +7,7 @@ var timeStep = 0;
 var home, homeGeo, skyView = false;
 var spotting = [];
 var actSpot = 0;
+var showInfo = 0;
 
 var dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW', 'N'];
 var dirsAngle, minEle;
@@ -35,6 +36,9 @@ function init() {
   pauseElem = document.getElementById('pause');
   clockElem = document.getElementById('clock');
   sunElem = document.getElementById('sun');
+  menuElem = document.getElementById('menu');
+  detailsElem = document.getElementById('details');
+  helpElem = document.getElementById('help');
   clearMessage();
   // sample();
   scene();
@@ -243,6 +247,27 @@ function selectedSatGroup(evt) {
   getTles(evt.target.value).then(data => addSatellites(data));
 }
 
+function toggleMenu(evt) {
+  showInfo = (showInfo + 1) % 3;
+  switch (showInfo) {
+    case 0:
+      detailsElem.style.display = 'block';
+      helpElem.style.display = 'none';
+      menuElem.innerHTML = 'ℹ️';
+      break;
+    case 1:
+      detailsElem.style.display = 'block';
+      helpElem.style.display = 'block';
+      menuElem.innerHTML = '🔽';
+      break;
+    case 2:
+      detailsElem.style.display = 'none';
+      helpElem.style.display = 'none';
+      menuElem.innerHTML = '▶️';
+      break;
+  }
+}
+
 function toggleSky(evt) {
   if (skyView) {
     markHome();
@@ -262,6 +287,10 @@ function toggleSky(evt) {
       }
     }
     controls.update();
+
+    sats.forEach(sat => {
+      sat.mesh.scale.set(0.2, 0.2, 0.2);
+    });
 
     // rotate home to noth pole
     space.quaternion.setFromUnitVectors(
@@ -428,6 +457,9 @@ function markHome() {
     new THREE.Vector3(0, 1, 0), // start position
     vec.normalize() // target position
   );
+  sats.forEach(sat => {
+    sat.mesh.scale.set(1.0, 1.0, 1.0);
+  });
   // rotate to home position
   controls.reset();
   controls.rotateLeft(-home.longitude);
@@ -675,7 +707,6 @@ function createStars(radius, segments) {
 
 function addSatellites(data) {
   satData = JSON.parse(data);
-  nameElem.innerHTML = satData.name
   // console.log(satData.tles.length);
 
   if (orbitLine) {
@@ -702,7 +733,30 @@ function addSatellites(data) {
     }
     // console.log(i, cnt);
   });
+  nameElem.innerHTML = 'TLEs of ' + getUTCDate(sats[0].satrec)
   setTimeout(findVisible, 1000, actDate, 24 * 60, 60000);
+}
+
+function getUTCDate(satrec) {
+  var mon = [31, satrec.epochyr % 4 ? 28 : 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  var t = satrec.epochdays;
+  d = Math.floor(t);
+  t = (t - d) * 24;
+  h = Math.floor(t);
+  t = (t - h) * 60;
+  m = Math.floor(t);
+  t = (t - m) * 60;
+  s = Math.floor(t);
+  mm = mon.findIndex(m => {
+    d -= m;
+    if (d < 0) {
+      d += m;
+      return true;
+    }
+    return false;
+  });
+  // console.log(2000 + satrec.epochyr, mm, d, h, m, s, 0);
+  return new Date(Date.UTC(2000 + satrec.epochyr, mm, d, h, m, s));
 }
 
 function addSatellite(satId, tles, group, num) {
@@ -761,9 +815,9 @@ function findVisible(startDate, max, step) {
         if (!isEclipsed(satOSV.position, eciSol)) {
           var satECF = satellite.eciToEcf(satOSV.position, gmst);
           var look = satellite.ecfToLookAngles(home, satECF, gmst);
-          look.elevationD = satellite.radiansToDegrees(look.elevation);
-          look.azimuthD = satellite.radiansToDegrees(look.azimuth);
           if (look.elevation >= minEle) {
+            look.elevationD = satellite.radiansToDegrees(look.elevation);
+            look.azimuthD = satellite.radiansToDegrees(look.azimuth);
             if (!(sat.id in info)) {
               info[sat.id] = { final: false, beg: { date: dtime - step, dd: new Date(dtime - step).toLocaleString(), look: look }, max: { date: dtime, dd: new Date(dtime - step).toLocaleString(), look: look } };
               sat.visible.push(info[sat.id]);
@@ -810,10 +864,13 @@ function findVisible(startDate, max, step) {
 }
 
 function refineVisibility(sat) {
+  var begTime = new Date().getTime();
   sat.visible.forEach((visible, v) => {
     if (!visible.final) {
       var date, gmst, sunDate, homeSun, info;
-      for (dtime = visible.beg.date; dtime < visible.end.date; dtime += 1000) {
+      var step = Math.max(1000, (visible.end.date - visible.beg.date) / 500);
+      console.log(step);
+      for (dtime = visible.beg.date; dtime < visible.end.date; dtime += step) {
         date = new Date(dtime);
         if (date.getUTCDate() != sunDate) {
           sunDate = date.getUTCDate();
@@ -826,9 +883,9 @@ function refineVisibility(sat) {
             var gmst = satellite.gstime(date);
             var satECF = satellite.eciToEcf(satOSV.position, gmst);
             var look = satellite.ecfToLookAngles(home, satECF, gmst);
-            look.elevationD = satellite.radiansToDegrees(look.elevation);
-            look.azimuthD = satellite.radiansToDegrees(look.azimuth);
             if (look.elevation >= minEle) {
+              look.elevationD = satellite.radiansToDegrees(look.elevation);
+              look.azimuthD = satellite.radiansToDegrees(look.azimuth);
               if (!info) {
                 info = { beg: { date: dtime, dd: new Date(dtime).toLocaleString(), look: look }, max: { date: dtime, dd: new Date(dtime).toLocaleString(), look: look } };
               } else {
@@ -857,6 +914,7 @@ function refineVisibility(sat) {
       sat.visible[v] = info;
     }
   })
+  console.log((new Date().getTime() - begTime) + "ms - finalized " + sat.id + " with " + sat.visible.length + " times");
 }
 
 function isEclipsed(sat, sol) {
