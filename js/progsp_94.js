@@ -133,6 +133,8 @@ function scene() {
   document.addEventListener('mouseup', onMouseUp);
   document.addEventListener('keyup', onKeyUp);
   getTles('starlink.js').then(data => addSatellites(data));
+  var now = new Date();
+  console.log(GetSunPosition(now), calcSoloarPos(now));
 }
 
 /*
@@ -953,6 +955,22 @@ function isEclipsed(sat, sol) {
       return false;
     }
   }
+}
+
+function GetSunPosition(date) {
+  var JD = 367 * date.getFullYear() - Math.floor(7.0 * (date.getFullYear() + Math.floor(((date.getMonth() + 1) + 9.0) / 12.0)) / 4.0) + Math.floor(275.0 * (date.getMonth() + 1) / 9.0) + date.getDate() + 1721013.5 + date.getHours() / 24.0 + date.getMinutes() / 1440.0 + date.getSeconds() / 86400.0;
+  var UT1 = (JD - 2451545) / 36525;
+  var longMSUN = 280.4606184 + 36000.77005361 * UT1;
+  var mSUN = 357.5277233 + 35999.05034 * UT1;
+  var ecliptic = longMSUN + 1.914666471 * Math.sin(mSUN * Math.PI / 180) + 0.918994643 * Math.sin(2 * mSUN * Math.PI / 180);
+  var eccen = 23.439291 - 0.0130042 * UT1;
+
+  var x = Math.cos(ecliptic * Math.PI / 180);
+  var y = Math.cos(eccen * Math.PI / 180) * Math.sin(ecliptic * Math.PI / 180);
+  var z = Math.sin(eccen * Math.PI / 180) * Math.sin(ecliptic * Math.PI / 180);
+
+  var sunDistance = 0.989 * 1.49597870E8;
+  return { x: x * sunDistance, y: y * sunDistance, z: z * sunDistance, l: sunDistance };
 }
 
 function calcSoloarPos(date) {
