@@ -1,4 +1,4 @@
-var camera, scene, renderer, controls, earth, space, axis, tilt, gmst, northPole, ball, sun, light, rose, wall, raycaster, vector;
+var camera, scene, renderer, controls, earth, space, axis, tilt, gmst, northPole, ball, sun, moon, light, rose, wall, raycaster, vector;
 var dateElem, locElem, infoElem, msgElem, nameElem, skyElem, findElem, gotoElem, timerElem, pauseElem, sunElem, menuElem, detailsElem, helpsElem, msgId;
 var sats = [];
 var selected, matsSat, matSel, matFont, arrowHelper, homeMarker, orbitLine, satData;
@@ -108,8 +108,10 @@ function scene() {
   axis = new THREE.Vector3(0, tilt, 0).normalize();
 
   sun = new THREE.Group();
-  sun.add(createBall(1.0, 32, 0xFFFF00, light.position));
+  sun.add(createBall(1.0, 32, 0xFFFF00, 0xFFFF00, light.position));
   space.add(sun);
+
+  space.add(createMoon(0.8, 32, 0xFFFFC0, new THREE.Vector3(0, 0, 60)));
 
   updateHome(obsGeo[5]);
   getLocation();
@@ -527,7 +529,7 @@ function animate() {
       updateSatellite(s);
     });
 
-    positionSun(homeGeo);
+    positionSunAndMoon(actDate, homeGeo);
     vector.setFromMatrixPosition(sun.children[0].matrixWorld);
     light.position.copy(vector);
   }
@@ -546,7 +548,7 @@ function updateSunInfo() {
   sunElem.innerHTML = '🌞 ' + homeSun.dawn.toLocaleTimeString() + ' 🌙 ' + homeSun.dusk.toLocaleTimeString();
 }
 
-function positionSun(locGeo) {
+function positionSunAndMoon(date, locGeo) {
   loc = {
     latitude: satellite.degreesToRadians(locGeo.latitude),
     longitude: satellite.degreesToRadians(locGeo.longitude),
@@ -563,25 +565,33 @@ function positionSun(locGeo) {
   n.multiplyScalar(dir.dot(n) / n.length());
   dir.sub(n).normalize();
   // scene.add(new THREE.ArrowHelper(dir, vecLoc, 2, 0x00FF00));
-
-  // sun to actual position
-  var sunPos = SunCalc.getPosition(actDate, locGeo.latitude, locGeo.longitude);
-  sunPos.azimuth += Math.PI;
-  sunPos.azimuthD = satellite.radiansToDegrees(sunPos.azimuth)
-  sunPos.altitudeD = satellite.radiansToDegrees(sunPos.altitude)
-  // console.log(loc, sunPos, vecLoc);
-
+  var dirMoon = dir.clone();
   var altAxis = dir.clone().cross(vecLoc).normalize();
   // scene.add(new THREE.ArrowHelper(altAxis, vecLoc, 2, 0xFF0000));
   var aziAxis = vecLoc.clone().normalize();
 
+  // sun to actual position
+  var sunPos = SunCalc.getPosition(date, locGeo.latitude, locGeo.longitude);
+  sunPos.azimuth += Math.PI;
   dir.applyAxisAngle(altAxis, sunPos.altitude);
   dir.applyAxisAngle(aziAxis, -sunPos.azimuth);
   // scene.add(new THREE.ArrowHelper(dir.normalize(), vecLoc, 80, 0xFFFF00, 0.5, 0.5));
-
   sun.quaternion.setFromUnitVectors(
-    sun.children[0].position.clone().normalize(), // new THREE.Vector3(0, 0, 1), // start position
+    sun.children[0].position.clone().normalize(), // start position
     dir.normalize(), // target position
+  );
+
+  // moon to actual position
+  var moonPos = SunCalc.getMoonPosition(date, locGeo.latitude, locGeo.longitude);
+  moonPos.azimuth += Math.PI;
+  dirMoon.applyAxisAngle(altAxis, moonPos.altitude);
+  dirMoon.applyAxisAngle(aziAxis, -moonPos.azimuth);
+  moon.children[0].position.z = moonPos.distance / 10000;
+  // console.log(moonPos.distance);
+  // scene.add(new THREE.ArrowHelper(dir.normalize(), vecLoc, 80, 0xFFFF00, 0.5, 0.5));
+  moon.quaternion.setFromUnitVectors(
+    moon.children[0].position.clone().normalize(), // start position
+    dirMoon.normalize(), // target position
   );
 }
 
@@ -615,16 +625,38 @@ function createMarker(vec, color) {
   return marker;
 }
 
-function createBall(radius, segments, color, pos) {
+function createBall(radius, segments, color, emissive, pos) {
   var ball = new THREE.Mesh(
     new THREE.BufferGeometry().fromGeometry(new THREE.SphereGeometry(radius, segments, segments)),
     new THREE.MeshPhongMaterial({
       color: color,
-      emissive: color
+      emissive: emissive
       // ,wireframe: true
     }));
   ball.position.copy(pos);
   return ball;
+}
+
+function createMoon(radius, segments, color, pos) {
+  // https://github.com/ofrohn/threex.planets/tree/master/images/maps
+  moon = new THREE.Group();
+  if (true) {
+    var ball = new THREE.Mesh(
+      new THREE.SphereGeometry(radius, segments, segments),
+      new THREE.MeshPhongMaterial({
+        map: new THREE.TextureLoader().load('img/globe/moonmap.jpg'),
+        bumpMap: new THREE.TextureLoader().load('img/globe/moonbump.jpg'),
+        bumpScale: 0.001
+        // specular: new THREE.Color( 0x333333 ),
+        // shininess: 0.1
+      }));
+      ball.position.copy(pos);
+      ball.rotation.y = Math.PI / 2;
+      moon.add(ball);
+  } else {
+    moon.add(createBall(0.8, 32, 0xFFFFC0, null, new THREE.Vector3(0, 0, 60)));
+  }
+  return moon;
 }
 
 function createGlobe(radius, segments) {
@@ -928,7 +960,7 @@ function refineVisibility(sat) {
 }
 
 function isBright(sat, sol, rangeSat) {
-  var A = 2; // cross section area
+  var A = 60; // cross section area 4mx15m Solar Panel
   var p = 0.17; // bond albedo 0.0 - 0.5 depending on material
   // vector from sat to sol
   var satEarth = vMultS(sat, -1);
@@ -1098,7 +1130,7 @@ function updateHome(latLon) {
   };
   locElem.value = homeGeo.latitude + ', ' + homeGeo.longitude;
   markHome();
-  positionSun(homeGeo);
+  positionSunAndMoon(actDate, homeGeo);
   updateSunInfo();
 }
 
