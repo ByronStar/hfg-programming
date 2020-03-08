@@ -716,14 +716,19 @@ function createClouds(radius, segments) {
 }
 
 function createStars(radius, segments) {
+  // https://ofrohn.github.io
   var stars = new THREE.Group();
-  stars.add(new THREE.Mesh(
+  var starmap = new THREE.Mesh(
     new THREE.SphereGeometry(radius, segments, segments),
     new THREE.MeshBasicMaterial({
       map: new THREE.TextureLoader().load('img/globe/galaxy_starfield.png'),
+      // map: new THREE.TextureLoader().load('img/globe/starfield.jpg'),
+      // map: new THREE.TextureLoader().load('img/globe/starmap.jpg'),
       side: THREE.BackSide
     })
-  ));
+  );
+  // starmap.scale.x = -1;
+  stars.add(starmap);
   // stars.add(addCurve(99, 0xFF00FF));
   // var ew = addCurve(99, 0x00FFFF);
   // ew.rotation.y = satellite.degreesToRadians(90);
