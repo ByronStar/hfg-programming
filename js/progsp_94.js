@@ -1,7 +1,7 @@
-var camera, scene, renderer, controls, earth, space, axis, tilt, gmst, northPole, ball, sun, moon, light, rose, wall, raycaster, vector;
+var camera, scene, renderer, controls, earth, space, axis, tilt, gmst, northPole, ball, sun, moon, stars, light, compass, wall, raycaster, vector;
 var dateElem, locElem, infoElem, msgElem, nameElem, skyElem, findElem, gotoElem, timerElem, pauseElem, sunElem, menuElem, detailsElem, helpsElem, msgId;
 var sats = [];
-var selected, matsSat, matSel, matFont, arrowHelper, homeMarker, orbitLine, satData;
+var selected, matsSat, matSel, matsStars, matFont, arrowHelper, homeMarker, orbitLine, satData;
 var actDate = new Date();
 var timeStep = 0;
 var home, homeGeo, skyView = false;
@@ -45,6 +45,7 @@ function init() {
 }
 
 function scene() {
+  // console.log(satellite.radiansToDegrees(0.0365914186), satellite.radiansToDegrees(0.5077307372));
   dirsAngle = satellite.degreesToRadians(45 / 2);
   minEle = satellite.degreesToRadians(10);
   actDate = new Date();
@@ -54,6 +55,11 @@ function scene() {
   vector = new THREE.Vector3();
   scene = new THREE.Scene();
   // scene.add(new THREE.AxesHelper(90));
+
+  // axial tilt
+  tilt = satellite.degreesToRadians(-23.27)
+  // earth.rotation.z = tilt;
+  axis = new THREE.Vector3(0, tilt, 0).normalize();
 
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 5000);
   camera.position.z = 20;
@@ -75,7 +81,9 @@ function scene() {
   space = new THREE.Group();
   earth.add(createGlobe(eR, 64));
   // earth.add(createClouds(eR, 64));
-  scene.add(createStars(100, 64))
+  space.add(earth);
+  space.add(createStars(100, 64))
+  scene.add(createCompass());
 
   // scene.add(createMarker({x: 9000, y: 0, z: 0}, 0xFF4000));
   // scene.add(createMarker({x: 0, y: 9000, z: 0}, 0x00FF00));
@@ -86,8 +94,7 @@ function scene() {
   // earth.add(createMarkerGeo(obsGeo[3], 0x00FFFF));
   // space.add(createMarkerGeo(obsGeo[4], 0xFF00FF));
   // space.add(createMarkerGeo(obsGeo[5], 0xFF00FF));
-
-  space.add(earth);
+  space.add(createMarkerGeo(obsGeo[7], 0xFF00FF));
 
   // scene.add(new THREE.AmbientLight(0x808080));
   scene.add(new THREE.AmbientLight(0x404040));
@@ -101,11 +108,6 @@ function scene() {
   // light.shadow.mapSize.width = light.shadow.mapSize.height = 1024;
   scene.add(light);
   // scene.add( new THREE.DirectionalLightHelper( light, 3 ) );
-
-  // axial tilt
-  tilt = satellite.degreesToRadians(-23.27)
-  // earth.rotation.z = tilt;
-  axis = new THREE.Vector3(0, tilt, 0).normalize();
 
   sun = new THREE.Group();
   sun.add(createBall(1.0, 32, 0xFFFF00, 0xFFFF00, light.position));
@@ -305,7 +307,7 @@ function toggleSky(evt) {
 
     earth.remove(homeMarker);
     homeMarker = null;
-    rose.visible = true;
+    compass.visible = true;
     wall.visible = true;
   }
 }
@@ -459,7 +461,7 @@ function showDetails(sat) {
 function markHome() {
   space.rotation.set(0, 0, 0);
   skyView = false;
-  rose.visible = false;
+  compass.visible = false;
   wall.visible = false;
   if (!homeMarker) {
     homeMarker = createMarkerGeo(homeGeo, 0xFF0000);
@@ -532,6 +534,8 @@ function animate() {
     positionSunAndMoon(actDate, homeGeo);
     vector.setFromMatrixPosition(sun.children[0].matrixWorld);
     light.position.copy(vector);
+
+    // stars.rotateOnAxis(axis, -0.001);
   }
   time = next;
 
@@ -602,7 +606,7 @@ function createMarkerGeo(at, color) {
   var ecf = satellite.geodeticToEcf({
     latitude: satellite.degreesToRadians(at.latitude),
     longitude: satellite.degreesToRadians(at.longitude),
-    height: 300.0
+    height: at.height
   });
   return createMarker(ecf2Vector3(ecf), color);
 }
@@ -715,31 +719,13 @@ function createClouds(radius, segments) {
   );
 }
 
-function createStars(radius, segments) {
-  // https://ofrohn.github.io
-  var stars = new THREE.Group();
-  var starmap = new THREE.Mesh(
-    new THREE.SphereGeometry(radius, segments, segments),
-    new THREE.MeshBasicMaterial({
-      map: new THREE.TextureLoader().load('img/globe/galaxy_starfield.png'),
-      // map: new THREE.TextureLoader().load('img/globe/starfield.jpg'),
-      // map: new THREE.TextureLoader().load('img/globe/starmap.jpg'),
-      side: THREE.BackSide
-    })
-  );
-  // starmap.scale.x = -1;
-  stars.add(starmap);
-  // stars.add(addCurve(99, 0xFF00FF));
-  // var ew = addCurve(99, 0x00FFFF);
-  // ew.rotation.y = satellite.degreesToRadians(90);
-  // stars.add(ew);
+function createCompass() {
   var loader = new THREE.FontLoader();
   var matFont = new THREE.MeshBasicMaterial({
     color: 0x00FF00
   });
-  rose = new THREE.Group();
-  rose.visible = false;
-  stars.add(rose);
+  compass = new THREE.Group();
+  compass.visible = false;
   loader.load('fonts/droid/droid_sans_bold.typeface.json', function(font) {
     fontOpts.font = font;
     dirs.forEach((dir, a) => {
@@ -747,10 +733,38 @@ function createStars(radius, segments) {
       var char = new THREE.Mesh(geometry, matFont);
       char.position.set(90 * Math.cos(a * dirsAngle), 35, 90 * Math.sin(a * dirsAngle));
       char.lookAt(-0.4, eR, 0);
-      rose.add(char);
+      compass.add(char);
     });
-    rose.rotation.y = Math.PI / 2
+    compass.rotation.y = Math.PI / 2
   });
+  return compass;
+}
+// 🌌✨
+function createStars(radius, segments) {
+  // https://ofrohn.github.io
+  stars = new THREE.Group();
+  matsStars = [];
+  matsStars.push(new THREE.MeshBasicMaterial({
+    // map: new THREE.TextureLoader().load('img/globe/galaxy_starfield.png'),
+    map: new THREE.TextureLoader().load('img/globe/starfield8d8kb.png'),
+    side: THREE.BackSide
+  }));
+  matsStars.push(new THREE.MeshBasicMaterial({
+    map: new THREE.TextureLoader().load('img/globe/starfield8ncd8kb.png'),
+    side: THREE.BackSide
+  }));
+  var starmap = new THREE.Mesh(
+    new THREE.SphereGeometry(radius, segments, segments),
+    matsStars[1]
+  );
+  starmap.scale.x = -1;
+  stars.add(starmap);
+  stars.rotation.y = Math.PI / 2;
+  stars.rotation.z = -tilt;
+  stars.add(addCurve(99, 0xFF00FF));
+  var ew = addCurve(99, 0x00FFFF);
+  ew.rotation.y = satellite.degreesToRadians(90);
+  stars.add(ew);
   return stars;
 }
 
@@ -773,7 +787,6 @@ function addSatellites(data) {
     space.remove(sat.mesh);
   });
   sats = [];
-
 
   satData.tles.forEach((list, i) => {
     var cnt = 0
@@ -1209,7 +1222,12 @@ var obsGeo = [{
   // Greenwitch Prime Meridian
   latitude: 51.478067,
   longitude: 0.0,
-  height: 0
+  height: 0.5
+}, {
+  // Andromeda (677)
+  latitude: 2.0965338521764996,
+  longitude: 29.090828370625943,
+  height: 10000
 }];
 
 function sample() {
