@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>D3-Celestial Starry Sky Map</title>
+  <script type="text/javascript" src="lib/celestial/d3.min.js"></script>
+  <script type="text/javascript" src="lib/celestial/d3.geo.projection.min.js"></script>
+  <script type="text/javascript" src="lib/celestial/celestial.min.js"></script>
+  <link rel="stylesheet" href="lib/celestial/celestial.css">
+</head>
+<body>
+  <div style="overflow:hidden;"><div id="celestial-map"></div></div>
+  <div id="celestial-form"></div>
+  <div style="text-align: center;padding-top: 5px;">
+      <button onclick="copyCanvas(event)">Save</button>
+      <!-- <a id="saveLink" href="" download="ottenwald.png" target="_blank">Save</a> -->
+  </div>
+  <img id="saveImage" src="">
+
+  <script type="text/javascript">
+
+  function copyCanvas(evt) {
+    var image = document.getElementById('saveImage');
+    var canvas = document.getElementsByTagName('canvas')[0];
+    image.src = canvas.toDataURL('image/png');
+    // var saveLink = document.getElementById('saveLink');
+    // saveLink.setAttribute('href', canvas.toDataURL());
+    // saveLink.setAttribute('download', "starfield6.png");
+    // saveLink.style.display = "block";
+}
+/* D3-Celestial sky map
+   Copyright 2015 Olaf Frohn https://github.com/ofrohn, see LICENSE
+*/
+var setT = {
+  width: 2048,
+  size: 8,
+  font: "8px Verdana, sans-serif",
+  dso: true,
+  constellations: true,
+  names: true,
+  stars: 'stars.8.json'
+};
+
+var set8 = {
+  width: 8192,
+  size: 16,
+  font: "12px Verdana, sans-serif",
+  dso: true,
+  constellations: true,
+  names: true,
+  stars: 'stars.8.json'
+};
+
+var set16 = {
+  width: 16384,
+  size: 16,
+  font: "24px Verdana, sans-serif",
+  dso: true,
+  constellations: false,
+  names: false,
+  stars: 'stars.8.json'
+};
+var set = setT;
+
+var config = {
+  width: set.width,
+  location: false,
+  interactive: false,
+  controls: false,
+  projection: "equirectangular",
+  transform: "equatorial",
+  datapath: "data/celestial/",
+  stars: {
+    show: true,    // Show stars
+    limit: 6,      // Show only stars brighter than limit magnitude
+    colors: true,  // Show stars in spectral colors, if not use "color"
+    style: { fill: "#ffffff", opacity: 1 }, // Default style for stars
+    names: false,  // Show star names (Bayer, Flamsteed, Variable star, Gliese, whichever applies first)
+    proper: set.names, // Show proper name (if present)
+    desig: false,  // Show all names, including Draper and Hipparcos
+    namelimit: 3.0,  // Show only names for stars brighter than namelimit
+    namestyle: { fill: "#ddddbb", font: set.font, align: "left", baseline: "top" },
+    propernamelimit: 3.0,  // Show only names for stars brighter than namelimit
+    propernamestyle: { fill: "#ddddbb", font: set.font, align: "left", baseline: "top" },
+    size: set.size,       // Maximum size (radius) of star circle in pixels
+    data: set.stars // Data source for stellar data
+    //data: 'stars.8.json' // Alternative deeper data source for stellar data
+  },
+  dsos: {
+    show: set.dso,   // Show Deep Space Objects
+    limit: 6,      // Show only DSOs brighter than limit magnitude
+    names: set.names,   // Show DSO names
+    desig: false,   // Show short DSO names
+    namelimit: 4,  // Show only names for DSOs brighter than namelimit
+    namestyle: { fill: "#cccccc", font: set.font, align: "left", baseline: "top" },
+    data: 'dsos.bright.json',  // Data source for DSOs
+    //data: 'dsos.6.json'  // Alternative broader data source for DSOs
+    //data: 'dsos.14.json' // Alternative deeper data source for DSOs
+    symbols: {  //DSO symbol styles
+      gg: {shape: "circle", fill: "#ff0000"},                                 // Galaxy cluster
+      g:  {shape: "ellipse", fill: "#ff0000"},                                // Generic galaxy
+      s:  {shape: "ellipse", fill: "#ff0000"},                                // Spiral galaxy
+      s0: {shape: "ellipse", fill: "#ff0000"},                                // Lenticular galaxy
+      sd: {shape: "ellipse", fill: "#ff0000"},                                // Dwarf galaxy
+      e:  {shape: "ellipse", fill: "#ff0000"},                                // Elliptical galaxy
+      i:  {shape: "ellipse", fill: "#ff0000"},                                // Irregular galaxy
+      oc: {shape: "circle", fill: "#ffcc00", stroke: "#ffcc00", width: 1.5},  // Open cluster
+      gc: {shape: "circle", fill: "#ff9900"},                                 // Globular cluster
+      en: {shape: "square", fill: "#ff00cc"},                                 // Emission nebula
+      bn: {shape: "square", fill: "#ff00cc", stroke: "#ff00cc", width: 2},    // Generic bright nebula
+      sfr:{shape: "square", fill: "#cc00ff", stroke: "#cc00ff", width: 2},    // Star forming region
+      rn: {shape: "square", fill: "#00ooff"},                                 // Reflection nebula
+      pn: {shape: "diamond", fill: "#00cccc"},                                // Planetary nebula
+      snr:{shape: "diamond", fill: "#ff00cc"},                                // Supernova remnant
+      dn: {shape: "square", fill: "#999999", stroke: "#999999", width: 2},    // Dark nebula grey
+      pos:{shape: "marker", fill: "#cccccc", stroke: "#cccccc", width: 1.5}   // Generic marker
+    }
+  },
+  constellations: {
+    show: set.constellations,   // Show constellations
+    names: set.names,   // Show constellation names
+    desig: false,   // Show short constellation names (3 letter designations)
+    namestyle: { fill:"#8080ff", font: set.font, align: "center", baseline: "middle" },
+    lines: true,   // Show constellation lines
+    linestyle: { stroke: "#8080ff", width: 1, opacity: 0.6 },
+    bounds: false,  // Show constellation boundaries
+    boundstyle: { stroke: "#cccc00", width: 0.5, opacity: 0.8, dash: [2, 4] }
+  },
+  mw: {
+    show: false,    // Show Milky Way as filled polygons
+    style: { fill: "#ffffff", opacity: "0.15" }
+  },
+  lines: {
+    graticule: { show: false, stroke: "#cccccc", width: 0.6, opacity: 0.8 },    // Show graticule lines
+    equatorial: { show: false, stroke: "#aaaaaa", width: 1.3, opacity: 0.7 },   // Show equatorial plane
+    ecliptic: { show: false, stroke: "#66cc66", width: 1.3, opacity: 0.7 },     // Show ecliptic plane
+    galactic: { show: false, stroke: "#cc6666", width: 1.3, opacity: 0.7 },     // Show galactic plane
+    supergalactic: { show: false, stroke: "#cc66cc", width: 1.3, opacity: 0.7 } // Show supergalactic plane
+  }
+};
+
+Celestial.display(config);
+
+  </script>
+
+</body>
+</html>

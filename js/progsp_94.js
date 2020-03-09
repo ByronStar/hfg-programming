@@ -94,7 +94,7 @@ function scene() {
   // earth.add(createMarkerGeo(obsGeo[3], 0x00FFFF));
   // space.add(createMarkerGeo(obsGeo[4], 0xFF00FF));
   // space.add(createMarkerGeo(obsGeo[5], 0xFF00FF));
-  space.add(createMarkerGeo(obsGeo[7], 0xFF00FF));
+  // space.add(createMarkerGeo(obsGeo[7], 0xFF00FF));
 
   // scene.add(new THREE.AmbientLight(0x808080));
   scene.add(new THREE.AmbientLight(0x404040));
@@ -535,6 +535,7 @@ function animate() {
     vector.setFromMatrixPosition(sun.children[0].matrixWorld);
     light.position.copy(vector);
 
+    // stars.rotation.y += 0.001;
     // stars.rotateOnAxis(axis, -0.001);
   }
   time = next;
@@ -750,7 +751,7 @@ function createStars(radius, segments) {
     side: THREE.BackSide
   }));
   matsStars.push(new THREE.MeshBasicMaterial({
-    map: new THREE.TextureLoader().load('img/globe/starfield8ncd8kb.png'),
+    map: new THREE.TextureLoader().load('img/globe/starfield8ncd8ks.png'),
     side: THREE.BackSide
   }));
   var starmap = new THREE.Mesh(
@@ -760,7 +761,7 @@ function createStars(radius, segments) {
   starmap.scale.x = -1;
   stars.add(starmap);
   stars.rotation.y = Math.PI / 2;
-  stars.rotation.z = -tilt;
+  // stars.rotation.z = -tilt;
   stars.add(addCurve(99, 0xFF00FF));
   var ew = addCurve(99, 0x00FFFF);
   ew.rotation.y = satellite.degreesToRadians(90);
@@ -1224,9 +1225,9 @@ var obsGeo = [{
   longitude: 0.0,
   height: 0.5
 }, {
-  // Andromeda (677)
-  latitude: 2.0965338521764996,
-  longitude: 29.090828370625943,
+  // Andromeda Alpheratz (677)
+  latitude: 29.090828370625943,
+  longitude: 2.0965338521764996,
   height: 10000
 }];
 
