@@ -19,7 +19,7 @@ var clocked = true;
 var paused = false;
 var sunDate, homeSun;
 var visibles = [];
-var deltaStars = 17 * Math.PI / 12;
+var starMapsOffset;
 
 /*
  - upside down: directions correct?
@@ -54,8 +54,8 @@ function scene() {
   gmst = satellite.gstime(actDate);
 
   var d = new Date('2020-03-21T12:00:00+00:00');
-  console.log(d, satellite.gstime(d) - Math.PI / 2, gmst, deltaStars);
-  deltaStars = satellite.gstime(d) - Math.PI / 2;
+  starMapsOffset = satellite.gstime(d) - Math.PI / 2;
+  console.log(d, gmst, starMapsOffset);
 
   raycaster = new THREE.Raycaster();
   vector = new THREE.Vector3();
@@ -211,10 +211,10 @@ function onKeyUp(evt) {
       toggleSky()
       break;
     case 'ArrowLeft':
-      deltaStars -= Math.PI / 12;
+      starMapsOffset -= Math.PI / 12;
       break;
     case 'ArrowRight':
-      deltaStars += Math.PI / 12;
+      starMapsOffset += Math.PI / 12;
       break;
     case 'n':
       controls.reset();
@@ -504,6 +504,8 @@ function markHome() {
   controls.rotateLeft(-home.longitude);
   controls.rotateUp(home.latitude);
   controls.update();
+  stars.rotation.y = - (home.longitude + starMapsOffset);
+  stars.rotation.z = tilt;
 }
 
 function azimuth2Dir(azimuth) {
@@ -558,8 +560,8 @@ function animate() {
     vector.setFromMatrixPosition(sun.children[0].matrixWorld);
     light.position.copy(vector);
 
-    stars.rotation.y = - (gmst + home.longitude + deltaStars);
-    // stars.rotateOnAxis(axis, -0.001);
+    // stars.rotation.y = - (gmst + home.longitude + starMapsOffset);
+    //stars.rotateOnAxis(axis, 0.001);
   }
   time = next;
 
@@ -658,8 +660,10 @@ function createBall(radius, segments, color, emissive, pos) {
     new THREE.BufferGeometry().fromGeometry(new THREE.SphereGeometry(radius, segments, segments)),
     new THREE.MeshPhongMaterial({
       color: color,
-      emissive: emissive
-      // ,wireframe: true
+      emissive: emissive,
+      specular: new THREE.Color( color ),
+      shininess: 0.5
+    // ,wireframe: true
     }));
   ball.position.copy(pos);
   return ball;
@@ -674,9 +678,11 @@ function createMoon(radius, segments, color, pos) {
       new THREE.MeshPhongMaterial({
         map: new THREE.TextureLoader().load('img/globe/moonmap.jpg'),
         bumpMap: new THREE.TextureLoader().load('img/globe/moonbump.jpg'),
-        bumpScale: 0.001
+        bumpScale: 0.01,
+        emissive: 0xFFE0A0,
+        emissiveIntensity: 0.3,
         // specular: new THREE.Color( 0x333333 ),
-        // shininess: 0.1
+        // shininess: 0.5
       }));
     ball.position.copy(pos);
     ball.rotation.y = Math.PI / 2;
@@ -795,8 +801,6 @@ function createStars(radius, segments) {
   );
   starmap.scale.x = -1;
   stars.add(starmap);
-  // stars.rotation.y = deltaStars;
-  stars.rotation.y = Math.PI / 2;
 
   // stars.add(addCurve(99, 0xFF00FF));
   // var ew = addCurve(99, 0x00FFFF);
