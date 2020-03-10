@@ -19,7 +19,7 @@ var clocked = true;
 var paused = false;
 var sunDate, homeSun;
 var visibles = [];
-var deltaStars = -7 * Math.PI / 12;
+var deltaStars = 17 * Math.PI / 12;
 
 /*
  - upside down: directions correct?
@@ -54,8 +54,8 @@ function scene() {
   gmst = satellite.gstime(actDate);
 
   var d = new Date('2020-03-21T12:00:00+00:00');
-  console.log(d, satellite.gstime(d), gmst, deltaStars);
-  // deltaStars = satellite.gstime(d);
+  console.log(d, satellite.gstime(d) - Math.PI / 2, gmst, deltaStars);
+  deltaStars = satellite.gstime(d) - Math.PI / 2;
 
   raycaster = new THREE.Raycaster();
   vector = new THREE.Vector3();
@@ -167,6 +167,12 @@ function onMouseUp(evt) {
       var pt = intersects[0].point;
       var loc = xyz2Geo(new THREE.Vector3(pt.x, pt.y, pt.z));
       updateHome(loc);
+    }
+    intersects = raycaster.intersectObjects([starmap], true);
+    if (intersects.length > 0) {
+      var pt = intersects[0].point;
+      var loc = xyz2Geo(new THREE.Vector3(pt.x, pt.y, pt.z));
+      alert(loc.longitude + ", " + loc.latitude);
     }
   }
 }
@@ -789,7 +795,8 @@ function createStars(radius, segments) {
   );
   starmap.scale.x = -1;
   stars.add(starmap);
-  stars.rotation.y = deltaStars;
+  // stars.rotation.y = deltaStars;
+  stars.rotation.y = Math.PI / 2;
 
   // stars.add(addCurve(99, 0xFF00FF));
   // var ew = addCurve(99, 0x00FFFF);
