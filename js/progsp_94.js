@@ -1,7 +1,7 @@
-var camera, scene, renderer, controls, earth, space, axis, tilt, gmst, northPole, ball, sun, moon, stars, light, compass, wall, raycaster, vector;
+var camera, scene, renderer, controls, earth, space, axis, tilt, gmst, northPole, ball, sun, moon, stars, starmap, light, compass, wall, raycaster, vector;
 var dateElem, locElem, infoElem, msgElem, nameElem, skyElem, findElem, gotoElem, timerElem, pauseElem, sunElem, menuElem, detailsElem, helpsElem, msgId;
 var sats = [];
-var selected, matsSat, matSel, matsStars, matFont, arrowHelper, homeMarker, orbitLine, satData;
+var selected, matsSat, matSel, matsStars, actStarMat, matFont, arrowHelper, homeMarker, orbitLine, satData;
 var actDate = new Date();
 var timeStep = 0;
 var home, homeGeo, skyView = false;
@@ -19,6 +19,8 @@ var clocked = true;
 var paused = false;
 var sunDate, homeSun;
 var visibles = [];
+var deltaStars = -7 * Math.PI / 12;
+
 /*
  - upside down: directions correct?
 */
@@ -50,6 +52,10 @@ function scene() {
   minEle = satellite.degreesToRadians(10);
   actDate = new Date();
   gmst = satellite.gstime(actDate);
+
+  var d = new Date('2020-03-21T12:00:00+00:00');
+  console.log(d, satellite.gstime(d), gmst, deltaStars);
+  // deltaStars = satellite.gstime(d);
 
   raycaster = new THREE.Raycaster();
   vector = new THREE.Vector3();
@@ -195,8 +201,14 @@ function xyz2Geo(vec) {
 
 function onKeyUp(evt) {
   switch (evt.key) {
-    case ' ':
+    case 'ArrowUp':
       toggleSky()
+      break;
+    case 'ArrowLeft':
+      deltaStars -= Math.PI / 12;
+      break;
+    case 'ArrowRight':
+      deltaStars += Math.PI / 12;
       break;
     case 'n':
       controls.reset();
@@ -273,6 +285,11 @@ function toggleMenu(evt) {
       menuElem.innerHTML = '▶️';
       break;
   }
+}
+
+function toggleStars(evt) {
+  actStarMat = (actStarMat + 1) % matsStars.length;
+  starmap.material = matsStars[actStarMat]
 }
 
 function toggleSky(evt) {
@@ -535,7 +552,7 @@ function animate() {
     vector.setFromMatrixPosition(sun.children[0].matrixWorld);
     light.position.copy(vector);
 
-    // stars.rotation.y += 0.001;
+    stars.rotation.y = - (gmst + home.longitude + deltaStars);
     // stars.rotateOnAxis(axis, -0.001);
   }
   time = next;
@@ -655,9 +672,9 @@ function createMoon(radius, segments, color, pos) {
         // specular: new THREE.Color( 0x333333 ),
         // shininess: 0.1
       }));
-      ball.position.copy(pos);
-      ball.rotation.y = Math.PI / 2;
-      moon.add(ball);
+    ball.position.copy(pos);
+    ball.rotation.y = Math.PI / 2;
+    moon.add(ball);
   } else {
     moon.add(createBall(0.8, 32, 0xFFFFC0, null, new THREE.Vector3(0, 0, 60)));
   }
@@ -686,6 +703,7 @@ function createGlobe(radius, segments) {
         wireframe: true
       }));
   }
+  ball.rotation.y = -Math.PI / 2;
   globe.add(ball);
   // globe.add(addCurve(radius + 0.005, 0x808080));
   // var equ = addCurve(radius + 0.005, 0x808080);
@@ -706,7 +724,6 @@ function createGlobe(radius, segments) {
   wall.visible = false;
   scene.add(wall);
 
-  globe.rotation.y = satellite.degreesToRadians(-90);
   return globe;
 }
 
@@ -740,32 +757,44 @@ function createCompass() {
   });
   return compass;
 }
-// 🌌✨
+
 function createStars(radius, segments) {
   // https://ofrohn.github.io
   stars = new THREE.Group();
+  actStarMat = 0;
   matsStars = [];
   matsStars.push(new THREE.MeshBasicMaterial({
-    // map: new THREE.TextureLoader().load('img/globe/galaxy_starfield.png'),
-    map: new THREE.TextureLoader().load('img/globe/starfield8d8kb.png'),
+    map: new THREE.TextureLoader().load('img/globe/starfield8s8k.png'),
     side: THREE.BackSide
   }));
   matsStars.push(new THREE.MeshBasicMaterial({
-    map: new THREE.TextureLoader().load('img/globe/starfield8ncd8ks.png'),
+    map: new THREE.TextureLoader().load('img/globe/starfield8n8k.png'),
     side: THREE.BackSide
   }));
-  var starmap = new THREE.Mesh(
+  matsStars.push(new THREE.MeshBasicMaterial({
+    map: new THREE.TextureLoader().load('img/globe/starfield8nd8k.png'),
+    side: THREE.BackSide
+  }));
+  matsStars.push(new THREE.MeshBasicMaterial({
+    map: new THREE.TextureLoader().load('img/globe/starfield8nc8k.png'),
+    side: THREE.BackSide
+  }));
+  matsStars.push(new THREE.MeshBasicMaterial({
+    map: new THREE.TextureLoader().load('img/globe/starfield8ndc8k.png'),
+    side: THREE.BackSide
+  }));
+  starmap = new THREE.Mesh(
     new THREE.SphereGeometry(radius, segments, segments),
-    matsStars[1]
+    matsStars[actStarMat]
   );
   starmap.scale.x = -1;
   stars.add(starmap);
-  stars.rotation.y = Math.PI / 2;
-  // stars.rotation.z = -tilt;
-  stars.add(addCurve(99, 0xFF00FF));
-  var ew = addCurve(99, 0x00FFFF);
-  ew.rotation.y = satellite.degreesToRadians(90);
-  stars.add(ew);
+  stars.rotation.y = deltaStars;
+
+  // stars.add(addCurve(99, 0xFF00FF));
+  // var ew = addCurve(99, 0x00FFFF);
+  // ew.rotation.y = satellite.degreesToRadians(90);
+  // stars.add(ew);
   return stars;
 }
 

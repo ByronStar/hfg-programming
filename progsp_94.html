@@ -30,7 +30,7 @@
   <style>
     body {
       font-family: 'Ubuntu', sans-serif;
-      color: yellow;
+      color: rgb(123, 187, 255);
       padding: 0;
       margin: 0;
       background: black;
@@ -109,6 +109,13 @@
       pointer-events: all;
     }
 
+    ::selection {
+      background: #b7b7ff; /* WebKit/Blink Browsers */
+    }
+    ::-moz-selection {
+      background: #b7b7ff; /* Gecko Browsers */
+    }
+
     .btn {
       display: inline-block;
       cursor: pointer;
@@ -138,8 +145,8 @@
 <body onload="init()">
   <div id="tracker">
   </div>
-  <div id="overlay">
-    <div class="btn_plain" id="menu" onclick="toggleMenu(event)">ℹ️</div><h1 style="display: inline;">3D Satellite Tracker</h1>
+  <div id="overlay" class="noselect">
+    <div class="btn_plain" id="menu" onclick="toggleMenu(event)">ℹ️&nbsp;&nbsp;</div><h1 style="display: inline;">3D Satellite Tracker</h1>
     <select id="sats" class="doselect" onchange="selectedSatGroup(event)">
       <option value="starlink.js">Starlink</option>
       <option value="galileo.js">Galileo</option>
@@ -169,7 +176,7 @@
       <div class="btn" onclick="locChange(event)">🏡</div>
       <input type="text" id="location" name="location" value="48.654685, 9.015906"><label for="location"> lat,lon or "ctrl-click" on earth</label><br>
       <div class="btn" onclick="findSat(event)">🔭</div><input type="text" id="find" size="20"><div id="goto" style="display: none;"><div class="btn" onclick="setTime()">⏱</div>Jump to</div><br>
-      <div class="btn" id="sky" onclick="toggleSky(event)">🛰</div>View
+      <div class="btn" id="sky" onclick="toggleSky(event)">🛰</div> View <div class="btn" id="stars" onclick="toggleStars(event)">✨</div> Stars and more ...
       <div id="info"></div>
     </div>
     <div id="help" class="noselect" style="display:none">
@@ -186,6 +193,7 @@
         <li>🏡 Set/reset the home location and rotate the view accordingly
         <li>🔭 Search for a satellite - without user input cycles through the satellites by next visibilits
         <li>🛰 and 🌍 Toggle between sky (and rotate to selected satellite) and earth view
+        <li>✨ Switch between different real star maps with names, constellations and deep space objects
         <li>The dropdown button switches between serveral satellite groups
         <li>The whole view ran be rotated (drag with the mouse) and zoomed (mouse-wheel/magic mouse/trackpad)
       </ul>

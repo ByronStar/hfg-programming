@@ -5,7 +5,7 @@
   <title>D3-Celestial Starry Sky Map</title>
   <script type="text/javascript" src="lib/celestial/d3.min.js"></script>
   <script type="text/javascript" src="lib/celestial/d3.geo.projection.min.js"></script>
-  <script type="text/javascript" src="lib/celestial/celestial.min.js"></script>
+  <script type="text/javascript" src="lib/celestial/celestial.js"></script>
   <link rel="stylesheet" href="lib/celestial/celestial.css">
 </head>
 <body>
@@ -27,23 +27,23 @@
     // saveLink.setAttribute('href', canvas.toDataURL());
     // saveLink.setAttribute('download', "starfield6.png");
     // saveLink.style.display = "block";
-}
+  }
 /* D3-Celestial sky map
    Copyright 2015 Olaf Frohn https://github.com/ofrohn, see LICENSE
 */
 var setT = {
-  width: 2048,
-  size: 8,
-  font: "8px Verdana, sans-serif",
+  // width: 2048,
+  size: 4,
+  font: "6px Verdana, sans-serif",
   dso: true,
   constellations: true,
   names: true,
-  stars: 'stars.8.json'
+  stars: 'stars.6.json'
 };
 
 var set8 = {
   width: 8192,
-  size: 16,
+  size: 8,
   font: "12px Verdana, sans-serif",
   dso: true,
   constellations: true,
@@ -60,9 +60,10 @@ var set16 = {
   names: false,
   stars: 'stars.8.json'
 };
-var set = setT;
+var set = set8;
 
 var config = {
+  form: true,
   width: set.width,
   location: false,
   interactive: false,

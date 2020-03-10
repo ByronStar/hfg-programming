@@ -3,4 +3,5 @@ hfg-programming.iml
 /game/server/node_modules/
 /game/.ftpconfig
 /game/k8s/info.txt
-/img/globe
+/img/globe/*16k.*
+/img/globe/galaxy_starfield.png
