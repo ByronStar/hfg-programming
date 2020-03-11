@@ -1,7 +1,7 @@
-var camera, scene, renderer, controls, earth, space, axis, tilt, gmst, northPole, ball, sun, moon, stars, starmap, light, compass, wall, raycaster, vector;
+var camera, scene, renderer, controls, earth, space, earthAxis, tilt, gmst, northPole, ball, sun, moon, stars, starmap, light, compass, wall, raycaster, vector;
 var dateElem, locElem, infoElem, msgElem, nameElem, skyElem, findElem, gotoElem, timerElem, pauseElem, sunElem, menuElem, detailsElem, helpsElem, msgId;
 var sats = [];
-var selected, matsSat, matSel, matsStars, actStarMat, matFont, arrowHelper, homeMarker, orbitLine, satData;
+var selected, matsSat, matSel, matsStars, matFont, arrowHelper, homeMarker, orbitLine, satData;
 var actDate = new Date();
 var timeStep = 0;
 var home, homeGeo, skyView = false;
@@ -19,6 +19,7 @@ var clocked = true;
 var paused = false;
 var sunDate, homeSun;
 var visibles = [];
+var actStarMat = 4;
 var starMapsOffset;
 
 /*
@@ -53,19 +54,14 @@ function scene() {
   actDate = new Date();
   gmst = satellite.gstime(actDate);
 
-  var d = new Date('2020-03-21T12:00:00+00:00');
-  starMapsOffset = satellite.gstime(d) - Math.PI / 2;
-  console.log(d, gmst, starMapsOffset);
-
   raycaster = new THREE.Raycaster();
   vector = new THREE.Vector3();
   scene = new THREE.Scene();
   // scene.add(new THREE.AxesHelper(90));
 
   // axial tilt
-  tilt = satellite.degreesToRadians(-23.27)
-  // earth.rotation.z = tilt;
-  axis = new THREE.Vector3(0, tilt, 0).normalize();
+  tilt = satellite.degreesToRadians(23.4386111111)
+  earthAxis = new THREE.Vector3(0, tilt, 0).normalize();
 
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 5000);
   camera.position.z = 20;
@@ -82,7 +78,7 @@ function scene() {
   // controls.enableDamping = true;
   // controls.dampingFactor = 0.5;
 
-  northPole = new THREE.Vector3(0, eR, 0)
+  northPole = new THREE.Vector3(0, eR + 0.005, 0)
   earth = new THREE.Group();
   space = new THREE.Group();
   earth.add(createGlobe(eR, 64));
@@ -143,11 +139,13 @@ function scene() {
   document.addEventListener('mouseup', onMouseUp);
   document.addEventListener('keyup', onKeyUp);
   getTles('starlink.js').then(data => addSatellites(data));
-  // var now = new Date();
-  // var v0 = calcSoloarPos0(now);
-  // var v1 = calcSoloarPos1(now);
-  // var v01 = vSub(v0, v1);
-  // console.log(v0, v1, v01);
+
+  // Map positioning date => nearly 360 degrees offset
+  var d = new Date('2020-03-21T12:00:00+00:00');
+  starMapsOffset = 11 * Math.PI / 24 + satellite.gstime(d);
+
+  // space.add(new THREE.AxesHelper(110));
+  // sun.children[0].add(new THREE.AxesHelper(10));
 }
 
 /*
@@ -168,11 +166,13 @@ function onMouseUp(evt) {
       var loc = xyz2Geo(new THREE.Vector3(pt.x, pt.y, pt.z));
       updateHome(loc);
     }
-    intersects = raycaster.intersectObjects([starmap], true);
-    if (intersects.length > 0) {
-      var pt = intersects[0].point;
-      var loc = xyz2Geo(new THREE.Vector3(pt.x, pt.y, pt.z));
-      alert(loc.longitude + ", " + loc.latitude);
+    if (!skyView) {
+      intersects = raycaster.intersectObjects([starmap], true);
+      if (intersects.length > 0) {
+        var pt = intersects[0].point;
+        var loc = xyz2Geo(new THREE.Vector3(pt.x, pt.y, pt.z));
+        alert(loc.latitude + ", " + loc.longitude);
+      }
     }
   }
 }
@@ -194,10 +194,12 @@ function xyz2Geo(vec) {
   p.normalize();
   //commpute the angle ( both vectors are normalized, no division by the sum of lengths )
   var lat = Math.acos(p.dot(vec));
-  //invert if Y is negative to ensure teh latitude is comprised between -PI/2 & PI / 2
+  //invert if Y is negative to ensure the latitude is comprised between -PI/2 & PI / 2
   if (vec.y < 0) {
     lat = -lat;
   }
+  lng -= (stars.rotation.y - Math.PI / 2);
+  console.log(camera.position)
   return {
     latitude: satellite.radiansToDegrees(lat).toFixed(6),
     longitude: satellite.radiansToDegrees(lng).toFixed(6),
@@ -209,12 +211,6 @@ function onKeyUp(evt) {
   switch (evt.key) {
     case 'ArrowUp':
       toggleSky()
-      break;
-    case 'ArrowLeft':
-      starMapsOffset -= Math.PI / 12;
-      break;
-    case 'ArrowRight':
-      starMapsOffset += Math.PI / 12;
       break;
     case 'n':
       controls.reset();
@@ -239,10 +235,6 @@ function onKeyUp(evt) {
       controls.rotateLeft(0);
       controls.rotateUp(0);
       controls.update();
-      break;
-    case 'a':
-      camera.getWorldDirection(vector);
-      console.log(satellite.radiansToDegrees(vector.x), satellite.radiansToDegrees(vector.y), satellite.radiansToDegrees(vector.z));
       break;
   }
 }
@@ -409,7 +401,7 @@ function updateTimer() {
 function locChange(evt) {
   var value = locElem.value;
   console.log(value);
-  if (value.match(/^ *[+-]?[0-9]+\.[0-9]+, *[+-]?[0-9]+\.[0-9]+ *$/)) {
+  if (value.match(/^ *[+-]?[0-9]+(\.[0-9]+)?, *[+-]?[0-9]+(\.[0-9]+)? *$/)) {
     clearMessage();
     var coords = value.split(',')
     updateHome({
@@ -504,8 +496,6 @@ function markHome() {
   controls.rotateLeft(-home.longitude);
   controls.rotateUp(home.latitude);
   controls.update();
-  stars.rotation.y = - (home.longitude + starMapsOffset);
-  stars.rotation.z = tilt;
 }
 
 function azimuth2Dir(azimuth) {
@@ -560,8 +550,7 @@ function animate() {
     vector.setFromMatrixPosition(sun.children[0].matrixWorld);
     light.position.copy(vector);
 
-    // stars.rotation.y = - (gmst + home.longitude + starMapsOffset);
-    //stars.rotateOnAxis(axis, 0.001);
+    stars.rotation.y = home.longitude + starMapsOffset - gmst;
   }
   time = next;
 
@@ -661,9 +650,9 @@ function createBall(radius, segments, color, emissive, pos) {
     new THREE.MeshPhongMaterial({
       color: color,
       emissive: emissive,
-      specular: new THREE.Color( color ),
+      specular: new THREE.Color(color),
       shininess: 0.5
-    // ,wireframe: true
+      // ,wireframe: true
     }));
   ball.position.copy(pos);
   return ball;
@@ -765,7 +754,6 @@ function createCompass() {
       char.lookAt(-0.4, eR, 0);
       compass.add(char);
     });
-    compass.rotation.y = Math.PI / 2
   });
   return compass;
 }
@@ -773,7 +761,6 @@ function createCompass() {
 function createStars(radius, segments) {
   // https://ofrohn.github.io
   stars = new THREE.Group();
-  actStarMat = 0;
   matsStars = [];
   matsStars.push(new THREE.MeshBasicMaterial({
     map: new THREE.TextureLoader().load('img/globe/starfield8s8k.png'),
@@ -1191,6 +1178,7 @@ function updateHome(latLon) {
   markHome();
   positionSunAndMoon(actDate, homeGeo);
   updateSunInfo();
+  compass.rotation.y = Math.PI / 2 + home.longitude + 0.005; // text center
 }
 
 function getLocation() {
