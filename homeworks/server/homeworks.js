@@ -96,30 +96,36 @@ function setupServers() {
   }
 
   httpServer = http.createServer(function(request, response) {
-    let pathname = url.parse(request.url).pathname
-    if (pathname == '/') {
-      response.writeHead(200, {
-        "Content-Type": "text/html"
-      })
-      response.write(getIndex())
-      response.end()
+    var userpass = new Buffer((request.headers.authorization || '').split(' ')[1] || '', 'base64').toString();
+    if (userpass !== 'username:password') {
+      response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="nope"' });
+      response.end('HTTP Error 401 Unauthorized: Access is denied');
     } else {
-      if (pathname == '/rootCA') {
+      let pathname = url.parse(request.url).pathname
+      if (pathname == '/') {
         response.writeHead(200, {
-          "Content-Type": "application/x-x509-ca-cert"
+          "Content-Type": "text/html"
         })
-        response.write(rootCA())
+        response.write(getIndex())
         response.end()
       } else {
-        let filename
-        if (pathname.startsWith('/client')) {
-          filename = ".." + pathname
+        if (pathname == '/rootCA') {
+          response.writeHead(200, {
+            "Content-Type": "application/x-x509-ca-cert"
+          })
+          response.write(rootCA())
+          response.end()
         } else {
-          filename = "../client" + pathname
+          let filename
+          if (pathname.startsWith('/students')) {
+            filename = ".." + pathname
+          } else {
+            filename = "../students" + pathname
+          }
+          filename = path.join(process.cwd(), filename)
+          console.log(url.parse(request.url).pathname, filename)
+          sendResponse(response, filename)
         }
-        filename = path.join(process.cwd(), filename)
-        //console.log(url.parse(request.url).pathname, filename)
-        sendResponse(response, filename)
       }
     }
   })
@@ -127,23 +133,29 @@ function setupServers() {
   console.log((new Date()) + ' Homeworks Server erreichbar unter http://' + ipAddr + ':' + httpPort)
 
   httpsServer = https.createServer(options, function(request, response) {
-    let pathname = url.parse(request.url).pathname
-    if (pathname == '/') {
-      response.writeHead(200, {
-        "Content-Type": "text/html"
-      })
-      response.write(getIndex())
-      response.end()
+    var userpass = new Buffer((request.headers.authorization || '').split(' ')[1] || '', 'base64').toString();
+    if (userpass !== 'username:password') {
+      response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="nope"' });
+      response.end('HTTP Error 401 Unauthorized: Access is denied');
     } else {
-      let filename
-      if (pathname.startsWith('/client')) {
-        filename = ".." + pathname
+      let pathname = url.parse(request.url).pathname
+      if (pathname == '/') {
+        response.writeHead(200, {
+          "Content-Type": "text/html"
+        })
+        response.write(getIndex())
+        response.end()
       } else {
-        filename = "../client" + pathname
+        let filename
+        if (pathname.startsWith('/students')) {
+          filename = ".." + pathname
+        } else {
+          filename = "../students" + pathname
+        }
+        filename = path.join(process.cwd(), filename)
+        console.log(url.parse(request.url).pathname, filename)
+        sendResponse(response, filename)
       }
-      filename = path.join(process.cwd(), filename)
-      //console.log(url.parse(request.url).pathname, filename)
-      sendResponse(response, filename)
     }
   })
   httpsServer.listen(httpsPort)
@@ -343,49 +355,56 @@ function forward(server, message, active) {
 function handleMessage(server, message, id, client) {
   let ip = client.upgradeReq.connection.remoteAddress
   if (msgTrace) {
-    console.log('%s REC <%s>', new Date().getTime(), message)
+    console.log('%s REC <%s>', new Date().getTime(), message.replace(/"code":"[^"]+"/, '"code":"..."'))
   }
   let msg = JSON.parse(message)
+  let student
   if (!active[ip]) {
     active[ip] = true
     switch (msg.id) {
       case 'JOIN':
-        break
-      case 'RESTART':
-        process.exit(msg.data.rc)
-        break
-      case 'STORE':
-        let student = msg.data.student
-        let file = msg.data.file
-        let part = file.endsWith('.js') ? 'js' : 'html'
-        if (msg.data.student in state.students) {
-          if (state.students[student].act) {
-            state.students[student].act[part] = file
-            let prev = state.students[student].hw.find(h => h.html == state.students[student].act.html && h.js == state.students[student].act.js)
-            if (prev) {
-              prev.version++
-            } else {
-              state.students[student].hw.push(state.students[student].act)
-              delete state.students[student].act
+        if (msg.data.student) {
+          student = msg.data.student
+          if (!(student in state.students)) {
+            state.students[student] = {
+              name: 'Unbekannt',
+              date: new Date().getTime(),
+              dir: '../students/' + id,
+              uploads: 0,
+              hw: []
             }
-          } else {
-            let act = {version: 0}
-            act[part] = file
-            state.students[student].act = act
           }
-          state.students[student].uploads++
-        } else {
-          let act = {version: 0}
-          act[part] = file
-          state.students[student] = {
-            name: 'Unbekannt',
-            act: act,
-            hw: []
+          if (!(student in state.volatile)) {
+            state.volatile[student] = {}
           }
         }
-        saveState()
+        break
+      case 'STORE':
+        student = msg.data.student
+        let file = msg.data.file
+        let part = file.endsWith('.js') ? 'js' : 'html'
+        if (state.volatile[student].act) {
+          state.volatile[student].act[part] = file
+          let prev = state.students[student].hw.find(h => h.html == state.volatile[student].act.html && h.js == state.volatile[student].act.js)
+          if (prev) {
+            prev.version++
+            prev.date = new Date().getTime()
+          } else {
+            state.students[student].hw.push(state.volatile[student].act)
+          }
+          delete state.volatile[student].act
+          state.students[student].uploads++
+          saveState()
+        } else {
+          state.volatile[student].act = { version: 0, date: new Date().getTime() }
+          state.volatile[student].act[part] = file
+        }
         let buff = Buffer.from(msg.data.code, 'base64')
         //console.log(msg.data.code, buff, buff.toString(), buff.toString('utf-8'))
+        let dir = state.students[student].dir + path.dirname(file);
+        if (!fs.existsSync(dir)) {
+          mkDir(dir);
+        }
         fs.writeFile(state.students[student].dir + file, buff.toString('utf-8'), 'utf8', (err, data) => {
           if (err) {
             console.log(err)
@@ -399,15 +418,25 @@ function handleMessage(server, message, id, client) {
             }))
           } else {
             console.log(file + " saved.")
-            forward(server, JSON.stringify({
+            client.send(JSON.stringify({
               id: 'STORE',
               from: 'SERVER',
               data: {
                 msg: 'saved'
               }
-            }), [id])
+            }))
           }
         })
+        break
+      case 'STATE':
+        client.send(JSON.stringify({
+          id: 'STATE',
+          from: 'SERVER',
+          data: state
+        }))
+        break
+      case 'RESTART':
+        process.exit(msg.data.rc)
         break
       default:
         break
@@ -437,21 +466,13 @@ function loadState() {
           students: {
             "192ad26b-a754-4fcd-bfd0-56795b4d0c20": {
               name: 'Benno Stäbler',
+              date: new Date().getTime(),
               dir: '../students/benno.staebler',
-              act: {
-                js: "/client/js/progsp_game.js",
-                html: "/client/progsp_game.html"
-              },
-              uploads: 2,
-              hw: [
-                {
-                  js: "/client/js/progsp_game.js",
-                  html: "/client/progsp_game.html",
-                  version: 0
-                }
-              ]
+              uploads: 0,
+              hw: []
             }
-          }
+          },
+          volatile: {}
         }
         saveState()
       } else {
@@ -464,7 +485,18 @@ function loadState() {
       if (state.domain) {
         ipAddr = state.domain
       }
+      state.volatile = {}
       setupServers()
+    }
+  })
+}
+
+function saveState() {
+  fs.writeFile(stateFile, JSON.stringify(state), { encoding: 'utf8', flag: 'w' }, (err, data) => {
+    if (err) {
+      console.log(err)
+    } else {
+      // console.log(stateFile + " updated")
     }
   })
 }
@@ -526,14 +558,33 @@ function announce(info, channel) {
   }
 }
 
-function saveState() {
-  fs.writeFile(stateFile, JSON.stringify(state), { encoding: 'utf8', flag: 'w' }, (err, data) => {
-    if (err) {
-      console.log(err)
-    } else {
-      // console.log(stateFile + " updated")
+function mkDir(targetDir, { isRelativeToScript = false } = {}) {
+  const sep = path.sep;
+  const initDir = path.isAbsolute(targetDir) ? path.sep : '';
+  const baseDir = isRelativeToScript ? __dirname : '.';
+
+  return targetDir.split(path.sep).reduce((parentDir, childDir) => {
+    const curDir = path.resolve(baseDir, parentDir, childDir);
+    try {
+      fs.mkdirSync(curDir);
+    } catch (err) {
+      if (err.code === 'EEXIST') { // curDir already exists!
+        return curDir;
+      }
+
+      // To avoid `EISDIR` error on Mac and `EACCES`-->`ENOENT` and `EPERM` on Windows.
+      if (err.code === 'ENOENT') { // Throw the original parentDir error on curDir `ENOENT` failure.
+        throw new Error(`EACCES: permission denied, mkdir '${parentDir}'`);
+      }
+
+      const caughtErr = ['EACCES', 'EPERM', 'EISDIR'].indexOf(err.code) > -1;
+      if (!caughtErr || caughtErr && curDir === path.resolve(targetDir)) {
+        throw err; // Throw if it's just the last created dir.
+      }
     }
-  })
+
+    return curDir;
+  }, initDir);
 }
 
 let lut = []
@@ -553,6 +604,10 @@ function guid7() {
 }
 
 function getIndex() {
+  let list = ''
+  state.students.forEach(student => {
+    li += '<li>' + student.name;
+  })
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -561,43 +616,24 @@ function getIndex() {
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Multiplayer Game">
+  <meta name="description" content="HfG Homeworks">
   <meta name="author" content="ByronStar">
 
-  <title>Programmiersprachen - Multiplayer</title>
-  <script type="text/javascript" src="lib/gameclient.js"></script>
-  <link rel="stylesheet" href="client/css/progsp.css">
-  <script>
-  function init() {
-    game = wsinit(onMove, null, document.getElementById('status'));
-    game.gameId = -1;
-    game.name = "Master";
-    console.log(game);
-  }
-  function onMove(move) {
-    switch (move.id) {
-      default:
-        console.log(move);
-    }
-  }
-  </script>
+  <title>Programmiersprachen - Hausaufgaben</title>
+  <script type="text/javascript" src="/shared/lib/homeworks.js"></script>
+  <link rel="stylesheet" href="/shared/css/progsp.css">
 </head>
 
-<body class="progsp" onload="init()">
-  <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="-960 -600 1920 1200">
-    <g id="layer0">
-      <circle id="status" cx="930" cy="-570" r=10 fill="red"></circle>
-    </g>
-  </svg>
+<body class="progsp">
   <div class="overlay" style="margin: 40px;">
-    <h1>Verfügbare Spiele</h1>
+    <h1>Abgegebene Hausaufgaben</h1>
     <div>
-      <ol id="games">
-      </ol>
+      <ul id="hwlist">
+      ${list}
+      </ul>
     </div>
   </div>
 </body>
-
 </html>`
 }
 

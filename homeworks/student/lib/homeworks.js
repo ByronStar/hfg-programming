@@ -1,10 +1,8 @@
 // let gc = function() {
 //   let gc = function(typeNumber, errorCorrectionLevel) {
-let httpPort = 8090
-let httpsPort = 8091
 // the WebSocket connection is established to the http / https URL with these ports
-let wsPort = 11203
-let wssPort = 11204
+let httpPort = 11203
+let httpsPort = 11204
 
 let msgTrace = false
 let ws, name
@@ -22,16 +20,21 @@ let gc = {
 }
 let statusNode, btnNode
 let reconnect = false
+let waitCnt = 0
+let quitCnt = 0
 
-getFile('lib/student.id', 'text/html').then(
-  data => gc.student = data,
-  error => alert('Datei "lib/student.id" konnte nicht geladen werden: ' + error.statusText + ' (' + error.status + ')')
-);
+function getStudentId() {
+  getFile('data/student.id', 'text/html').then(
+    data => {
+      gc.student = data.replace(/[\r\n].*/, "")
+    },
+    error => {
+      alert('Datei "data/student.id" konnte nicht geladen werden: (' + error.statusText + ' ' + error.status + ').\nOhne diese Datei, können keine Hausaufgaben per Knopfdruck abgegeben werden!')
+    }
+  );
+}
 
 function wsinit() {
-  if (!gc.student) {
-    gc.student = guid7()
-  }
   let url = new URL(window.location.href)
   name = url.searchParams.get("name")
   if (null == name) {
@@ -54,7 +57,7 @@ function wsinit() {
   // console.log(port)
 
   if (null != port) {
-    wsPort = port
+    httpPort = port
   }
 
   msgTrace = (msgTrace || null != url.searchParams.get("trace"))
@@ -71,15 +74,12 @@ function wsinit() {
     statusNode = createElement(document.body, 'div', { id: "status", style: "position: absolute; top:10px;right:30px;" })
   }
 
-  let wsUri = 'wss://' + gc.server + ':' + wssPort
+  let wsUri = 'wss://' + gc.server + ':' + httpsPort
   ws = createWebSocket(wsUri, onState, onReceive)
   // console.log(location, ws)
   window.addEventListener('keydown', onKeyDownGC)
   return gc
 }
-
-let pCnt = 0
-let qCnt = 0
 
 function onKeyDownGC(evt) {
   switch (evt.key) {
@@ -92,7 +92,7 @@ function onKeyDownGC(evt) {
       sendState('STATE', {})
       break
     case 'Q':
-      if (qCnt++ > 3) {
+      if (quitCnt++ > 3) {
         sendState('RESTART', {
           rc: -1
         })
@@ -101,20 +101,16 @@ function onKeyDownGC(evt) {
     case 'P':
       break
     default:
-      qCnt = 0
+      quitCnt = 0
   }
 }
 
 function onState(online, ws) {
   // console.log(online, ws)
   if (!online) {
-    gc.players = []
+    waitCnt = 0
     if (reconnect) {
       setTimeout(reload, 5000)
-    } else {
-      if (location.hostname.match(/127.0.0.1|localhost/) && null == gc.online) {
-        alert("Es wurde kein lokaler Server gefunden! Lokalen Server starten oder einen remote Server verwenden:\n" + location.href + "?server=<IPAddress>")
-      }
     }
   } else {
     reconnect = true
@@ -158,19 +154,23 @@ function onReceive(data) {
     case 'EXIT':
       break
     case 'STORE':
-      if (pCnt == 0) {
-        // not the publisher switch to published page: assign or replace
-        location.assign('https://' + gc.server + ':' + httpsPort + location.pathname)
-      } else {
-        pCnt--
+      if (waitCnt > 0) {
+        waitCnt--
         if (msg.data.rc < 0) {
-          console.log(msg.data.msg)
+          alert('Hausaufgabe NICHT abgegeben 🚫: ' + msg.data.msg)
+          waitCnt = 0
         } else {
-          if (pCnt == 0) {
+          if (waitCnt == 0) {
+            alert("Hausaufgabe erfolgreich abgegeben 🍀")
             // switch to published page: assign or replace
-            location.assign('https://' + gc.server + ':' + httpsPort + location.pathname)
+            // location.assign('https://' + gc.server + ':' + httpsPort + location.pathname)
           }
         }
+      }
+      break
+    case 'STATE':
+      if (!msgTrace) {
+        console.log("REC", msg)
       }
       break
     default:
@@ -181,21 +181,31 @@ function onReceive(data) {
 function refresh() {
   if (null != statusNode) {
     if (btnNode) {
-      btnNode.removeEventListener('click', publish);
+      btnNode.removeEventListener('click', process);
     }
-    statusNode.innerHTML = gc.online ? '<button id="send">Abgeben</button> 💚' : '🔴'
+    statusNode.innerHTML = gc.online ? (gc.student ? '<button id="send">Abgeben</button> ✅' :
+        'Datei "data/student.id" fehlt <div id="send" style="cursor: pointer;">⚠️</div>') :
+      '<div id="send" style="cursor: pointer;">🔴</div>'
     btnNode = document.getElementById('send')
     if (btnNode) {
-      btnNode.addEventListener('click', publish);
+      btnNode.addEventListener('click', process);
     }
+  }
+}
+
+function process() {
+  if (gc.online) {
+    publish()
+  } else {
+    reload()
   }
 }
 
 function publish() {
   let script = document.getElementById('homework')
   if (null != script) {
-    if (pCnt == 0) {
-      pCnt = 2;
+    if (waitCnt == 0) {
+      waitCnt = 2;
       upload(script)
     } else {
       alert("Vorherige 'Abgeben' Funktion ist noch aktiv!")
@@ -219,9 +229,9 @@ function sendFile(text, context) {
     text = text.replace(/<!-- Code injected by live-server -->(.|\n)+<\/script>\n*/m, '')
   }
   sendState('STORE', {
-    file: context.file,
+    file: context.file.replace(/\/homeworks\/student/, ''),
     student: gc.student,
-    page: location.pathname,
+    page: location.pathname.replace(/\/homeworks\/student/, ''),
     // hash: hashCode(text),
     code: Base64.encode(text)
   })
@@ -628,6 +638,9 @@ const Base64 = {
 // }
 //   return gc
 // }()
-document.addEventListener("DOMContentLoaded", function() {
-  wsinit();
-});
+if (location.hostname.match(/localhost|127.0.0.1/)) {
+  getStudentId()
+  document.addEventListener("DOMContentLoaded", function() {
+    wsinit()
+  });
+}

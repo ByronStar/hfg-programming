@@ -1,0 +1,28 @@
+{
+  "ipAddr": "0.0.0.0",
+  "domain": "byron.hopto.org",
+  "students": {
+    "192ad26b-a754-4fcd-bfd0-56795b4d0c20": {
+      "name": "Benno Stäbler",
+      "dir": "../students/benno.staebler",
+      "uploads": 12,
+      "hw": [{
+        "js": "/client/js/progsp_game.js",
+        "html": "/client/progsp_game.html",
+        "version": 0
+      }, {
+        "version": 5,
+        "js": "/homeworks/student/js/progsp_0.js",
+        "html": "/homeworks/student/progsp_1.html"
+      }, {
+        "version": 0,
+        "js": "/homeworks/student/js/progsp_0.js",
+        "html": "/progsp_1.html"
+      }],
+      "act": {
+        "version": 0,
+        "js": "/js/progsp_0.js"
+      }
+    }
+  }
+}

@@ -36,7 +36,6 @@
 .progsp .overlay {
   position: relative;
   margin: 20px;
-  pointer-events: none;
 }
 
 .progsp .noscroll {
