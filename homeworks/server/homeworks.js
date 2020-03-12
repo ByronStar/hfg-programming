@@ -10,6 +10,7 @@ const WebSocketServer = WebSocket.Server
 const https = require('https')
 const fs = require('fs')
 const forge = require('node-forge')
+const bcrypt = require('bcryptjs');
 
 const http = require('http')
 const url = require("url")
@@ -95,10 +96,11 @@ function setupServers() {
     }
   }
 
+  // Byron:$2y$05$U3s9dADqMKMAOjaFXR2iuuHnaC1c6ARJXLPsTfh9oXW/lvlXwcQ9i
   httpServer = http.createServer(function(request, response) {
     var userpass = new Buffer((request.headers.authorization || '').split(' ')[1] || '', 'base64').toString();
-    if (userpass !== 'username:password') {
-      response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="nope"' });
+    if (!bcrypt.compareSync(userpass, '$2a$08$5IZmi9StV.mBmOSmZQ.hfeENTxsGzBa647uJFzbIpRUgSEwdS1L32')) {
+      response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="HfG Homeworks"' });
       response.end('HTTP Error 401 Unauthorized: Access is denied');
     } else {
       let pathname = url.parse(request.url).pathname
@@ -123,7 +125,7 @@ function setupServers() {
             filename = "../students" + pathname
           }
           filename = path.join(process.cwd(), filename)
-          console.log(url.parse(request.url).pathname, filename)
+          // console.log(url.parse(request.url).pathname, filename)
           sendResponse(response, filename)
         }
       }
@@ -134,8 +136,8 @@ function setupServers() {
 
   httpsServer = https.createServer(options, function(request, response) {
     var userpass = new Buffer((request.headers.authorization || '').split(' ')[1] || '', 'base64').toString();
-    if (userpass !== 'username:password') {
-      response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="nope"' });
+    if (!bcrypt.compareSync(userpass, '$2a$08$5IZmi9StV.mBmOSmZQ.hfeENTxsGzBa647uJFzbIpRUgSEwdS1L32')) {
+      response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="HfG Homeworks"' });
       response.end('HTTP Error 401 Unauthorized: Access is denied');
     } else {
       let pathname = url.parse(request.url).pathname
@@ -153,14 +155,14 @@ function setupServers() {
           filename = "../students" + pathname
         }
         filename = path.join(process.cwd(), filename)
-        console.log(url.parse(request.url).pathname, filename)
+        // console.log(url.parse(request.url).pathname, filename)
         sendResponse(response, filename)
       }
     }
   })
   httpsServer.listen(httpsPort)
-
   console.log((new Date()) + ' Homeworks Server erreichbar unter https://' + ipAddr + ':' + httpsPort)
+
   let wsServer = new WebSocketServer({
     server: httpServer
   })
@@ -401,11 +403,11 @@ function handleMessage(server, message, id, client) {
         }
         let buff = Buffer.from(msg.data.code, 'base64')
         //console.log(msg.data.code, buff, buff.toString(), buff.toString('utf-8'))
-        let dir = state.students[student].dir + path.dirname(file);
+        let dir = '../students' + state.students[student].dir + path.dirname(file);
         if (!fs.existsSync(dir)) {
           mkDir(dir);
         }
-        fs.writeFile(state.students[student].dir + file, buff.toString('utf-8'), 'utf8', (err, data) => {
+        fs.writeFile('../students' + state.students[student].dir + file, buff.toString('utf-8'), 'utf8', (err, data) => {
           if (err) {
             console.log(err)
             client.send(JSON.stringify({
@@ -467,7 +469,7 @@ function loadState() {
             "192ad26b-a754-4fcd-bfd0-56795b4d0c20": {
               name: 'Benno Stäbler',
               date: new Date().getTime(),
-              dir: '../students/benno.staebler',
+              dir: '/benno.staebler',
               uploads: 0,
               hw: []
             }
@@ -605,9 +607,12 @@ function guid7() {
 
 function getIndex() {
   let list = ''
-  state.students.forEach(student => {
-    li += '<li>' + student.name;
-  })
+  for (let id in state.students) {
+    list += '<li>' + state.students[id].name
+    list += '<ol>'
+    state.students[id].hw.forEach(h => list += '<li><a href="https://' + state.domain + ':' + httpsPort + state.students[id].dir + h.html + '" target="_blank">' + h.html + '</a> (' + new Date(h.date).toLocaleString() + ' Version ' + h.version + ')')
+    list += '</ol>'
+  }
   return `
 <!DOCTYPE html>
 <html lang="en">
