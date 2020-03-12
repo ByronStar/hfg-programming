@@ -12,7 +12,7 @@ let lags = [],
   lCnt = 0
 
 let gc = {
-  student: '192ad26b-a754-4fcd-bfd0-56795b4d0c20',
+  student: null,
   id: null,
   online: null,
   server: null,
@@ -20,8 +20,13 @@ let gc = {
     sendState('INFO', data)
   }
 }
-let statusNode
+let statusNode, btnNode
 let reconnect = false
+
+getFile('lib/student.id', 'text/html').then(
+  data => gc.student = data,
+  error => alert('Datei "lib/student.id" konnte nicht geladen werden: ' + error.statusText + ' (' + error.status + ')')
+);
 
 function wsinit() {
   if (!gc.student) {
@@ -68,7 +73,7 @@ function wsinit() {
 
   let wsUri = 'wss://' + gc.server + ':' + wssPort
   ws = createWebSocket(wsUri, onState, onReceive)
-  console.log(location, ws)
+  // console.log(location, ws)
   window.addEventListener('keydown', onKeyDownGC)
   return gc
 }
@@ -94,29 +99,6 @@ function onKeyDownGC(evt) {
       }
       break
     case 'P':
-      if (location.port != httpsPort) {
-        let script = document.getElementById('game')
-        if (null != script) {
-          if (!location.pathname.endsWith('/progsp_game.html') && !script.src.endsWith('/progsp_game.js')) {
-            if (gc.gameId != 0) {
-              if (pCnt == 0) {
-                pCnt = 2;
-                publish(script)
-              } else {
-                alert("Vorherige 'Publish' Funktion ist noch aktiv!")
-              }
-            } else {
-              alert("Bitte im Javascript \ngame.gameId = 0;\n durch \ngame.gameId = '" + guid7() + "';\n ersetzen!")
-            }
-          } else {
-            alert("Das Demo Spiel kann nicht verändert werden: progsp_game.html und progsp_game.js sind reservierte Namen!")
-          }
-        } else {
-          alert("Der Game Code ist in der HTML Seite nicht mit der id 'game' markiert: <script id=\"game\" ... !")
-        }
-      } else {
-        alert("Die 'Publish' Funktion geht nur bei der Arbeit mit lokale Seiten (z.B. Atom Liveserver)!")
-      }
       break
     default:
       qCnt = 0
@@ -124,7 +106,7 @@ function onKeyDownGC(evt) {
 }
 
 function onState(online, ws) {
-  console.log(online, ws)
+  // console.log(online, ws)
   if (!online) {
     gc.players = []
     if (reconnect) {
@@ -169,7 +151,8 @@ function onReceive(data) {
       //   createQRCode(location.protocol + '//' + gc.server + ':' + (location.protocol == 'http:' ? httpPort : httpsPort) + location.pathname + '?name=Mobile' + Math.floor(rand(100, 999)), 'p1')
       // }
       sendState('JOIN', {
-        student: gc.student
+        student: gc.student,
+        page: location.pathname
       })
       break
     case 'EXIT':
@@ -197,29 +180,65 @@ function onReceive(data) {
 
 function refresh() {
   if (null != statusNode) {
-    statusNode.innerHTML = gc.online ? '💚' : '🔴'
+    if (btnNode) {
+      btnNode.removeEventListener('click', publish);
+    }
+    statusNode.innerHTML = gc.online ? '<button id="send">Abgeben</button> 💚' : '🔴'
+    btnNode = document.getElementById('send')
+    if (btnNode) {
+      btnNode.addEventListener('click', publish);
+    }
   }
 }
 
-function publish(script) {
-  loadData(script.src, 'text/javascript', dataLoaded, {
-    file: new URL(script.src).pathname
-  })
-  loadData(location.origin + location.pathname, 'text/html', dataLoaded, {
-    file: location.pathname
-  })
+function publish() {
+  let script = document.getElementById('homework')
+  if (null != script) {
+    if (pCnt == 0) {
+      pCnt = 2;
+      upload(script)
+    } else {
+      alert("Vorherige 'Abgeben' Funktion ist noch aktiv!")
+    }
+  } else {
+    alert("Die Hausaufgabe ist in der HTML Seite nicht mit der id 'homework' markiert: <script ... id=\"homework\">!")
+  }
 }
 
-function dataLoaded(text, context) {
+function upload(script) {
+  getFile(script.src, 'text/javascript').then(data => sendFile(data, {
+    file: new URL(script.src).pathname
+  }));
+  getFile(location.origin + location.pathname, 'text/html').then(data => sendFile(data, {
+    file: location.pathname
+  }));
+}
+
+function sendFile(text, context) {
   if (context.file.endsWith('html')) {
     text = text.replace(/<!-- Code injected by live-server -->(.|\n)+<\/script>\n*/m, '')
   }
   sendState('STORE', {
     file: context.file,
-    name: gc.name,
+    student: gc.student,
     page: location.pathname,
     // hash: hashCode(text),
     code: Base64.encode(text)
+  })
+}
+
+function getFile(url, type) {
+  return new Promise((resolve, reject) => {
+    ajax({
+      type: 'GET',
+      url: url,
+      responseType: 'text',
+      headers: {
+        'Content-Type': type
+      },
+      success: (response, context) => resolve(response),
+      error: (error, headers) => reject(error)
+    })
   })
 }
 
@@ -362,55 +381,84 @@ function rand(min, max) {
   return min + Math.random() * (max - min)
 }
 
-let headers = null
+function ajax(req) {
+  const xmlhttp = createXMLHttp()
 
-function loadData(url, responseType, callback, context) {
-  let xmlhttp
-  if (window.XMLHttpRequest) {
-    // IE7+, Firefox, Chrome, Opera, Safari
-    xmlhttp = new XMLHttpRequest()
-  } else {
-    // IE6, IE5
-    xmlhttp = new ActiveXObject("Microsoft.XMLHTTP")
-    xmlhttp.overrideMimeType("text/plain; charset=utf-8")
-  }
-
+  // callback for state changes
   xmlhttp.onreadystatechange = function() {
-    if (xmlhttp.readyState == 4) {
-      if ((xmlhttp.status == 200 || xmlhttp.status == 0 && xmlhttp.responseText)) {
-        if (context) {
-          let xxx = xmlhttp.getResponseHeader('xxx')
-          if (xxx != "undefined") {
-            context.xxx = xxx
+    // request finished
+    if (xmlhttp.readyState === 4) {
+      // request processed and successful (200) or local file (0)
+      if ((xmlhttp.status === 200 || xmlhttp.status === 0 && xmlhttp.response)) {
+        if (req.context) {
+          const xxx = xmlhttp.getResponseHeader('xxx')
+          if (xxx !== "undefined") {
+            req.context.xxx = xxx
           }
         }
-        switch (responseType) {
-          case 'text/xml':
-          case 'application/xml':
-            callback(xmlhttp.responseXML, context)
-            break
-          case 'application/json':
-            callback(xmlhttp.responseText, context)
-            break
+        // console.log(xmlhttp);
+        switch (req.responseType) {
+          case "arraybuffer":
+          case "blob":
+            req.success(xmlhttp.response, req.context)
+            break;
+          case "document":
+            req.success(xmlhttp.responseXML, req.context)
+            break;
+          case "json":
+            req.success(xmlhttp.response, req.context)
+            break;
+          case "":
+          case "text":
+            req.success(xmlhttp.responseText, req.context)
+            break;
           default:
-            callback(xmlhttp.responseText, context)
+            req.success(xmlhttp.responseText, req.context)
         }
       } else {
-        console.log(xmlhttp.status, xmlhttp.getAllResponseHeaders())
+        req.error(xmlhttp, xmlhttp.getAllResponseHeaders())
       }
     }
   }
 
-  // Inhalt deklarieren - ist nur beim lokalen Lesen ohne Webserver notwendig
-  xmlhttp.responseType = responseType
-  // Lesen der Datei vorbereiten
-  xmlhttp.open("GET", url, true)
-  // Send the proxy header information along with the request
-  if (headers) {
-    xmlhttp.setRequestHeader("xxx", headers)
+  if (req.responseType) {
+    xmlhttp.responseType = req.responseType
   }
 
-  xmlhttp.send()
+  // prepare request
+  xmlhttp.open(req.type, req.url, true)
+
+  // Send additional headers information along with the request
+  if (req.headers) {
+    for (header in req.headers) {
+      xmlhttp.setRequestHeader(header, req.headers[header])
+    }
+  }
+
+  // Send proxy tunnel headers information along with the request
+  if (req.xxx) {
+    xmlhttp.setRequestHeader("xxx", req.xxx)
+  }
+
+  // process request
+  if (req.data) {
+    xmlhttp.send(req.data)
+  } else {
+    xmlhttp.send()
+  }
+}
+
+function createXMLHttp() {
+  // Create object for ajax requests
+  if (window.XMLHttpRequest) {
+    // IE7+, Firefox, Chrome, Opera, Safari
+    return new XMLHttpRequest()
+  } else {
+    // IE6, IE5
+    const xmlhttp = new ActiveXObject("Microsoft.XMLHTTP")
+    xmlhttp.overrideMimeType("text/plain; charset=utf-8")
+    return xmlhttp
+  }
 }
 
 let lut = []

@@ -355,52 +355,38 @@ function handleMessage(server, message, id, client) {
         process.exit(msg.data.rc)
         break
       case 'STORE':
-        let file = (msg.data.file.startsWith('/client') ? '' : '/client') + msg.data.file
+        let student = msg.data.student
+        let file = msg.data.file
         let part = file.endsWith('.js') ? 'js' : 'html'
-        if (msg.data.game in state.games) {
-          if (state.games[msg.data.game][part] != undefined && state.games[msg.data.game][part] != file) {
-            client.send(JSON.stringify({
-              id: 'STORE',
-              from: 'SERVER',
-              data: {
-                rc: -1,
-                msg: "Ein Spiel mit der selben ID existiert bereits unter einem anderen Namen: '" + state.games[msg.data.game][part] +
-                  "'.\nEventuell im Javascript \ngame.gameId = '" + msg.data.game + "';\n durch \ngame.gameId = '" + guid7() + "';\n ersetzen!"
-              }
-            }))
-            break
+        if (msg.data.student in state.students) {
+          if (state.students[student].act) {
+            state.students[student].act[part] = file
+            let prev = state.students[student].hw.find(h => h.html == state.students[student].act.html && h.js == state.students[student].act.js)
+            if (prev) {
+              prev.version++
+            } else {
+              state.students[student].hw.push(state.students[student].act)
+              delete state.students[student].act
+            }
+          } else {
+            let act = {version: 0}
+            act[part] = file
+            state.students[student].act = act
           }
-          state.games[msg.data.game].version++
+          state.students[student].uploads++
         } else {
-          state.games[msg.data.game] = {
-            id: msg.data.game,
-            players: [],
-            version: 0
+          let act = {version: 0}
+          act[part] = file
+          state.students[student] = {
+            name: 'Unbekannt',
+            act: act,
+            hw: []
           }
-          //announce("Neues Spiel verfügbar <https://alert-system.com/alerts/1234|Click here>")
         }
-        if (file in state.files) {
-          if (state.files[file] != msg.data.game) {
-            client.send(JSON.stringify({
-              id: 'STORE',
-              from: 'SERVER',
-              data: {
-                rc: -2,
-                msg: 'Ein Spiel mit dem selben Namen "' + file + '" existiert bereits unter einer anderen ID: ' + state.files[file] +
-                  "'.\nEventuell HTML und Javascript umbenennen."
-              }
-            }))
-            break
-          }
-        } else {
-          state.files[file] = msg.data.game
-        }
-        state.games[msg.data.game][part] = file
-        state.games[msg.data.game].name = msg.data.name
         saveState()
         let buff = Buffer.from(msg.data.code, 'base64')
         //console.log(msg.data.code, buff, buff.toString(), buff.toString('utf-8'))
-        fs.writeFile('..' + file, buff.toString('utf-8'), 'utf8', (err, data) => {
+        fs.writeFile(state.students[student].dir + file, buff.toString('utf-8'), 'utf8', (err, data) => {
           if (err) {
             console.log(err)
             client.send(JSON.stringify({
@@ -448,20 +434,24 @@ function loadState() {
         state = {
           ipAddr: '0.0.0.0',
           domain: 'byron.hopto.org',
-          games: {
-            0: {
-              id: 0,
-              js: "/client/js/progsp_game.js",
-              html: "/client/progsp_game.html",
-              name: "Demo Spiel",
-              version: 0
+          students: {
+            "192ad26b-a754-4fcd-bfd0-56795b4d0c20": {
+              name: 'Benno Stäbler',
+              dir: '../students/benno.staebler',
+              act: {
+                js: "/client/js/progsp_game.js",
+                html: "/client/progsp_game.html"
+              },
+              uploads: 2,
+              hw: [
+                {
+                  js: "/client/js/progsp_game.js",
+                  html: "/client/progsp_game.html",
+                  version: 0
+                }
+              ]
             }
-          },
-          files: {
-            "/client/js/progsp_game.js": 0,
-            "/client/progsp_game.html": 0
-          },
-          students: {}
+          }
         }
         saveState()
       } else {
