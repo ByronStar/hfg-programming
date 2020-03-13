@@ -49,6 +49,7 @@ let contentTypesByExtension = {
 
 let state
 let stateFile = './homeworks.json'
+let studentsFile = './studentWS1920.txt'
 loadState()
 
 function setupServers() {
@@ -61,6 +62,9 @@ function setupServers() {
     options = {
       key: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/privkey.pem'),
       cert: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/fullchain.pem')
+    }
+    if (state.domain) {
+      ipAddr = state.domain
     }
   } else {
     if (!fs.existsSync('progsp.hfg-gmuend.de.key') || (ipAddr != 'localhost' && ipAddr != state.ipAddr)) {
@@ -458,25 +462,57 @@ function handleClose(server, id) {
   console.log('%s EXIT <%s> (%d clients)', new Date().getTime(), 'Client ' + id + ' left', (server.clients.length ? server.clients.length : server.clients.size))
 }
 
+function createState() {
+  state = {
+    ipAddr: '0.0.0.0',
+    domain: 'byron.hopto.org',
+    xslack: '',
+    students: {},
+    volatile: {}
+  }
+  fs.readFile(studentsFile, 'utf-8', (err, data) => {
+    if (err) {
+      if (err.code == 'ENOENT') {
+        state.students["192ad26b-a754-4fcd-bfd0-56795b4d0c20"] = {
+          name: 'Benno Stäbler',
+          group: 'IG1',
+          date: new Date().getTime(),
+          dir: '/benno.staebler',
+          uploads: 0,
+          hw: [],
+          res: []
+        }
+        saveState()
+      } else {
+        console.log(err, err.code)
+      }
+    } else {
+      let lines = data.split(/\r?\n/)
+      lines.forEach(l => {
+        if (l.length > 0 && !l.startsWith('#')) {
+          let p = l.split(/;/)
+          state.students[guid7()] = {
+            name: p[13] + ' ' + p[12],
+            group: p[9],
+            date: new Date().getTime(),
+            dir: '/'+p[13].toLowerCase() + '.' + p[12].toLowerCase(),
+            uploads: 0,
+            hw: [],
+            res: []
+          }
+        }
+      })
+      saveState()
+      state.volatile = {}
+    }
+  })
+}
+
 function loadState() {
   fs.readFile(stateFile, 'utf-8', (err, data) => {
     if (err) {
       if (err.code == 'ENOENT') {
-        state = {
-          ipAddr: '0.0.0.0',
-          domain: 'byron.hopto.org',
-          students: {
-            "192ad26b-a754-4fcd-bfd0-56795b4d0c20": {
-              name: 'Benno Stäbler',
-              date: new Date().getTime(),
-              dir: '/benno.staebler',
-              uploads: 0,
-              hw: []
-            }
-          },
-          volatile: {}
-        }
-        saveState()
+        createState();
       } else {
         console.log(err, err.code)
       }
@@ -484,9 +520,6 @@ function loadState() {
       state = JSON.parse(data)
       // console.log("LOAD", state)
       saveState()
-      if (state.domain) {
-        ipAddr = state.domain
-      }
       state.volatile = {}
       setupServers()
     }
@@ -504,7 +537,7 @@ function saveState() {
 }
 
 function announce(info, channel) {
-  if (state.slackHook) {
+  if (state.slack) {
     if (null == channel) {
       channel = "#programmieren"
     }
@@ -526,11 +559,10 @@ function announce(info, channel) {
       // }]
     }
     data = JSON.stringify(data)
-
     let options = {
       hostname: 'hooks.slack.com',
       port: 443,
-      path: '/services/' + state.slackHook,
+      path: '/services/' + state.slack,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
