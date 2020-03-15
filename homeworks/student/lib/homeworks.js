@@ -18,11 +18,14 @@ var Homeworks = {};
       sendState('INFO', data)
     }
   }
-  this.gc = gc
   let statusNode, btnNode
   let reconnect = false
+  let checkId = null
   let waitCnt = 0
   let quitCnt = 0
+
+  this.gc = gc
+  this.aufgabe = 0
 
   this.getStudentId = function() {
     return new Promise((resolve, reject) => {
@@ -33,7 +36,7 @@ var Homeworks = {};
         },
         error => {
           Homeworks.showStatus();
-          reject('Datei "data/student.id" konnte nicht geladen werden: (' + error.statusText + ' ' + error.status + ').\nOhne diese Datei, können keine Hausaufgaben per Knopfdruck abgegeben werden!')
+          reject('⚠️ Datei "data/student.id" konnte nicht geladen werden: (' + error.statusText + ' ' + error.status + ').\nDamit die Hausaufgaben per Knopfdruck abgegeben werden können, bitte gleich das ⚠️ oben rechts anklicken.\nAnmelden mit "ig1" / "Fun2Code".')
         }
       )
     })
@@ -45,6 +48,10 @@ var Homeworks = {};
       statusNode = createElement(document.body, 'div', { id: "status", style: "position: absolute; top:10px;right:30px;" })
     }
     Homeworks.showStatus();
+    console.log(location.pathname.match(/\/homeworks\/student/))
+    if (location.pathname.match(/\/homeworks\/student/)) {
+      window.addEventListener('keydown', onKeyDown)
+    }
   }
 
   this.showStatus = function() {
@@ -55,7 +62,7 @@ var Homeworks = {};
       statusNode.innerHTML = gc.connect ?
         (gc.student ?
           (gc.online ? '<span id="send" style="cursor: pointer;font-size: 2em;">📤</span>' : '<span id="send" style="cursor: pointer;font-size: 2em;">🔴</span>') :
-          'Datei "data/student.id" fehlt <span id="send" style="cursor: pointer;font-size: 2em;">⚠️</span>') :
+          'Datei "data/student.id" fehlt <a href="https://byron.hopto.org:11204/studentIds.html" target="_blank">⚠️</a>') :
         '<span id="send" style="cursor: pointer;font-size: 2em;">🔗</span>'
       btnNode = document.getElementById('send')
       if (btnNode) {
@@ -118,12 +125,10 @@ var Homeworks = {};
 
     let wsUri = 'wss://' + gc.server + ':' + httpsPort
     ws = createWebSocket(wsUri, onState, onReceive)
-    // console.log(location, ws)
-    window.addEventListener('keydown', onKeyDownGC)
     return gc
   }
 
-  function onKeyDownGC(evt) {
+  function onKeyDown(evt) {
     switch (evt.key) {
       case 'R':
         sendState('RESTART', {
@@ -139,8 +144,6 @@ var Homeworks = {};
             rc: -1
           })
         }
-        break
-      case 'P':
         break
       default:
         quitCnt = 0
@@ -199,11 +202,15 @@ var Homeworks = {};
         if (waitCnt > 0) {
           waitCnt--
           if (msg.data.rc < 0) {
-            alert('Hausaufgabe NICHT abgegeben 🚫: ' + msg.data.msg)
+            alert('🚫 Hausaufgabe NICHT abgegeben: ' + msg.data.msg)
             waitCnt = 0
           } else {
             if (waitCnt == 0) {
-              alert("Hausaufgabe erfolgreich abgegeben 🍀")
+              if (checkId) {
+                clearTimeout(checkId)
+                checkId = null
+              }
+              alert("🍀 Hausaufgabe von " + msg.data.name + " erfolgreich abgegeben.")
               // switch to published page: assign or replace
               // location.assign('https://' + gc.server + ':' + httpsPort + location.pathname)
             }
@@ -223,14 +230,29 @@ var Homeworks = {};
   function publish() {
     let script = document.getElementById('homework')
     if (null != script) {
-      if (waitCnt == 0) {
-        waitCnt = 2;
-        upload(script)
+      let file = new URL(script.src).pathname.replace(/.*\//, "")
+      let aufgabe = file.match(/[0-9]/)[0]
+      if (aufgabe == Homeworks.aufgabe) {
+        if (waitCnt == 0) {
+          waitCnt = 2;
+          checkId = setTimeout(checkUpload, 10000)
+          upload(script)
+        } else {
+          alert("🙄Vorherige 'Abgeben' Funktion ist noch aktiv.\n⚠️ Bitte noch etwas warten.")
+        }
       } else {
-        alert("Vorherige 'Abgeben' Funktion ist noch aktiv!")
+        alert("🚫 Der Name der Javascript Datei '" + file + "' passt nicht zur Aufgabennummer in dieser Datei:\nHomeworks.aufgabe = " + Homeworks.aufgabe + ".\n⚠️ Bitte entweder den Dateinamen oder die Aufgabennummer anpassen.")
       }
     } else {
-      alert("Die Hausaufgabe ist in der HTML Seite nicht mit der id 'homework' markiert: <script ... id=\"homework\">!")
+      alert("🚫 Die Hausaufgabe ist in der HTML Seite nicht mit der id 'homework' markiert:\n<script ... id=\"homework\">.\n⚠️ Bitte diese id einfügen.")
+    }
+  }
+
+  function checkUpload() {
+    if (waitCnt > 0) {
+      alert('🚫 Hausaufgabe NICHT abgegeben: Keine Rückmeldung vom Server erhalten.\n⚠️ Nochmals probieren und wenn es weiterhin nicht geht, bitte melden.')
+      waitCnt = 0
+      checkId = null
     }
   }
 

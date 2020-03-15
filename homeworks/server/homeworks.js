@@ -49,7 +49,7 @@ let contentTypesByExtension = {
 
 let state
 let stateFile = './homeworks.json'
-let studentsFile = './studentWS1920.txt'
+let studentsFile = './students.txt'
 loadState()
 
 function setupServers() {
@@ -139,28 +139,78 @@ function setupServers() {
   console.log((new Date()) + ' Homeworks Server erreichbar unter http://' + ipAddr + ':' + httpPort)
 
   httpsServer = https.createServer(options, function(request, response) {
+    console.log(request.url)
     var userpass = new Buffer((request.headers.authorization || '').split(' ')[1] || '', 'base64').toString();
-    if (!bcrypt.compareSync(userpass, '$2a$08$5IZmi9StV.mBmOSmZQ.hfeENTxsGzBa647uJFzbIpRUgSEwdS1L32')) {
-      response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="HfG Homeworks"' });
-      response.end('HTTP Error 401 Unauthorized: Access is denied');
+    if (bcrypt.compareSync(userpass, '$2a$08$5IZmi9StV.mBmOSmZQ.hfeENTxsGzBa647uJFzbIpRUgSEwdS1L32')) {
+      let actUrl = url.parse(request.url, true)
+      let pathname = actUrl.pathname
+      switch (pathname) {
+        case '/':
+          response.writeHead(200, {
+            "Content-Type": "text/html"
+          })
+          response.write(getIndex())
+          response.end()
+          break
+        case '/student.id':
+          response.writeHead(200, {
+            "Content-Type": "application/octet-stream"
+          })
+          // for (let key in actUrl.query) {
+          //   console.log(key, actUrl.query[key])
+          // }
+          response.write(actUrl.query.id)
+          response.end()
+          break
+        case '/studentIds.html':
+          response.writeHead(200, {
+            "Content-Type": "text/html"
+          })
+          response.write(getIds())
+          response.end()
+          break
+        default:
+          let filename
+          if (pathname.startsWith('/students')) {
+            filename = ".." + pathname
+          } else {
+            filename = "../students" + pathname
+          }
+          filename = path.join(process.cwd(), filename)
+          // console.log(pathname, filename)
+          sendResponse(response, filename)
+          break
+      }
     } else {
-      let pathname = url.parse(request.url).pathname
-      if (pathname == '/') {
-        response.writeHead(200, {
-          "Content-Type": "text/html"
-        })
-        response.write(getIndex())
-        response.end()
-      } else {
-        let filename
-        if (pathname.startsWith('/students')) {
-          filename = ".." + pathname
-        } else {
-          filename = "../students" + pathname
+      if (bcrypt.compareSync(userpass, '$2a$08$uGD7MtlHnvRQikJLGiUuIuye8dTapGoz2pXSuXyna9FFwUPRPYSIC')) {
+        let actUrl = url.parse(request.url, true)
+        let pathname = actUrl.pathname
+        switch (pathname) {
+          case '/student.id':
+            response.writeHead(200, {
+              "Content-Type": "text/html"
+            })
+            response.write(actUrl.searchParams.get(id))
+            response.end()
+            break
+          case '/studentIds.html':
+            response.writeHead(200, {
+              "Content-Type": "text/html"
+            })
+            response.write(getIds())
+            response.end()
+            break
+          default:
+            response.writeHead(404, {
+              "Content-Type": "text/plain"
+            })
+            response.write("404 Not Found\n")
+            response.end()
+            break
         }
-        filename = path.join(process.cwd(), filename)
-        // console.log(url.parse(request.url).pathname, filename)
-        sendResponse(response, filename)
+      } else {
+        response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="HfG Homeworks"' });
+        response.end('HTTP Error 401 Unauthorized: Access is denied');
       }
     }
   })
@@ -419,7 +469,8 @@ function handleMessage(server, message, id, client) {
               from: 'SERVER',
               data: {
                 rc: -1,
-                msg: err
+                msg: err,
+                name: state.students[student].name
               }
             }))
           } else {
@@ -428,7 +479,8 @@ function handleMessage(server, message, id, client) {
               id: 'STORE',
               from: 'SERVER',
               data: {
-                msg: 'saved'
+                msg: 'saved',
+                name: state.students[student].name
               }
             }))
           }
@@ -495,7 +547,7 @@ function createState() {
             name: p[13] + ' ' + p[12],
             group: p[9],
             date: new Date().getTime(),
-            dir: '/'+p[13].toLowerCase() + '.' + p[12].toLowerCase(),
+            dir: '/' + p[13].toLowerCase() + '.' + p[12].toLowerCase(),
             uploads: 0,
             hw: [],
             res: []
@@ -635,6 +687,44 @@ function guid7() {
     lut[d1 & 0xff] + lut[d1 >> 8 & 0xff] + '-' + lut[d1 >> 16 & 0x0f | 0x40] + lut[d1 >> 24 & 0xff] + '-' +
     lut[d2 & 0x3f | 0x80] + lut[d2 >> 8 & 0xff] + '-' + lut[d2 >> 16 & 0xff] + lut[d2 >> 24 & 0xff] +
     lut[d3 & 0xff] + lut[d3 >> 8 & 0xff] + lut[d3 >> 16 & 0xff] + lut[d3 >> 24 & 0xff]
+}
+
+function getIds() {
+  let list = ''
+  for (let id in state.students) {
+    list += '<li><a href="/student.id?id=' + id + '">' + state.students[id].name + '</a>'
+  }
+  return `
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="HfG Homeworks">
+  <meta name="author" content="ByronStar">
+
+  <title>Programmiersprachen - Hausaufgaben</title>
+  <script type="text/javascript" src="/shared/lib/homeworks.js"></script>
+  <link rel="stylesheet" href="/shared/css/progsp.css">
+</head>
+
+<body class="progsp">
+  <div class="overlay" style="margin: 40px;">
+    <h1>Id Dateien für Hausaufgaben Abgabe</h1>
+    <p>Damit die Hausaufgaben richtig zugeordnet werden können, benötigst Du Deine Id Datei im 'data' Unterverzeichnis
+    des 'student' Ordners für IG1 Programmiersprachen. Durch Klick auf Deinen Namen, wird diese Datei im 'Download' Ordner
+    abgelelegt und Du kannst sie in das 'data' Unterverzeichnis verschieben oder kopieren.
+    <p>Diese Seite kannst Du nach dem Download schliessen.
+    <div>
+      <ul id="hwlist">
+      ${list}
+      </ul>
+    </div>
+  </div>
+</body>
+</html>`
 }
 
 function getIndex() {
