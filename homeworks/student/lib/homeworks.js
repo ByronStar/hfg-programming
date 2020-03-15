@@ -202,7 +202,7 @@ var Homeworks = {};
         if (waitCnt > 0) {
           waitCnt--
           if (msg.data.rc < 0) {
-            alert('🚫 Hausaufgabe NICHT abgegeben: ' + msg.data.msg)
+            alert('🚫 Hausaufgabe von ' + msg.data.name + ' NICHT erfolgreich abgegeben: ' + msg.data.msg)
             waitCnt = 0
           } else {
             if (waitCnt == 0) {
