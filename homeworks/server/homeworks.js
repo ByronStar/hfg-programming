@@ -44,6 +44,7 @@ let contentTypesByExtension = {
   '.html': "text/html",
   '.css': "text/css",
   '.js': "text/javascript",
+  '.json': "application/json",
   '.pem': "application/x-x509-ca-cert"
 }
 
@@ -167,6 +168,13 @@ function setupServers() {
             "Content-Type": "text/html"
           })
           response.write(getIds())
+          response.end()
+          break
+        case '/state.json':
+          response.writeHead(200, {
+            "Content-Type": contentTypesByExtension['.json']
+          })
+          response.write(JSON.stringify(state))
           response.end()
           break
         default:
@@ -435,16 +443,25 @@ function handleMessage(server, message, id, client) {
           }
         }
         break
+      case 'REVIEW':
+        student = msg.data.student
+        let hw = state.students[student].res[msg.data.hw]
+        let res = msg.data.res // {state: '', date: 0, fb: 'Alles ok'}
+        res.date = new Date().getTime()
+        state.students[student].res[hw.aufgabe]
+        break
       case 'STORE':
         student = msg.data.student
         let file = msg.data.file
         let part = file.endsWith('.js') ? 'js' : 'html'
         if (state.volatile[student].act) {
           state.volatile[student].act[part] = file
-          let prev = state.students[student].hw.find(h => h.html == state.volatile[student].act.html && h.js == state.volatile[student].act.js)
+          let prev = state.students[student].hw.find(hw => hw.html == state.volatile[student].act.html && hw.js == state.volatile[student].act.js)
           if (prev) {
             prev.version++
             prev.date = new Date().getTime()
+            // prev.page = msg.data.page
+            // prev.aufgabe = msg.data.aufgabe
           } else {
             state.students[student].hw.push(state.volatile[student].act)
           }
@@ -452,7 +469,7 @@ function handleMessage(server, message, id, client) {
           state.students[student].uploads++
           saveState()
         } else {
-          state.volatile[student].act = { version: 0, date: new Date().getTime() }
+          state.volatile[student].act = { version: 0, date: new Date().getTime(), page: msg.data.page, aufgabe: msg.data.aufgabe }
           state.volatile[student].act[part] = file
         }
         let buff = Buffer.from(msg.data.code, 'base64')
@@ -732,7 +749,10 @@ function getIndex() {
   for (let id in state.students) {
     list += '<li>' + state.students[id].name
     list += '<ol>'
-    state.students[id].hw.forEach(h => list += '<li><a href="https://' + state.domain + ':' + httpsPort + state.students[id].dir + h.html + '" target="_blank">' + h.html + '</a> (' + new Date(h.date).toLocaleString() + ' Version ' + h.version + ')')
+    state.students[id].hw.forEach((hw, h) => {
+      let actUrl = 'https://' + state.domain + ':' + httpsPort + state.students[id].dir + hw.html + '?id=' + id + '&hw=' + h + '&name=' + encodeURIComponent(state.students[id].name)
+      list += '<li><a href="' + actUrl + '" target="_blank">' + hw.html + '</a> (' + new Date(hw.date).toLocaleString() + ' Version ' + hw.version + ')'
+    })
     list += '</ol>'
   }
   return `

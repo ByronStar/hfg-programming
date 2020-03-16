@@ -10,13 +10,12 @@ var Homeworks = {};
 
   let gc = {
     student: null,
+    name: null,
     id: null,
+    hw: null,
     connect: false,
     online: false,
-    server: null,
-    send: function(data) {
-      sendState('INFO', data)
-    }
+    server: null
   }
   let statusNode, btnNode
   let reconnect = false
@@ -27,6 +26,84 @@ var Homeworks = {};
   this.gc = gc
   this.aufgabe = 0
 
+  this.updateState = function() {
+    if (location.hostname.match(/localhost|127.0.0.1/)) {
+      Homeworks.showStatus();
+    } else {
+      Homeworks.showReview();
+    }
+  }
+
+  /*
+   * dozent only part for homeworks review
+   */
+  this.createReviewNode = function() {
+    statusNode = document.getElementById('status');
+    if (null == statusNode) {
+      statusNode = createElement(document.body, 'div', { id: "status", style: "position: absolute; top:10px;right:30px;" })
+    }
+    let url = new URL(window.location)
+    gc.student = url.searchParams.get("id")
+    gc.hw = url.searchParams.get("hw")
+    gc.name = url.searchParams.get("name")
+    Homeworks.showReview();
+    // Homeworks.wsinit();
+    window.addEventListener('keydown', onKeyDown)
+  }
+
+  this.showReview = function() {
+    if (null != statusNode) {
+      if (btnNode) {
+        btnNode.removeEventListener('click', process);
+      }
+      let script = document.getElementById('homework')
+      if (null != script) {
+        let file = new URL(script.src).pathname.replace(/.*\//, "")
+      }
+      statusNode.innerHTML = gc.name + (gc.online ? (modal +
+          ' <span style="font-size: 2em;"> <span id="review" style="cursor: pointer"><img src="img/g.png" style="border:2px solid gray;"> <img src="img/y.png" style="border:2px solid green;"> <img src="img/r.png" style="border:2px solid gray;"></span> <a href="' + script.src + '">🔬</a></span>') :
+        ' <span id="review" style="cursor: pointer;font-size: 2em;">🔴</span>')
+      btnNode = document.getElementById('review')
+      if (btnNode) {
+        btnNode.addEventListener('click', review)
+      }
+    }
+  }
+
+  let modal = `
+<div id="modal" style="display:none;position:fixed;z-index:1;left:0;top:0;width:100%;height:100%;overflow:auto;background-color:rgb(0,0,0);background-color:rgba(0,0,0,0.4);">
+  <div style="background-color:#808080;margin:15% auto;padding:20px;border:1px solid #888;width:60%;">
+    <p>Feedback</p>
+    <input id="info" size="120">
+    <button id="done">Ok</button>
+  </div>
+</div>`
+
+  function reviewSend(evt) {
+    document.getElementById('modal').style.display = 'none'
+    if (document.getElementById('info').value != '') {
+      sendState('REVIEW', {
+        student: gc.student,
+        hw: gc.hw,
+        res: { icon: gc.icon, fb: document.getElementById('info').value }
+      })
+    }
+  }
+
+  function review(evt) {
+    if (gc.online) {
+      document.getElementById('modal').style.display = 'block'
+      document.getElementById('done').addEventListener('click', reviewSend)
+      gc.icon = evt.target.src.match(/.\.png/)[0]
+      console.log(evt.target.src, gc.icon)
+    } else {
+      Homeworks.wsinit();
+    }
+  }
+
+  /*
+   * student only part for homeworks upload
+   */
   this.getStudentId = function() {
     return new Promise((resolve, reject) => {
       getFile('data/student.id', 'text/html').then(
@@ -48,7 +125,6 @@ var Homeworks = {};
       statusNode = createElement(document.body, 'div', { id: "status", style: "position: absolute; top:10px;right:30px;" })
     }
     Homeworks.showStatus();
-    console.log(location.pathname.match(/\/homeworks\/student/))
     if (location.pathname.match(/\/homeworks\/student/)) {
       window.addEventListener('keydown', onKeyDown)
     }
@@ -161,7 +237,7 @@ var Homeworks = {};
       reconnect = true
     }
     gc.online = online
-    Homeworks.showStatus()
+    Homeworks.updateState()
   }
 
   function reload() {
@@ -273,6 +349,7 @@ var Homeworks = {};
       file: context.file.replace(/\/homeworks\/student/, ''),
       student: gc.student,
       page: location.pathname.replace(/\/homeworks\/student/, ''),
+      aufgabe: Homeworks.aufgabe,
       // hash: hashCode(text),
       code: Base64.encode(text)
     })
@@ -677,9 +754,12 @@ var Homeworks = {};
     } // End Function _utf8_decode
   }
 }).apply(Homeworks)
-if (location.hostname.match(/localhost|127.0.0.1/)) {
-  document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", function() {
+  if (location.hostname.match(/localhost|127.0.0.1/)) {
     Homeworks.createStatusNode();
-    // Homeworks.wsinit()
-  })
-}
+  } else {
+    if (!location.pathname.endsWith('/index.html')) {
+      Homeworks.createReviewNode();
+    }
+  }
+})
