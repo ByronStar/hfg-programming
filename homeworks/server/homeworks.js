@@ -101,44 +101,35 @@ function setupServers() {
     }
   }
 
-  // Byron:$2y$05$U3s9dADqMKMAOjaFXR2iuuHnaC1c6ARJXLPsTfh9oXW/lvlXwcQ9i
+  // Self signed root certificate only
+  // ig1:$2a$08$uGD7MtlHnvRQikJLGiUuIuye8dTapGoz2pXSuXyna9FFwUPRPYSIC
   httpServer = http.createServer(function(request, response) {
     var userpass = new Buffer((request.headers.authorization || '').split(' ')[1] || '', 'base64').toString();
-    if (!bcrypt.compareSync(userpass, '$2a$08$5IZmi9StV.mBmOSmZQ.hfeENTxsGzBa647uJFzbIpRUgSEwdS1L32')) {
+    if (!bcrypt.compareSync(userpass, '$2a$08$uGD7MtlHnvRQikJLGiUuIuye8dTapGoz2pXSuXyna9FFwUPRPYSIC')) {
       response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="HfG Homeworks"' });
       response.end('HTTP Error 401 Unauthorized: Access is denied');
     } else {
       let pathname = url.parse(request.url).pathname
-      if (pathname == '/') {
+      if (pathname == '/' || pathname == '/rootCA') {
         response.writeHead(200, {
-          "Content-Type": "text/html"
+          "Content-Type": "application/x-x509-ca-cert"
         })
-        response.write(getIndex())
+        response.write(rootCA())
         response.end()
       } else {
-        if (pathname == '/rootCA') {
-          response.writeHead(200, {
-            "Content-Type": "application/x-x509-ca-cert"
-          })
-          response.write(rootCA())
-          response.end()
-        } else {
-          let filename
-          if (pathname.startsWith('/students')) {
-            filename = ".." + pathname
-          } else {
-            filename = "../students" + pathname
-          }
-          filename = path.join(process.cwd(), filename)
-          // console.log(url.parse(request.url).pathname, filename)
-          sendResponse(response, filename)
-        }
+        response.writeHead(404, {
+          "Content-Type": "text/plain"
+        })
+        response.write("404 Not Found\n")
+        response.end()
       }
     }
   })
   httpServer.listen(httpPort)
   console.log((new Date()) + ' Homeworks Server erreichbar unter http://' + ipAddr + ':' + httpPort)
 
+  // Byron:$2a$08$5IZmi9StV.mBmOSmZQ.hfeENTxsGzBa647uJFzbIpRUgSEwdS1L32
+  // ig1:$2a$08$uGD7MtlHnvRQikJLGiUuIuye8dTapGoz2pXSuXyna9FFwUPRPYSIC
   httpsServer = https.createServer(options, function(request, response) {
     // console.log(request.url)
     var userpass = new Buffer((request.headers.authorization || '').split(' ')[1] || '', 'base64').toString();
@@ -450,16 +441,16 @@ function handleMessage(server, message, id, client) {
           let res = msg.data.res
           res.date = new Date().getTime()
           state.students[student].res[hw.aufgabe] = res
-        } else {
-          client.send(JSON.stringify({
-            id: 'REVIEW',
-            from: 'SERVER',
-            data: {
-              name: state.students[student].name,
-              res: state.students[student].res[hw.aufgabe]
-            }
-          }))
+          saveState()
         }
+        client.send(JSON.stringify({
+          id: 'REVIEW',
+          from: 'SERVER',
+          data: {
+            name: state.students[student].name,
+            res: state.students[student].res[hw.aufgabe]
+          }
+        }))
         break
       case 'STORE':
         student = msg.data.student
@@ -762,7 +753,9 @@ function getIndex() {
     list += '<ol>'
     state.students[id].hw.forEach((hw, h) => {
       let actUrl = 'https://' + state.domain + ':' + httpsPort + state.students[id].dir + hw.html + '?id=' + id + '&hw=' + h
-      list += '<li><a href="' + actUrl + '" target="_blank">' + hw.html + '</a> (' + new Date(hw.date).toLocaleString() + ' Version ' + hw.version + ')'
+      let res = state.students[id].res[hw.aufgabe]
+      list += '<li>' + (!res || hw.date > res.date ? ' 🚦' : ' ✅') + ' <img src="shared/img/' + (res ? res.icon : 'x.png') + '"> <a href="' + actUrl + '" target="_blank">' + hw.html + '</a>'
+      list += (res ? ' ' + res.fb : '') + ' ( hw=' + hw.aufgabe + ', v' + hw.version + ', ' + new Date(hw.date).toLocaleString() + (res ? ', ' + new Date(res.date).toLocaleString() : '') + ' )'
     })
     list += '</ol>'
   }

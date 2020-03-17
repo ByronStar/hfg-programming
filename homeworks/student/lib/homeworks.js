@@ -81,21 +81,13 @@ var Homeworks = {};
       document.getElementById('modal').style.display = 'block'
       document.getElementById('done').addEventListener('click', reviewSend)
       document.getElementById('info').value = gc.res.fb
+      document.getElementById('icon').src = evt.target.src
       gc.res.icon = evt.target.src.match(/.\.png/)[0]
-      console.log(evt.target.src, gc.res.icon)
+
     } else {
       Homeworks.wsinit();
     }
   }
-
-  let modal = `
-<div id="modal" style="display:none;position:fixed;z-index:1;left:0;top:0;width:100%;height:100%;overflow:auto;background-color:rgb(0,0,0);background-color:rgba(0,0,0,0.4);">
-  <div style="background-color:#808080;margin:15% auto;padding:20px;border:1px solid #888;width:60%;">
-    <p>Feedback</p>
-    <input id="info" size="120">
-    <button id="done">Ok</button>
-  </div>
-</div>`
 
   function reviewSend(evt) {
     document.getElementById('modal').style.display = 'none'
@@ -103,10 +95,20 @@ var Homeworks = {};
       sendState('REVIEW', {
         student: gc.student,
         hw: gc.hw,
-        res: { icon: gc.icon, fb: document.getElementById('info').value }
+        res: { icon: gc.res.icon, fb: document.getElementById('info').value }
       })
     }
   }
+
+  let modal = `
+<div id="modal" class="modal">
+  <div class="modalbox">
+    <p>Feedback <img id="icon" src="img/g.png" style="border:2px solid cyan"></p>
+    <textarea id="info" rows="3" cols="80">
+    </textarea>
+    <br><button id="done">Senden</button>
+  </div>
+</div>`
 
   /*
    * student only part for homeworks upload

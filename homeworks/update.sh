@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 scp -P 11222 server/homeworks.js pi@byron.hopto.org:/home/pi/www/rpi/homeworks/server
 scp -P 11222 student/lib/homeworks.js pi@byron.hopto.org:/home/pi/www/rpi/homeworks/students/shared/lib
+scp -P 11222 student/css/progsp.css pi@byron.hopto.org:/home/pi/www/rpi/homeworks/students/shared/css
 # scp -P 11222 student/img/x.png pi@byron.hopto.org:/home/pi/www/rpi/homeworks/students/shared/img
 # scp -P 11222 student/img/r.png pi@byron.hopto.org:/home/pi/www/rpi/homeworks/students/shared/img
 # scp -P 11222 student/img/g.png pi@byron.hopto.org:/home/pi/www/rpi/homeworks/students/shared/img
