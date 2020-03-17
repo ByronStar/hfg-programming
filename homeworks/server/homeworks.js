@@ -140,7 +140,7 @@ function setupServers() {
   console.log((new Date()) + ' Homeworks Server erreichbar unter http://' + ipAddr + ':' + httpPort)
 
   httpsServer = https.createServer(options, function(request, response) {
-    console.log(request.url)
+    // console.log(request.url)
     var userpass = new Buffer((request.headers.authorization || '').split(' ')[1] || '', 'base64').toString();
     if (bcrypt.compareSync(userpass, '$2a$08$5IZmi9StV.mBmOSmZQ.hfeENTxsGzBa647uJFzbIpRUgSEwdS1L32')) {
       let actUrl = url.parse(request.url, true)
@@ -445,10 +445,21 @@ function handleMessage(server, message, id, client) {
         break
       case 'REVIEW':
         student = msg.data.student
-        let hw = state.students[student].res[msg.data.hw]
-        let res = msg.data.res // {state: '', date: 0, fb: 'Alles ok'}
-        res.date = new Date().getTime()
-        state.students[student].res[hw.aufgabe]
+        let hw = state.students[student].hw[msg.data.hw]
+        if (msg.data.res) {
+          let res = msg.data.res
+          res.date = new Date().getTime()
+          state.students[student].res[hw.aufgabe] = res
+        } else {
+          client.send(JSON.stringify({
+            id: 'REVIEW',
+            from: 'SERVER',
+            data: {
+              name: state.students[student].name,
+              res: state.students[student].res[hw.aufgabe]
+            }
+          }))
+        }
         break
       case 'STORE':
         student = msg.data.student
@@ -750,7 +761,7 @@ function getIndex() {
     list += '<li>' + state.students[id].name
     list += '<ol>'
     state.students[id].hw.forEach((hw, h) => {
-      let actUrl = 'https://' + state.domain + ':' + httpsPort + state.students[id].dir + hw.html + '?id=' + id + '&hw=' + h + '&name=' + encodeURIComponent(state.students[id].name)
+      let actUrl = 'https://' + state.domain + ':' + httpsPort + state.students[id].dir + hw.html + '?id=' + id + '&hw=' + h
       list += '<li><a href="' + actUrl + '" target="_blank">' + hw.html + '</a> (' + new Date(hw.date).toLocaleString() + ' Version ' + hw.version + ')'
     })
     list += '</ol>'

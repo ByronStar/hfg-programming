@@ -13,6 +13,7 @@ var Homeworks = {};
     name: null,
     id: null,
     hw: null,
+    res: null,
     connect: false,
     online: false,
     server: null
@@ -45,28 +46,45 @@ var Homeworks = {};
     let url = new URL(window.location)
     gc.student = url.searchParams.get("id")
     gc.hw = url.searchParams.get("hw")
-    gc.name = url.searchParams.get("name")
-    Homeworks.showReview();
-    // Homeworks.wsinit();
+    Homeworks.wsinit();
     window.addEventListener('keydown', onKeyDown)
   }
 
   this.showReview = function() {
-    if (null != statusNode) {
-      if (btnNode) {
-        btnNode.removeEventListener('click', process);
+    if (gc.res) {
+      if (null != statusNode) {
+        if (btnNode) {
+          btnNode.removeEventListener('click', process);
+        }
+        let script = document.getElementById('homework')
+        if (null != script) {
+          let file = new URL(script.src).pathname.replace(/.*\//, "")
+        }
+        statusNode.innerHTML = gc.name + (gc.online ? (modal +
+            ' <span style="font-size: 2em;"> <span id="review" style="cursor: pointer"><img src="img/g.png" style="border:2px solid ' + (gc.res.icon == "g.png" ? "cyan" : "gray") + ';"> <img src="img/y.png" style="border:2px solid ' + (gc.res.icon == "y.png" ? "cyan" : "gray") + ';"> <img src="img/r.png" style="border:2px solid ' + (gc.res.icon == "r.png" ? "cyan" : "gray") + ';"></span> <a href="' + script.src + '">🔬</a></span>') :
+          ' <span id="review" style="cursor: pointer;font-size: 2em;">🔴</span>')
+        btnNode = document.getElementById('review')
+        if (btnNode) {
+          btnNode.addEventListener('click', review)
+        }
       }
-      let script = document.getElementById('homework')
-      if (null != script) {
-        let file = new URL(script.src).pathname.replace(/.*\//, "")
-      }
-      statusNode.innerHTML = gc.name + (gc.online ? (modal +
-          ' <span style="font-size: 2em;"> <span id="review" style="cursor: pointer"><img src="img/g.png" style="border:2px solid gray;"> <img src="img/y.png" style="border:2px solid green;"> <img src="img/r.png" style="border:2px solid gray;"></span> <a href="' + script.src + '">🔬</a></span>') :
-        ' <span id="review" style="cursor: pointer;font-size: 2em;">🔴</span>')
-      btnNode = document.getElementById('review')
-      if (btnNode) {
-        btnNode.addEventListener('click', review)
-      }
+    } else {
+      sendState('REVIEW', {
+        student: gc.student,
+        hw: gc.hw
+      })
+    }
+  }
+
+  function review(evt) {
+    if (gc.online) {
+      document.getElementById('modal').style.display = 'block'
+      document.getElementById('done').addEventListener('click', reviewSend)
+      document.getElementById('info').value = gc.res.fb
+      gc.res.icon = evt.target.src.match(/.\.png/)[0]
+      console.log(evt.target.src, gc.res.icon)
+    } else {
+      Homeworks.wsinit();
     }
   }
 
@@ -87,17 +105,6 @@ var Homeworks = {};
         hw: gc.hw,
         res: { icon: gc.icon, fb: document.getElementById('info').value }
       })
-    }
-  }
-
-  function review(evt) {
-    if (gc.online) {
-      document.getElementById('modal').style.display = 'block'
-      document.getElementById('done').addEventListener('click', reviewSend)
-      gc.icon = evt.target.src.match(/.\.png/)[0]
-      console.log(evt.target.src, gc.icon)
-    } else {
-      Homeworks.wsinit();
     }
   }
 
@@ -273,6 +280,15 @@ var Homeworks = {};
         })
         break
       case 'EXIT':
+        break
+      case 'REVIEW':
+        gc.name = msg.data.name
+        if (msg.data.res) {
+          gc.res = msg.data.res
+        } else {
+          gc.res = { icon: 'x.png', fb: '' }
+        }
+        Homeworks.showReview()
         break
       case 'STORE':
         if (waitCnt > 0) {
@@ -758,7 +774,8 @@ document.addEventListener("DOMContentLoaded", function() {
   if (location.hostname.match(/localhost|127.0.0.1/)) {
     Homeworks.createStatusNode();
   } else {
-    if (!location.pathname.endsWith('/index.html')) {
+    // console.log(location)
+    if (location.pathname != '/') {
       Homeworks.createReviewNode();
     }
   }
