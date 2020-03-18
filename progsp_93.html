@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="">
+  <meta name="author" content="ByronStar">
+
+  <link rel="shortcut icon" href="img/favicon.png">
+
+  <title>Programmiersprachen - Chartjs</title>
+
+  <!-- Chartjs -->
+  <script type="text/javascript" src="lib/Chart.min.js"></script>
+
+  <!-- Program logic -->
+  <script type="text/javascript" src="js/xutils.js"></script>
+  <script type="text/javascript" src="js/progsp_93.js"></script>
+  <style>
+
+	canvas{
+		-moz-user-select: none;
+		-webkit-user-select: none;
+		-ms-user-select: none;
+	}
+	</style>
+
+</head>
+
+<body onload="init()"  style="background-color: #000000;">
+  <div style="width:50%">
+    <select id="labels" size="1" multiple onchange="selected(event)">
+      <option value="5">SPU_CPU'</option>
+      <option value="6">SPU_DISK'</option>
+      <option value="7">SPU_FABRIC'</option>
+      <option value="8">SPU_MEMORY</option>
+    </select>
+    <canvas id="chart1"></canvas>
+  </div>
+</body>
+</html>
