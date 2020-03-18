@@ -76,7 +76,7 @@ var Homeworks = {};
           hw: gc.hw
         })
       } else {
-        sendState('STATE', {})
+        sendState('STATE', {add: true})
       }
     }
   }
@@ -301,7 +301,7 @@ var Homeworks = {};
         if (waitCnt > 0) {
           waitCnt--
           if (msg.data.rc < 0) {
-            alert('🚫 Hausaufgabe von ' + msg.data.name + ' NICHT erfolgreich abgegeben: ' + msg.data.msg)
+            alert("🚫 Hausaufgabe " + Homeworks.aufgabe + " von " + msg.data.name + " NICHT erfolgreich abgegeben: " + msg.data.msg)
             waitCnt = 0
           } else {
             if (waitCnt == 0) {
@@ -309,7 +309,7 @@ var Homeworks = {};
                 clearTimeout(checkId)
                 checkId = null
               }
-              alert("🍀 Hausaufgabe von " + msg.data.name + " erfolgreich abgegeben.")
+              alert("🍀 Hausaufgabe " + Homeworks.aufgabe + " von " + msg.data.name + " erfolgreich abgegeben.")
               // switch to published page: assign or replace
               // location.assign('https://' + gc.server + ':' + httpsPort + location.pathname)
             }

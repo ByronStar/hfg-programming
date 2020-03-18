@@ -39,6 +39,7 @@ if (process.argv.length > 2 && process.argv[2] == '-trace') {
 let clients = {}
 // track active IP Addresses
 let active = {}
+let subscriber = [];
 
 let contentTypesByExtension = {
   '.html': "text/html",
@@ -290,7 +291,7 @@ function setupServers() {
 
     // Client did sent a hearbeat
     client.on('pong', () => {
-      console.log("PONG", id)
+      // console.log("PONG", id)
       client.isAlive = true
     })
 
@@ -506,6 +507,9 @@ function handleMessage(server, message, id, client) {
         })
         break
       case 'STATE':
+        if (msg.data.add && subscriber.indexOf(id) == -1) {
+          subscriber.push(id)
+        }
         client.send(JSON.stringify({
           id: 'STATE',
           from: 'SERVER',
@@ -530,6 +534,7 @@ function handleMessage(server, message, id, client) {
 
 function handleClose(server, id) {
   delete clients[id]
+  subscriber = subscriber.filter(sId => sId != id)
   console.log('%s EXIT <%s> (%d clients)', new Date().getTime(), 'Client ' + id + ' left', (server.clients.length ? server.clients.length : server.clients.size))
 }
 
@@ -598,6 +603,13 @@ function loadState() {
 }
 
 function saveState() {
+  subscriber.forEach(sId => {
+    clients[sId].send(JSON.stringify({
+      id: 'STATE',
+      from: 'SERVER',
+      data: state
+    }))
+  });
   fs.writeFile(stateFile, JSON.stringify(state), { encoding: 'utf8', flag: 'w' }, (err, data) => {
     if (err) {
       console.log(err)
