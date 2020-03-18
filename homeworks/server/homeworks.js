@@ -747,18 +747,18 @@ function getIds() {
 }
 
 function getIndex() {
-  let list = ''
-  for (let id in state.students) {
-    list += '<li>' + state.students[id].name
-    list += '<ol>'
-    state.students[id].hw.forEach((hw, h) => {
-      let actUrl = 'https://' + state.domain + ':' + httpsPort + state.students[id].dir + hw.html + '?id=' + id + '&hw=' + h
-      let res = state.students[id].res[hw.aufgabe]
-      list += '<li>' + (!res || hw.date > res.date ? ' 🚦' : ' ✅') + ' <img src="shared/img/' + (res ? res.icon : 'x.png') + '"> <a href="' + actUrl + '" target="_blank">' + hw.html + '</a>'
-      list += (res ? ' ' + res.fb : '') + ' ( hw=' + hw.aufgabe + ', v' + hw.version + ', ' + new Date(hw.date).toLocaleString() + (res ? ', ' + new Date(res.date).toLocaleString() : '') + ' )'
-    })
-    list += '</ol>'
-  }
+  // let list = ''
+  // for (let id in state.students) {
+  //   list += '<li>' + state.students[id].name
+  //   list += '<ol>'
+  //   state.students[id].hw.forEach((hw, h) => {
+  //     let actUrl = 'https://' + state.domain + ':' + httpsPort + state.students[id].dir + hw.html + '?id=' + id + '&hw=' + h
+  //     let res = state.students[id].res[hw.aufgabe]
+  //     list += '<li>' + (!res || hw.date > res.date ? ' 🚦' : ' ✅') + ' <img src="shared/img/' + (res ? res.icon : 'x.png') + '"> <a href="' + actUrl + '" target="_blank">' + hw.html + '</a>'
+  //     list += (res ? ' ' + res.fb : '') + ' ( hw=' + hw.aufgabe + ', v' + hw.version + ', ' + new Date(hw.date).toLocaleString() + (res ? ', ' + new Date(res.date).toLocaleString() : '') + ' )'
+  //   })
+  //   list += '</ol>'
+  // }
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -780,7 +780,6 @@ function getIndex() {
     <h1>Abgegebene Hausaufgaben</h1>
     <div>
       <ul id="hwlist">
-      ${list}
       </ul>
     </div>
   </div>

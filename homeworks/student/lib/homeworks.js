@@ -16,7 +16,8 @@ var Homeworks = {};
     res: null,
     connect: false,
     online: false,
-    server: null
+    server: null,
+    isDozent: false
   }
   let statusNode, btnNode
   let reconnect = false
@@ -28,10 +29,10 @@ var Homeworks = {};
   this.aufgabe = 0
 
   this.updateState = function() {
-    if (location.hostname.match(/localhost|127.0.0.1/)) {
-      Homeworks.showStatus();
-    } else {
+    if (gc.isDozent) {
       Homeworks.showReview();
+    } else {
+      Homeworks.showStatus();
     }
   }
 
@@ -69,10 +70,14 @@ var Homeworks = {};
         }
       }
     } else {
-      sendState('REVIEW', {
-        student: gc.student,
-        hw: gc.hw
-      })
+      if (gc.student) {
+        sendState('REVIEW', {
+          student: gc.student,
+          hw: gc.hw
+        })
+      } else {
+        sendState('STATE', {})
+      }
     }
   }
 
@@ -270,10 +275,10 @@ var Homeworks = {};
       case 'ID':
         // connected and server provides ID
         gc.id = msg.data.id
-        if (gc.server.match(/localhost|127.0.0.1/)) {
+        if (!gc.isDozent) {
           gc.server = msg.data.ip
         }
-        // if (!gc.server.match(/localhost|127.0.0.1/) && location.pathname != '/' && (window.innerWidth > 800 || window.innerHeight > 600)) {
+        // if (gc.isDozent && location.pathname != '/' && (window.innerWidth > 800 || window.innerHeight > 600)) {
         //   createQRCode(location.protocol + '//' + gc.server + ':' + (location.protocol == 'http:' ? httpPort : httpsPort) + location.pathname + '?name=Mobile' + Math.floor(rand(100, 999)), 'p1')
         // }
         sendState('JOIN', {
@@ -312,8 +317,25 @@ var Homeworks = {};
         }
         break
       case 'STATE':
-        if (!msgTrace) {
-          console.log("REC", msg)
+        if (gc.isDozent) {
+          let state = msg.data
+          let list = ''
+          for (let id in state.students) {
+            list += '<li>' + state.students[id].name
+            list += '<ol>'
+            state.students[id].hw.forEach((hw, h) => {
+              let actUrl = 'https://' + state.domain + ':' + httpsPort + state.students[id].dir + hw.html + '?id=' + id + '&hw=' + h
+              let res = state.students[id].res[hw.aufgabe]
+              list += '<li>' + (!res || hw.date > res.date ? ' 🚦' : ' ✅') + ' <img src="shared/img/' + (res ? res.icon : 'x.png') + '"> <a href="' + actUrl + '" target="_blank">' + hw.html + '</a>'
+              list += (res ? ' ' + res.fb : '') + ' ( hw=' + hw.aufgabe + ', v' + hw.version + ', ' + new Date(hw.date).toLocaleString() + (res ? ', ' + new Date(res.date).toLocaleString() : '') + ' )'
+            })
+            list += '</ol>'
+            document.getElementById('hwlist').innerHTML = list
+          }
+        } else {
+          if (!msgTrace) {
+            console.log("REC", msg)
+          }
         }
         break
       default:
@@ -777,8 +799,9 @@ document.addEventListener("DOMContentLoaded", function() {
     Homeworks.createStatusNode();
   } else {
     // console.log(location)
-    if (location.pathname != '/') {
-      Homeworks.createReviewNode();
-    }
+    // if (location.pathname != '/') {
+    Homeworks.gc.isDozent = true
+    Homeworks.createReviewNode();
+    // }
   }
 })
