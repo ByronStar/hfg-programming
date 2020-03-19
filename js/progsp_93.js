@@ -1,55 +1,124 @@
-let ctx;
+let dirNode
+let charts = []
 
 function init() {
+  dirNode = document.getElementById('runDir')
   Chart.defaults.global.defaultFontColor = 'LightGray'
-  ctx = document.getElementById('chart1').getContext('2d');
-  getData('capture_vt_system_util.out').then(data => parseData(data));
+  loadData('wlm/capture_vt_system_util.out').then(data =>
+    charts.push(createChart(data, { id: 'chart1', title: 'System Utilization', xLabel: 'Minutes', yLabel: 'Percent', data: d => Math.round(d * 100), selected: preselect1 }))
+  )
+  loadData('wlm/capture_vt_sched_sn.out').then(data =>
+    charts.push(createChart(data, { id: 'chart2', title: 'Scheduler SN', xLabel: 'Minutes', yLabel: 'Count', data: d => d, selected: ["PLANS_WAITING_LONG", "PLANS_RUNNING_LONG"] }))
+  )
+  loadData('wlm/capture_vt_sched_gra.out').then(data =>
+    charts.push(createChart(data, { id: 'chart3', title: 'Scheduler GRA', xLabel: 'Minutes', yLabel: 'Count', data: d => d, selected: ["SPU_CPU_SECS", "SPU_DISK_READ_SECS", "SPU_DISK_WRITE_SECS", "SPU_DATA_DISK_READ_SECS", "SPU_DATA_DISK_WRITE_SECS"] }))
+  )
 }
 
-function parseData(data) {
-  let colors = [];
-  let datasets = used.map((l, i) => {
-    let g = groupKeys[i%groupKeys.length]
-    let name = colorGroups[g][Math.floor(colorGroups[g].length * Math.random())]
-    colors.push(name)
-    return {
-      label: l,
-      backgroundColor: name,
-      borderColor: name,
-      fill: false,
-      data: []
-    }
-  })
-  console.log(colors)
+function refresh() {
+  let dir = runDir.value
+  loadData('output/' + dir + '/capture_vt_system_util.out').then(data => charts[0].datasets = createDatasets(data, charts[0].chart.config, cfg))
+}
 
+function updateChart(data, cfg) {
+  let lines = data.split(/\r?\n/)
+  let start = null
+  config.data.labels = []
+  datasets.forEach(dataset => dataset.data = [])
+  lines.forEach((line, l) => {
+    if (line.length > 0 && !line.startsWith('result') && !line.startsWith('-----') && !line.startsWith('(')) {
+      if (l > 1) {
+        let d = line.split(/ +\| +/).map(n => +n.trim())
+        // skip first column
+        datasets.forEach((dataset, i) => dataset.data.push(cfg.data(d[i + 1])))
+        if (start) {
+          config.data.labels.push(Math.floor((d[0] - start) / 60000000))
+        } else {
+          start = d[0]
+          config.data.labels.push(0)
+        }
+      }
+    }
+}
+
+function createChart(data, cfg) {
+  let datasets
+  let chart
+  let colors = []
   let config = {
     type: 'line',
     data: {
       labels: [],
-      datasets: datasets
+      datasets: []
     },
-    options: options
+    options: JSON.parse(JSON.stringify(baseOptions))
   }
+  config.options.title.text = cfg.title;
+  config.options.scales.xAxes[0].scaleLabel.labelString = cfg.xLabel;
+  config.options.scales.yAxes[0].scaleLabel.labelString = cfg.yLabel;
 
-  let pick = []
+  let chartElem = document.getElementById(cfg.id)
+  let ctx = chartElem.getContext('2d')
+  let selectElem = createElement(chartElem.parentElement, 'select', { multiple: true, size: 10 });
+  selectElem.addEventListener('change', function(evt) {
+    cfg.selected = Array.from(evt.target.selectedOptions).map(v => v.value)
+    console.log(cfg.selected)
+    config.data.datasets = datasets.filter(dataset => cfg.selected.indexOf(dataset.label) > -1)
+    chart.update();
+  })
+
   let lines = data.split(/\r?\n/)
-  let m = 0
+  let start = null
   lines.forEach((line, l) => {
     if (line.length > 0 && !line.startsWith('result') && !line.startsWith('-----') && !line.startsWith('(')) {
       if (l == 1) {
-        let labels = line.split(/ +\| +/).map(d => d.trim());
-        pick = used.map(l => labels.indexOf(l)).filter(i => i > -1)
+        let columns = line.split(/ +\| +/).map(d => d.trim());
+        // skip first column
+        columns.shift()
+        datasets = columns.map((column, i) => {
+          let optElem = createElement(selectElem, 'option', {})
+          optElem.appendChild(document.createTextNode(column))
+          optElem.value = column
+          if (cfg.selected.indexOf(column) > -1) {
+            optElem.setAttribute('selected', 'selected');
+          }
+
+          let g = groupKeys[i % groupKeys.length]
+          let color = colorGroups[g][Math.floor(colorGroups[g].length * Math.random())]
+
+          return {
+            label: column,
+            backgroundColor: color,
+            borderColor: color,
+            fill: false,
+            data: []
+          }
+        })
       } else {
         let d = line.split(/ +\| +/).map(n => +n.trim())
-        pick.forEach((p, i) => datasets[i].data.push(Math.round(d[p] * 100)))
-        config.data.labels.push(m++)
+        // skip first column
+        datasets.forEach((dataset, i) => dataset.data.push(cfg.data(d[i + 1])))
+        if (start) {
+          config.data.labels.push(Math.floor((d[0] - start) / 60000000))
+        } else {
+          start = d[0]
+          config.data.labels.push(0)
+        }
       }
     }
   })
-  let myLine = new Chart(ctx, config);
+
+  config.data.datasets = datasets.filter(dataset => cfg.selected.indexOf(dataset.label) > -1)
+  chart = new Chart(ctx, config);
+  return { chart: chart, datasets: datasets, selected: cfg.selected }
 }
 
-function getData(file) {
+function createDatasets(data, config, cfg) {
+  let datasets
+  return datasets
+}
+
+function loadData(file) {
   return new Promise((resolve, reject) => {
     SatTrackUtils.ajax({
       type: 'GET',
@@ -63,7 +132,7 @@ function getData(file) {
   })
 }
 
-let used = [
+let preselect1 = [
   // 'ENTRY_TS',
   // 'HOST_CPU',
   // 'HOST_DISK',
@@ -83,7 +152,7 @@ let used = [
   // 'MAX_SPU_TEMP_DISK_PAGES_ALLOCATED'
 ]
 
-let options = {
+let baseOptions = {
   responsive: true,
   title: {
     display: true,
@@ -121,19 +190,13 @@ let options = {
   }
 }
 
-function xxxx() {
-  document.getElementById('addData').addEventListener('click', function() {
-    if (config.data.datasets.length > 0) {
-      let month = MONTHS[config.data.labels.length % MONTHS.length];
-      config.data.labels.push(month);
-
-      config.data.datasets.forEach(function(dataset) {
-        dataset.data.push(randomScalingFactor());
-      });
-
-      myLine.update();
-    }
-  });
+function createElement(parent, type, attrList) {
+  var elem = document.createElementNS(parent.namespaceURI, type);
+  parent.appendChild(elem);
+  for (attr in attrList) {
+    elem.setAttribute(attr, attrList[attr]);
+  }
+  return elem;
 }
 
 let htmlColors = [

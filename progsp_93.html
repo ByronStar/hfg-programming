@@ -19,25 +19,35 @@
   <script type="text/javascript" src="js/xutils.js"></script>
   <script type="text/javascript" src="js/progsp_93.js"></script>
   <style>
+    canvas {
+      -moz-user-select: none;
+      -webkit-user-select: none;
+      -ms-user-select: none;
+    }
 
-	canvas{
-		-moz-user-select: none;
-		-webkit-user-select: none;
-		-ms-user-select: none;
-	}
-	</style>
+    .chart {
+      margin: 1px;
+      display: inline-block;
+      width: 45%;
+      background-color: #000000;
+    }
+  </style>
 
 </head>
 
-<body onload="init()"  style="background-color: #000000;">
-  <div style="width:50%">
-    <select id="labels" size="1" multiple onchange="selected(event)">
-      <option value="5">SPU_CPU'</option>
-      <option value="6">SPU_DISK'</option>
-      <option value="7">SPU_FABRIC'</option>
-      <option value="8">SPU_MEMORY</option>
-    </select>
+<body onload="init()">
+  <div>
+    Specify run directory <input id="runDir" size="120"><button onclick="refresh()">refresh</button>
+  </div>
+  <div class="chart">
     <canvas id="chart1"></canvas>
   </div>
+  <div class="chart">
+    <canvas id="chart2"></canvas>
+  </div>
+  <div class="chart">
+    <canvas id="chart3"></canvas>
+  </div>
 </body>
+
 </html>
