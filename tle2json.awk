@@ -11,10 +11,10 @@ FNR==1 {
   printf("{\n  \"name\": \"%s\",\n  \"date\": \"%s\",\n  \"tles\": [{\n",toupper(file), d)
 }
 /^1/ {
-  g=substr($3,0,5)
+  g=substr($3,1,5)
   if (g != l) {
     if (l != "" && c > 5) {
-      print "  }, {"
+      print "}, {"
       f = 1
     }
     l = g

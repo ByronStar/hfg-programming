@@ -11,3 +11,6 @@ for tle in iridium iridium-33-debris galileo glo-ops gps-ops active;do
   echo "Load ${tle} TLEs"
   wget -q -O - ${URL}/${tle}.txt | tr -d '\r' | awk -f tle2json.awk d="$(date +'%F %T %Z')" file=${tle}.txt > data/${tle}.js
 done
+
+#wget -q -O - https://celestrak.com/NORAD/elements/supplemental/starlink.txt | tr -d '\r' > starlink.txt
+#awk -f tle2json.awk d="$(date +'%F %T %Z')" starlink.txt > starlink.js
