@@ -27,8 +27,7 @@
 
     .chart {
       margin: 1px;
-      display: inline-block;
-      width: 45%;
+      width: 100%;
       background-color: #000000;
     }
   </style>
@@ -36,17 +35,33 @@
 </head>
 
 <body onload="init()">
-  <div>
-    Specify run directory <input id="runDir" size="120"><button onclick="refresh()">refresh</button>
+  <div style="display:inline-block;width: 49%;">
+    <div>
+      Run dir 1 <input id="runDirL" size="80"><button onclick="refreshL()">Refresh</button>
+    </div>
+    <div class="chart">
+      <canvas id="chart1"></canvas>
+    </div>
+    <div class="chart">
+      <canvas id="chart2"></canvas>
+    </div>
+    <div class="chart">
+      <canvas id="chart3"></canvas>
+    </div>
   </div>
-  <div class="chart">
-    <canvas id="chart1"></canvas>
-  </div>
-  <div class="chart">
-    <canvas id="chart2"></canvas>
-  </div>
-  <div class="chart">
-    <canvas id="chart3"></canvas>
+  <div style="display:inline-block;width: 49%;">
+    <div>
+      Run dir 2 <input id="runDirR" size="80"><button onclick="refreshR()">Refresh</button>
+    </div>
+    <div class="chart">
+      <canvas id="chart4"></canvas>
+    </div>
+    <div class="chart">
+      <canvas id="chart5"></canvas>
+    </div>
+    <div class="chart">
+      <canvas id="chart6"></canvas>
+    </div>
   </div>
 </body>
 
