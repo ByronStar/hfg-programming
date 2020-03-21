@@ -43,7 +43,64 @@ function init() {
   helpElem = document.getElementById('help');
   clearMessage();
   // sample();
-  scene();
+  // scene();
+  check();
+}
+
+function check() {
+  var J2000 = 2451545.0;
+  var chkDate = new Date(Date.UTC(2000, 0, 2, 0, 0, 0)); //Set at Epoch (J2000)
+  var jDate = satellite.jday(chkDate);
+  // Julian Centuries since Epoch (J2000)
+  var T = (jDate - J2000) / 36525;
+  console.log(jDate, T, kepler['Mars'], calcPlanet('Mars', T));
+}
+
+var rad = Math.PI / 180
+var deg = 180 / Math.PI
+
+function calcPlanet(planet, T) {
+  var act = {}
+  for (k in kepler[planet].elem) {
+    act[k] = kepler[planet].elem[k] + kepler[planet].rate[k] * T
+  }
+
+  // mean anomaly -180° <= act.M <= 180°
+  act.M = act.L - act.w1 // + b * T * T + c * Math.cos(f * T) + s * Math.sin(f * T)
+  if (act.M < 0) {
+    act.M = 360 + act.M
+  }
+
+  // eccentric anomaly: M = E - ed * Math.sin(E)
+  act.E = eccAnom(act.e, act.M, 6);
+
+  // heliocentric coordinates in orbital plane
+  act.x1 = act.a * (Math.cos(rad * act.E) - act.e)
+  act.y1 = act.a * Math.sqrt(1 - act.e * act.e) * Math.sin(rad * act.E)
+  act.z1 = 0
+  act.w = act.w1 - act.N
+  // heliocentric coordinates in ecliptic pane
+  act.x = (Math.cos(rad * act.w) * Math.cos(rad * act.N) - Math.sin(rad * act.w) * Math.sin(rad * act.N) * Math.cos(rad * act.i)) * act.x1 + (-Math.sin(rad * act.w) * Math.cos(rad * act.N) - Math.cos(rad * act.w) * Math.sin(rad * act.N) * Math.cos(rad * act.i)) * act.y1
+  act.y = (Math.cos(rad * act.w) * Math.sin(rad * act.N) + Math.sin(rad * act.w) * Math.cos(rad * act.N) * Math.cos(rad * act.i)) * act.x1 + (-Math.sin(rad * act.w) * Math.sin(rad * act.N) + Math.cos(rad * act.w) * Math.cos(rad * act.N) * Math.cos(rad * act.i)) * act.y1
+  act.z = Math.sin(rad * act.w) * Math.sin(rad * act.i) * act.x1 + Math.cos(rad * act.w) * Math.sin(rad * act.i) * act.y1
+
+  v = { x: act.x, y: act.y, z: act.z, l: 0 }
+  v.l = vLen(v)
+  return v;
+}
+
+//  M = E - ed * Math.sin(E)
+function eccAnom(e, M, dp) {
+  var ed = deg * e
+  var dM, dE
+  var En = M + ed * Math.sin(rad * M)
+  do {
+    dM = M - (En - ed * Math.sin(rad * En))
+    dE = dM / (1 - e * Math.cos(rad * En))
+    En = En + dE
+  } while (dE < 1E-6)
+
+  return +En.toFixed(6)
 }
 
 function scene() {
@@ -1257,6 +1314,112 @@ var obsGeo = [{
   longitude: 2.0965338521764996,
   height: 10000
 }];
+
+/*
+The primary orbital elements are here denoted as:
+    N = longitude of the ascending node
+    i = inclination to the ecliptic (plane of the Earth's orbit)
+    w = argument of perihelion
+    a = semi-major axis, or mean distance from Sun
+    e = eccentricity (0=circle, 0-1=ellipse, 1=parabola)
+    M = mean anomaly (0 at perihelion; increases uniformly with time)
+Related orbital elements are:
+    w1 = N + w   = longitude of perihelion
+    L  = M + w1  = mean longitude
+    q  = a*(1-e) = perihelion distance
+    Q  = a*(1+e) = aphelion distance
+    P  = a ^ 1.5 = orbital period (years if a is in AU, astronomical units)
+    T  = Epoch_of_M - (M(deg)/360_deg) / P  = time of perihelion
+    v  = true anomaly (angle between position and perihelion)
+    E  = eccentric anomaly
+*/
+
+// Keplerian elements and their rates, with respect to the mean ecliptic and equinox of J2000, valid for the time-interval 1800 AD - 2050 AD.
+// https://ssd.jpl.nasa.gov/txt/p_elem_t1.txt
+var kepler = {
+  'Mercury': {
+    elem: { a: 0.38709927, e: 0.20563593, i: 7.00497902, L: 252.25032350, w1: 77.45779628, N: 48.33076593 },
+    rate: { a: 0.00000037, e: 0.00001906, i: -0.00594749, L: 149472.67411175, w1: 0.16047689, N: -0.12534081 }
+  },
+  'Venus': {
+    elem: { a: 0.72333566, e: 0.00677672, i: 3.39467605, L: 181.97909950, w1: 131.60246718, N: 76.67984255 },
+    rate: { a: 0.00000390, e: -0.00004107, i: -0.00078890, L: 58517.81538729, w1: 0.00268329, N: -0.27769418 }
+  },
+  'EM Bary': {
+    elem: { a: 1.00000261, e: 0.01671123, i: -0.00001531, L: 100.46457166, w1: 102.93768193, N: 0.0 },
+    rate: { a: 0.00000562, e: -0.00004392, i: -0.01294668, L: 35999.37244981, w1: 0.32327364, N: 0.0 }
+  },
+  'Mars': {
+    elem: { a: 1.52371034, e: 0.09339410, i: 1.84969142, L: -4.55343205, w1: -23.94362959, N: 49.55953891 },
+    rate: { a: 0.00001847, e: 0.00007882, i: -0.00813131, L: 19140.30268499, w1: 0.44441088, N: -0.29257343 }
+  },
+  'Jupiter': {
+    elem: { a: 5.20288700, e: 0.04838624, i: 1.30439695, L: 34.39644051, w1: 14.72847983, N: 100.47390909 },
+    rate: { a: -0.00011607, e: -0.00013253, i: -0.00183714, L: 3034.74612775, w1: 0.21252668, N: 0.20469106 }
+  },
+  'Saturn': {
+    elem: { a: 9.53667594, e: 0.05386179, i: 2.48599187, L: 49.95424423, w1: 92.59887831, N: 113.66242448 },
+    rate: { a: -0.00125060, e: -0.00050991, i: 0.00193609, L: 1222.49362201, w1: -0.41897216, N: -0.28867794 }
+  },
+  'Uranus': {
+    elem: { a: 19.18916464, e: 0.04725744, i: 0.77263783, L: 313.23810451, w1: 170.95427630, N: 74.01692503 },
+    rate: { a: -0.00196176, e: -0.00004397, i: -0.00242939, L: 428.48202785, w1: 0.40805281, N: 0.04240589 }
+  },
+  'Neptune': {
+    elem: { a: 30.06992276, e: 0.00859048, i: 1.77004347, L: -55.12002969, w1: 44.96476227, N: 131.78422574 },
+    rate: { a: 0.00026291, e: 0.00005105, i: 0.00035372, L: 218.45945325, w1: -0.32241464, N: -0.00508664 }
+  },
+  'Pluto': {
+    elem: { a: 39.48211675, e: 0.24882730, i: 17.14001206, L: 238.92903833, w1: 224.06891629, N: 110.30393684 },
+    rate: { a: -0.00031596, e: 0.00005170, i: 0.00004818, L: 145.20780515, w1: -0.04062942, N: -0.01183482 }
+  }
+}
+
+// Keplerian elements and their rates, with respect to the mean ecliptic and equinox of J2000, valid for the time-interval 3000 BC -- 3000 AD
+// https://ssd.jpl.nasa.gov/txt/p_elem_t2.txt
+var kepler3000 = {
+  'Mercury': {
+    elem: { a: 0.38709843, e: 0.20563661, i: 7.00559432, L: 252.25166724, w1: 77.45771895, N: 48.33961819 },
+    rate: { a: 0.00000000, e: 0.00002123, i: -0.00590158, L: 149472.67486623, w1: 0.15940013, N: -0.12214182 },
+  },
+  'Venus': {
+    elem: { a: 0.72332102, e: 0.00676399, i: 3.39777545, L: 181.97970850, w1: 131.76755713, N: 76.67261496 },
+    rate: { a: -0.00000026, e: -0.00005107, i: 0.00043494, L: 58517.81560260, w1: 0.05679648, N: -0.27274174 },
+  },
+  'EM Bary': {
+    elem: { a: 1.00000018, e: 0.01673163, i: -0.00054346, L: 100.46691572, w1: 102.93005885, N: -5.11260389 },
+    rate: { a: -0.00000003, e: -0.00003661, i: -0.01337178, L: 35999.37306329, w1: 0.31795260, N: -0.24123856 },
+  },
+  'Mars': {
+    elem: { a: 1.52371243, e: 0.09336511, i: 1.85181869, L: -4.56813164, w1: -23.91744784, N: 49.71320984 },
+    rate: { a: 0.00000097, e: 0.00009149, i: -0.00724757, L: 19140.29934243, w1: 0.45223625, N: -0.26852431 },
+  },
+  'Jupiter': {
+    elem: { a: 5.20248019, e: 0.04853590, i: 1.29861416, L: 34.33479152, w1: 14.27495244, N: 100.29282654 },
+    rate: { a: -0.00002864, e: 0.00018026, i: -0.00322699, L: 3034.90371757, w1: 0.18199196, N: 0.13024619 },
+    corr: { b: -0.00012452, c: 0.06064060, s: -0.35635438, f: 38.35125000 }
+  },
+  'Saturn': {
+    elem: { a: 9.54149883, e: 0.05550825, i: 2.49424102, L: 50.07571329, w1: 92.86136063, N: 113.63998702 },
+    rate: { a: -0.00003065, e: -0.00032044, i: 0.00451969, L: 1222.11494724, w1: 0.54179478, N: -0.25015002 },
+    corr: { b: 0.00025899, c: -0.13434469, s: 0.87320147, f: 38.35125000 }
+  },
+  'Uranus': {
+    elem: { a: 19.18797948, e: 0.04685740, i: 0.77298127, L: 314.20276625, w1: 172.43404441, N: 73.96250215 },
+    rate: { a: -0.00020455, e: -0.00001550, i: -0.00180155, L: 428.49512595, w1: 0.09266985, N: 0.05739699 },
+    corr: { b: 0.00058331, c: -0.97731848, s: 0.17689245, f: 7.67025000 }
+  },
+  'Neptune': {
+    elem: { a: 30.06952752, e: 0.00895439, i: 1.77005520, L: 304.22289287, w1: 46.68158724, N: 131.78635853 },
+    rate: { a: 0.00006447, e: 0.00000818, i: 0.00022400, L: 218.46515314, w1: 0.01009938, N: -0.00606302 },
+    corr: { b: -0.00041348, c: 0.68346318, s: -0.10162547, f: 7.67025000 }
+  },
+  'Pluto': {
+    elem: { a: 39.48686035, e: 0.24885238, i: 17.14104260, L: 238.96535011, w1: 224.09702598, N: 110.30167986 },
+    rate: { a: 0.00449751, e: 0.00006016, i: 0.00000501, L: 145.18042903, w1: -0.00968827, N: -0.00809981 },
+    corr: { b: -0.01262724, c: 0, s: 0, f: 0 }
+  }
+}
 
 function sample() {
   var actDate = new Date(2020, 2, 25, 12, 37, 46);;
