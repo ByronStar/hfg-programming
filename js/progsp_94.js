@@ -18,8 +18,9 @@ var clocked = true;
 var paused = false;
 var sunDate, homeSun;
 var visibles = [];
-var actStarMat = 4;
+var actStarMat = 3;
 var starMapsOffset;
+var satColors = ["#02ecda", "#f9004f", "#32b000", "#4333d5", "#caff14", "#db93ff", "#e2ff62", "#0182ca", "#d75800", "#8bd6ff", "#bf8a00", "#b4aaff", "#627700", "#bf79c3", "#b1ffa5", "#9e1847", "#daffd2", "#ff954f", "#3c5a1a", "#645800"]
 
 /*
  - upside down: directions correct?
@@ -43,64 +44,19 @@ function init() {
   helpElem = document.getElementById('help');
   clearMessage();
   // sample();
-  // scene();
+  scene();
   check();
 }
 
 function check() {
-  var J2000 = 2451545.0;
-  var chkDate = new Date(Date.UTC(2000, 0, 2, 0, 0, 0)); //Set at Epoch (J2000)
-  var jDate = satellite.jday(chkDate);
-  // Julian Centuries since Epoch (J2000)
-  var T = (jDate - J2000) / 36525;
-  console.log(jDate, T, kepler['Mars'], calcPlanet('Mars', T));
-}
-
-var rad = Math.PI / 180
-var deg = 180 / Math.PI
-
-function calcPlanet(planet, T) {
-  var act = {}
-  for (k in kepler[planet].elem) {
-    act[k] = kepler[planet].elem[k] + kepler[planet].rate[k] * T
-  }
-
-  // mean anomaly -180° <= act.M <= 180°
-  act.M = act.L - act.w1 // + b * T * T + c * Math.cos(f * T) + s * Math.sin(f * T)
-  if (act.M < 0) {
-    act.M = 360 + act.M
-  }
-
-  // eccentric anomaly: M = E - ed * Math.sin(E)
-  act.E = eccAnom(act.e, act.M, 6);
-
-  // heliocentric coordinates in orbital plane
-  act.x1 = act.a * (Math.cos(rad * act.E) - act.e)
-  act.y1 = act.a * Math.sqrt(1 - act.e * act.e) * Math.sin(rad * act.E)
-  act.z1 = 0
-  act.w = act.w1 - act.N
-  // heliocentric coordinates in ecliptic pane
-  act.x = (Math.cos(rad * act.w) * Math.cos(rad * act.N) - Math.sin(rad * act.w) * Math.sin(rad * act.N) * Math.cos(rad * act.i)) * act.x1 + (-Math.sin(rad * act.w) * Math.cos(rad * act.N) - Math.cos(rad * act.w) * Math.sin(rad * act.N) * Math.cos(rad * act.i)) * act.y1
-  act.y = (Math.cos(rad * act.w) * Math.sin(rad * act.N) + Math.sin(rad * act.w) * Math.cos(rad * act.N) * Math.cos(rad * act.i)) * act.x1 + (-Math.sin(rad * act.w) * Math.sin(rad * act.N) + Math.cos(rad * act.w) * Math.cos(rad * act.N) * Math.cos(rad * act.i)) * act.y1
-  act.z = Math.sin(rad * act.w) * Math.sin(rad * act.i) * act.x1 + Math.cos(rad * act.w) * Math.sin(rad * act.i) * act.y1
-
-  v = { x: act.x, y: act.y, z: act.z, l: 0 }
-  v.l = vLen(v)
-  return v;
-}
-
-//  M = E - ed * Math.sin(E)
-function eccAnom(e, M, dp) {
-  var ed = deg * e
-  var dM, dE
-  var En = M + ed * Math.sin(rad * M)
-  do {
-    dM = M - (En - ed * Math.sin(rad * En))
-    dE = dM / (1 - e * Math.cos(rad * En))
-    En = En + dE
-  } while (dE < 1E-6)
-
-  return +En.toFixed(6)
+  var chkDate = new Date(Date.UTC(2000, 0, 1, 12, 0, 0, 0)); //Set at Epoch (J2000)
+  var jDate = satellite.jday(chkDate); // should be '2000-01-01T11:58:55.816'
+  var T = jCentury(jDate);
+  const J2000 = 2451545.0;
+  //d0 in Mercury = d0
+  var TS = satellite.jday(new Date('1990-04-19')) - (J2000 -1.5);
+  Tx = (jDate - J2000) / 36525;
+  console.log(new Date('2000-01-01T11:58:55.816'), jDate, calcPlanet('Mars', T), jCentury(satellite.jday(new Date('2000-01-01T00:00:00'))), TS/36525); // eccAnom(kepler.Sun.elem.e + kepler.Sun.rate.e * TS, kepler.Sun.elem.M + kepler.Sun.rate.M * TS)
 }
 
 function scene() {
@@ -819,21 +775,25 @@ function createStars(radius, segments) {
   stars = new THREE.Group();
   matsStars = [];
   matsStars.push(new THREE.MeshBasicMaterial({
-    map: new THREE.TextureLoader().load('img/globe/starfield8s8k.png'),
+    color: 0x00000F,
     side: THREE.BackSide
   }));
   matsStars.push(new THREE.MeshBasicMaterial({
-    map: new THREE.TextureLoader().load('img/globe/starfield8n8k.png'),
+    map: new THREE.TextureLoader().load('img/globe/starfield8s8k.png'),
     side: THREE.BackSide
   }));
+  // matsStars.push(new THREE.MeshBasicMaterial({
+  //   map: new THREE.TextureLoader().load('img/globe/starfield8n8k.png'),
+  //   side: THREE.BackSide
+  // }));
   matsStars.push(new THREE.MeshBasicMaterial({
     map: new THREE.TextureLoader().load('img/globe/starfield8nd8k.png'),
     side: THREE.BackSide
   }));
-  matsStars.push(new THREE.MeshBasicMaterial({
-    map: new THREE.TextureLoader().load('img/globe/starfield8nc8k.png'),
-    side: THREE.BackSide
-  }));
+  // matsStars.push(new THREE.MeshBasicMaterial({
+  //   map: new THREE.TextureLoader().load('img/globe/starfield8nc8k.png'),
+  //   side: THREE.BackSide
+  // }));
   matsStars.push(new THREE.MeshBasicMaterial({
     map: new THREE.TextureLoader().load('img/globe/starfield8ndc8k.png'),
     side: THREE.BackSide
@@ -1135,22 +1095,26 @@ function vLen(vec) {
   return Math.sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
 }
 
+const rad = Math.PI / 180
+const deg = 180 / Math.PI
+
 function calcSoloarPos(date) {
   return calcSoloarPos0(new Date(date));
   // return calcSoloarPos1(date);
 }
 
 function calcSoloarPos0(date) {
-  var JD = 367 * date.getFullYear() - Math.floor(7.0 * (date.getFullYear() + Math.floor(((date.getMonth() + 1) + 9.0) / 12.0)) / 4.0) + Math.floor(275.0 * (date.getMonth() + 1) / 9.0) + date.getDate() + 1721013.5 + date.getHours() / 24.0 + date.getMinutes() / 1440.0 + date.getSeconds() / 86400.0;
-  var UT1 = (JD - 2451545) / 36525;
-  var longMSUN = 280.4606184 + 36000.77005361 * UT1;
-  var mSUN = 357.5277233 + 35999.05034 * UT1;
-  var ecliptic = longMSUN + 1.914666471 * Math.sin(mSUN * Math.PI / 180) + 0.918994643 * Math.sin(2 * mSUN * Math.PI / 180);
-  var eccen = 23.439291 - 0.0130042 * UT1;
+  // var JD = 367 * date.getFullYear() - Math.floor(7.0 * (date.getFullYear() + Math.floor(((date.getMonth() + 1) + 9.0) / 12.0)) / 4.0) + Math.floor(275.0 * (date.getMonth() + 1) / 9.0) + date.getDate() + 1721013.5 + date.getHours() / 24.0 + date.getMinutes() / 1440.0 + date.getSeconds() / 86400.0;
+  var JD = satellite.jday(date)
+  var T = jCentury(JD);
+  var longMSUN = 280.4606184 + 36000.77005361 * T;
+  var mSUN = 357.5277233 + 35999.05034 * T;
+  var ecliptic = longMSUN + 1.914666471 * Math.sin(mSUN * rad) + 0.918994643 * Math.sin(2 * mSUN * rad);
+  var eccen = 23.439291 - 0.0130042 * T;
 
-  var x = Math.cos(ecliptic * Math.PI / 180);
-  var y = Math.cos(eccen * Math.PI / 180) * Math.sin(ecliptic * Math.PI / 180);
-  var z = Math.sin(eccen * Math.PI / 180) * Math.sin(ecliptic * Math.PI / 180);
+  var x = Math.cos(ecliptic * rad);
+  var y = Math.cos(eccen * rad) * Math.sin(ecliptic * rad);
+  var z = Math.sin(eccen * rad) * Math.sin(ecliptic * rad);
 
   var sunDistance = 0.989 * 1.49597870E8;
   var vec = { x: x * sunDistance, y: y * sunDistance, z: z * sunDistance, l: sunDistance }
@@ -1163,7 +1127,6 @@ function calcSoloarPos1(date) {
   const secday = 86400.0; // Seconds per day
   const msday = secday * 1000; // Milliseconds per day
   const twopi = Math.PI * 2;
-  const rad = Math.PI / 180;
 
   var jdate, mjd, year, delta_et, T, M, L, e, C, O, Lsa, nu, R, eps;
   jdate = date.valueOf() / msday - 0.5 + 2440588;
@@ -1187,6 +1150,63 @@ function calcSoloarPos1(date) {
   R = AU * R;
   var vec = { x: R * Math.cos(Lsa), y: R * Math.sin(Lsa) * Math.cos(eps), z: R * Math.sin(Lsa) * Math.sin(eps), l: R };
   return vec;
+}
+
+function calcPlanet(planet, T) {
+
+  var act = { o: rad * 23.43928 }
+  for (k in kepler[planet].elem) {
+    act[k] = kepler[planet].elem[k] + kepler[planet].rate[k] * T
+  }
+
+  // mean anomaly -180° <= act.M <= 180°
+  act.M = act.L - act.w1 // + b * T * T + c * Math.cos(f * T) + s * Math.sin(f * T)
+  if (act.M < 0) {
+    act.M = 360 + act.M
+  }
+
+  // eccentric anomaly: M = E - ed * Math.sin(E)
+  act.E = eccAnom(act.e, act.M);
+
+  // heliocentric coordinates in orbital plane
+  act.x1 = act.a * (Math.cos(rad * act.E) - act.e)
+  act.y1 = act.a * Math.sqrt(1 - act.e * act.e) * Math.sin(rad * act.E)
+
+  act.w = act.w1 - act.N
+  // heliocentric coordinates in ecliptic pane
+  act.x = (Math.cos(rad * act.w) * Math.cos(rad * act.N) - Math.sin(rad * act.w) * Math.sin(rad * act.N) * Math.cos(rad * act.i)) * act.x1 + (-Math.sin(rad * act.w) * Math.cos(rad * act.N) - Math.cos(rad * act.w) * Math.sin(rad * act.N) * Math.cos(rad * act.i)) * act.y1
+  act.y = (Math.cos(rad * act.w) * Math.sin(rad * act.N) + Math.sin(rad * act.w) * Math.cos(rad * act.N) * Math.cos(rad * act.i)) * act.x1 + (-Math.sin(rad * act.w) * Math.sin(rad * act.N) + Math.cos(rad * act.w) * Math.cos(rad * act.N) * Math.cos(rad * act.i)) * act.y1
+  act.z = Math.sin(rad * act.w) * Math.sin(rad * act.i) * act.x1 + Math.cos(rad * act.w) * Math.sin(rad * act.i) * act.y1
+
+  // heliocentric coordinates in equatorial pane
+  act.xq = act.x
+  act.yq = Math.cos(act.o) * act.y - Math.sin(act.o) * act.z
+  act.zq = Math.sin(act.o) * act.y + Math.cos(act.o) * act.z
+
+  // console.log(act)
+  v = { x: act.x, y: act.y, z: act.z, l: 0 }
+  v.l = vLen(v)
+  return v;
+}
+
+//  M = E - ed * Math.sin(E)
+function eccAnom(e, M) {
+  var ed = deg * e
+  var dM, dE
+  var En = M + ed * Math.sin(rad * M)
+  do {
+    dM = M - (En - ed * Math.sin(rad * En))
+    dE = dM / (1 - e * Math.cos(rad * En))
+    En = En + dE
+  } while (dE < 1E-6)
+
+  return +En.toFixed(6)
+}
+
+function jCentury(jDate) {
+  // Julian Centuries since Epoch (J2000)
+  const J2000 = 2451545.0;
+  return T = (jDate - J2000) / 36525;
 }
 
 function orbit(sat) {
@@ -1332,11 +1352,25 @@ Related orbital elements are:
     T  = Epoch_of_M - (M(deg)/360_deg) / P  = time of perihelion
     v  = true anomaly (angle between position and perihelion)
     E  = eccentric anomaly
+
+Sun
+    a = 1.000000                (mean distance, a.u.)
+    e = 0.016709 - 1.151E-9     (eccentricity)
+    i = 0.0                     (inclination)
+    L = M + w1
+    w1 = 282.9404 + 4.70935E-5  (longitude of perihelion)
+    N = 0.0                     (undefined)
+    M = 356.0470 + 0.9856002585 (mean anomaly)
+    ob = 23.4393 - 3.563E-7     (obliquity of the ecliptic)
 */
 
 // Keplerian elements and their rates, with respect to the mean ecliptic and equinox of J2000, valid for the time-interval 1800 AD - 2050 AD.
 // https://ssd.jpl.nasa.gov/txt/p_elem_t1.txt
 var kepler = {
+  'Sun': {
+    elem: { a: 1.000000, e: 0.20563593, i: 0.0, L: 638.9874, M: 356.0470, w1: 282.9404, N: 0.0, ob: 23.4393 },
+    rate: { a: 0.0, e: -1.151E-9, i: 0.0, L: 0.985647352*36525, M: 0.9856002585, w1: 0.0000470935, N: 0.0, ob: 3.563E-7 }
+  },
   'Mercury': {
     elem: { a: 0.38709927, e: 0.20563593, i: 7.00497902, L: 252.25032350, w1: 77.45779628, N: 48.33076593 },
     rate: { a: 0.00000037, e: 0.00001906, i: -0.00594749, L: 149472.67411175, w1: 0.16047689, N: -0.12534081 }
@@ -1372,6 +1406,41 @@ var kepler = {
   'Pluto': {
     elem: { a: 39.48211675, e: 0.24882730, i: 17.14001206, L: 238.92903833, w1: 224.06891629, N: 110.30393684 },
     rate: { a: -0.00031596, e: 0.00005170, i: 0.00004818, L: 145.20780515, w1: -0.04062942, N: -0.01183482 }
+  }
+}
+
+var osc = {
+  'Mercury': {
+    elem: { a: 0.38709821, e: 0.20563029, i: 7.00501414, L: 252.25070310, w1: 77.45482015, N: 48.33053734 },
+    rate: { a: -0.00000109, e: 0.00002366, i: -0.00593327, L: 72.67674088, w1: 0.15719689, N: -0.12532166 }
+  },
+  'Venus': {
+    elem: { a: 0.72332693, e: 0.00675579, i: 3.39458965, L: 181.97911305, w1: 131.86434118, N: 76.67837464 },
+    rate: { a: 0.00000105, e: -0.00006236, i: -0.00085414, L: 197.81682147, w1: -0.32227035, N: -0.27796538 }
+  },
+  'Earth': {
+    elem: { a: 1.00044883, e: 0.01711863, i: 0.00041813, L: 820.42619339, w1: 461.80893715, N: 135.08294263 },
+    rate: { a: -0.00086529, e: -0.00086678, i: 0.01343153, L: -0.63135868, w1: 0.22802905, N: 30.77171869 }
+  },
+  'Mars': {
+    elem: { a: 1.52367899, e: 0.09331510, i: 1.84987643, L: 355.45587154, w1: 336.09938879, N: 49.56200626 },
+    rate: { a: 0.00000195, e: 0.00029355, i: -0.00822270, L: 60.28503474, w1: 0.45333345, N: -0.30416557 }
+  },
+  'Jupiter': {
+    elem: { a: 5.20433624, e: 0.04878760, i: 1.30463073, L: 394.37584376, w1: 375.56021958, N: 100.49115126 },
+    rate: { a: -0.00008803, e: -0.00105778, i: -0.00220646, L: 154.72500556, w1: -0.53499330, N: 0.15957292 }
+  },
+  'Saturn': {
+    elem: { a: 9.58192920, e: 0.05563834, i: 2.48425239, L: 769.99081103, w1: 449.56525391, N: 113.69966051 },
+    rate: { a: -0.00288651, e: -0.00146277, i: 0.00460377, L: -217.48495010, w1: 6.32288220, N: -0.23720613 }
+  },
+  'Uranus': {
+    elem: { a: 19.23015642, e: 0.04439250, i: 0.77265574, L: 313.48303065, w1: 170.59401531, N: 74.00240745 },
+    rate: { a: -0.10925418, e: 0.00595260, i: -0.00167549, L: 68.34664561, w1: 1.84864352, N: -0.03341381 }
+  },
+  'Pluto': {
+    elem: { a: 39.57170546, e: 0.24945564, i: 17.23579292, L: 239.36256848, w1: 225.22000984, N: 110.03953412 },
+    rate: { a: -0.26197572, e: 0.00293937, i: -0.07851806, L: 145.53110770, w1: -2.71462970, N: 0.01732820 }
   }
 }
 
@@ -1451,148 +1520,5 @@ function sample() {
   console.log("Sat DOP", satellite.dopplerFactor(homeEcf, satEcf, satellite.eciToEcf(satOSV.velocity, gmst)));
   console.log("Sat TLE", satrec);
 }
-var fontOpts = { font: null, size: 1, height: 1, curveSegments: 4, bevelEnabled: false, bevelThickness: 0.1, bevelSize: 0.1, bevelOffset: 0, bevelSegments: 3 };
 
-let htmlColors = [
-  { n: 'AliceBlue', c: '#f0f8ff', g: 'White' },
-  { n: 'AntiqueWhite', c: '#faebd7', g: 'White' },
-  { n: 'Aqua', c: '#00ffff', g: 'Blue' },
-  { n: 'AquaMarine', c: '#7fffd4', g: 'Blue' },
-  { n: 'Azure', c: '#f0ffff', g: 'White' },
-  { n: 'Beige', c: '#f5f5dc', g: 'White' },
-  { n: 'Bisque', c: '#ffe4c4', g: 'Brown' },
-  // { n: 'Black', c: '#000000', g: 'Gray' },
-  { n: 'BlanchedAlmond', c: '#ffebcd', g: 'Brown' },
-  { n: 'Blue', c: '#0000ff', g: 'Blue' },
-  { n: 'BlueViolet', c: '#8a2be2', g: 'Purple' },
-  { n: 'Brown', c: '#a52a2a', g: 'Brown' },
-  { n: 'BurlyWood', c: '#deb887', g: 'Brown' },
-  { n: 'CadetBlue', c: '#5f9ea0', g: 'Blue' },
-  { n: 'Chartreuse', c: '#7fff00', g: 'Green' },
-  { n: 'Chocolate', c: '#d2691e', g: 'Brown' },
-  { n: 'Coral', c: '#ff7f50', g: 'Orange' },
-  { n: 'CornFlowerBlue', c: '#6495ed', g: 'Blue' },
-  { n: 'Cornsilk', c: '#fff8dc', g: 'Brown' },
-  { n: 'Crimson', c: '#dc143c', g: 'Red' },
-  { n: 'Cyan', c: '#00ffff', g: 'Blue' },
-  { n: 'DarkBlue', c: '#00008b', g: 'Blue' },
-  { n: 'DarkCyan', c: '#008b8b', g: 'Green' },
-  { n: 'DarkGoldenRod', c: '#b8860b', g: 'Brown' },
-  { n: 'DarkGray', c: '#a9a9a9', g: 'Gray' },
-  { n: 'DarkGreen', c: '#006400', g: 'Green' },
-  { n: 'DarkKhaki', c: '#bdb76b', g: 'Yellow' },
-  { n: 'DarkMagenta', c: '#8b008b', g: 'Purple' },
-  { n: 'DarkOliveGreen', c: '#556b2f', g: 'Green' },
-  { n: 'DarkOrange', c: '#ff8c00', g: 'Orange' },
-  { n: 'DarkOrchid', c: '#9932cc', g: 'Purple' },
-  { n: 'DarkRed', c: '#8b0000', g: 'Red' },
-  { n: 'DarkSalmon', c: '#e9967a', g: 'Red' },
-  { n: 'DarkSeaGreen', c: '#8fbc8f', g: 'Green' },
-  { n: 'DarkSlateBlue', c: '#483d8b', g: 'Purple' },
-  { n: 'DarkSlateGray', c: '#2f4f4f', g: 'Gray' },
-  { n: 'DarkTurquoise', c: '#00ced1', g: 'Blue' },
-  { n: 'DarkViolet', c: '#9400d3', g: 'Purple' },
-  { n: 'DeepPink', c: '#ff1493', g: 'Pink' },
-  { n: 'DeepSkyBlue', c: '#00bfff', g: 'Blue' },
-  { n: 'DimGray', c: '#696969', g: 'Gray' },
-  { n: 'DodgerBlue', c: '#1e90ff', g: 'Blue' },
-  { n: 'FireBrick', c: '#b22222', g: 'Red' },
-  { n: 'FloralWhite', c: '#fffaf0', g: 'White' },
-  { n: 'ForestGreen', c: '#228b22', g: 'Green' },
-  { n: 'Fuchsia', c: '#ff00ff', g: 'Purple' },
-  { n: 'Gainsboro', c: '#dcdcdc', g: 'Gray' },
-  { n: 'GhostWhite', c: '#f8f8ff', g: 'White' },
-  { n: 'Gold', c: '#ffd700', g: 'Yellow' },
-  { n: 'GoldenRod', c: '#daa520', g: 'Brown' },
-  { n: 'Gray', c: '#808080', g: 'Gray' },
-  { n: 'Green', c: '#008000', g: 'Green' },
-  { n: 'GreenYellow', c: '#adff2f', g: 'Green' },
-  { n: 'HoneyDew', c: '#f0fff0', g: 'White' },
-  { n: 'HotPink', c: '#ff69b4', g: 'Pink' },
-  { n: 'IndianRed', c: '#cd5c5c', g: 'Red' },
-  { n: 'Indigo', c: '#4b0082', g: 'Purple' },
-  { n: 'Ivory', c: '#fffff0', g: 'White' },
-  { n: 'Khaki', c: '#f0e68c', g: 'Yellow' },
-  { n: 'Lavender', c: '#e6e6fa', g: 'Purple' },
-  { n: 'LavenderBlush', c: '#fff0f5', g: 'White' },
-  { n: 'LawnGreen', c: '#7cfc00', g: 'Green' },
-  { n: 'LemonChiffon', c: '#fffacd', g: 'Yellow' },
-  { n: 'LightBlue', c: '#add8e6', g: 'Blue' },
-  { n: 'LightCoral', c: '#f08080', g: 'Red' },
-  { n: 'LightCyan', c: '#e0ffff', g: 'Blue' },
-  { n: 'LightGoldenrodYellow', c: '#fafad2', g: 'Yellow' },
-  { n: 'LightGray', c: '#d3d3d3', g: 'Gray' },
-  { n: 'LightGreen', c: '#90ee90', g: 'Green' },
-  { n: 'LightPink', c: '#ffb6c1', g: 'Pink' },
-  { n: 'LightSalmon', c: '#ffa07a', g: 'Orange' },
-  { n: 'LightSeaGreen', c: '#20b2aa', g: 'Green' },
-  { n: 'LightSkyBlue', c: '#87cefa', g: 'Blue' },
-  { n: 'LightSlateGray', c: '#778899', g: 'Gray' },
-  { n: 'LightSteelBlue', c: '#b0c4de', g: 'Blue' },
-  { n: 'LightYellow', c: '#ffffe0', g: 'Yellow' },
-  { n: 'Lime', c: '#00ff00', g: 'Green' },
-  { n: 'LimeGreen', c: '#32cd32', g: 'Green' },
-  { n: 'Linen', c: '#faf0e6', g: 'White' },
-  { n: 'Magenta', c: '#ff00ff', g: 'Purple' },
-  { n: 'Maroon', c: '#800000', g: 'Brown' },
-  { n: 'MediumAquaMarine', c: '#66cdaa', g: 'Green' },
-  { n: 'MediumBlue', c: '#0000cd', g: 'Blue' },
-  { n: 'MediumOrchid', c: '#ba55d3', g: 'Purple' },
-  { n: 'MediumPurple', c: '#9370d8', g: 'Purple' },
-  { n: 'MediumSeaGreen', c: '#3cb371', g: 'Green' },
-  { n: 'MediumSlateBlue', c: '#7b68ee', g: 'Blue' },
-  { n: 'MediumSpringGreen', c: '#00fa9a', g: 'Green' },
-  { n: 'MediumTurquoise', c: '#48d1cc', g: 'Blue' },
-  { n: 'MediumVioletRed', c: '#c71585', g: 'Pink' },
-  { n: 'MidnightBlue', c: '#191970', g: 'Blue' },
-  { n: 'MintCream', c: '#f5fffa', g: 'White' },
-  { n: 'MistyRose', c: '#ffe4e1', g: 'White' },
-  { n: 'Moccasin', c: '#ffe4b5', g: 'Yellow' },
-  { n: 'NavajoWhite', c: '#ffdead', g: 'Brown' },
-  { n: 'Navy', c: '#000080', g: 'Blue' },
-  { n: 'OldLace', c: '#fdf5e6', g: 'White' },
-  { n: 'Olive', c: '#808000', g: 'Green' },
-  { n: 'OliveDrab', c: '#6b8e23', g: 'Green' },
-  { n: 'Orange', c: '#ffa500', g: 'Orange' },
-  { n: 'OrangeRed', c: '#ff4500', g: 'Orange' },
-  { n: 'Orchid', c: '#da70d6', g: 'Purple' },
-  { n: 'PaleGoldenRod', c: '#eee8aa', g: 'Yellow' },
-  { n: 'PaleGreen', c: '#98fb98', g: 'Green' },
-  { n: 'PaleTurquoise', c: '#afeeee', g: 'Blue' },
-  { n: 'PaleVioletRed', c: '#db7093', g: 'Pink' },
-  { n: 'PapayaWhip', c: '#ffefd5', g: 'Yellow' },
-  { n: 'PeachPuff', c: '#ffdab9', g: 'Yellow' },
-  { n: 'Peru', c: '#cd853f', g: 'Brown' },
-  { n: 'Pink', c: '#ffc0cb', g: 'Pink' },
-  { n: 'Plum', c: '#dda0dd', g: 'Purple' },
-  { n: 'PowderBlue', c: '#b0e0e6', g: 'Blue' },
-  { n: 'Purple', c: '#800080', g: 'Purple' },
-  { n: 'Red', c: '#ff0000', g: 'Red' },
-  { n: 'RosyBrown', c: '#bc8f8f', g: 'Brown' },
-  { n: 'RoyalBlue', c: '#4169e1', g: 'Blue' },
-  { n: 'SaddleBrown', c: '#8b4513', g: 'Brown' },
-  { n: 'Salmon', c: '#fa8072', g: 'Red' },
-  { n: 'SandyBrown', c: '#f4a460', g: 'Brown' },
-  { n: 'SeaGreen', c: '#2e8b57', g: 'Green' },
-  { n: 'SeaShell', c: '#fff5ee', g: 'White' },
-  { n: 'Sienna', c: '#a0522d', g: 'Brown' },
-  { n: 'Silver', c: '#c0c0c0', g: 'Gray' },
-  { n: 'SkyBlue', c: '#87ceeb', g: 'Blue' },
-  { n: 'SlateBlue', c: '#6a5acd', g: 'Purple' },
-  { n: 'SlateGray', c: '#708090', g: 'Gray' },
-  { n: 'Snow', c: '#fffafa', g: 'White' },
-  { n: 'SpringGreen', c: '#00ff7f', g: 'Green' },
-  { n: 'SteelBlue', c: '#4682b4', g: 'Blue' },
-  { n: 'Tan', c: '#d2b48c', g: 'Brown' },
-  { n: 'Teal', c: '#008080', g: 'Green' },
-  { n: 'Thistle', c: '#d8bfd8', g: 'Purple' },
-  { n: 'Tomato', c: '#ff6347', g: 'Orange' },
-  { n: 'Turquoise', c: '#40e0d0', g: 'Blue' },
-  { n: 'Violet', c: '#ee82ee', g: 'Purple' },
-  { n: 'Wheat', c: '#f5deb3', g: 'Brown' },
-  { n: 'White', c: '#ffffff', g: 'White' },
-  { n: 'WhiteSmoke', c: '#f5f5f5', g: 'White' },
-  { n: 'Yellow', c: '#ffff00', g: 'Yellow' },
-  { n: 'YellowGreen', c: '#9acd32', g: 'Green' }
-]
-var satColors = htmlColors.filter(hc => ['LightBlue', 'YellowGreen', 'Aquamarine', 'Gold', 'LightCoral', 'DarkOrchid', 'Tomato', 'YellowGreen', 'SandyBrown', 'DeepSkyBlue'].indexOf(hc.n) > -1).map(hc => hc.c);
+var fontOpts = { font: null, size: 1, height: 1, curveSegments: 4, bevelEnabled: false, bevelThickness: 0.1, bevelSize: 0.1, bevelOffset: 0, bevelSegments: 3 };
