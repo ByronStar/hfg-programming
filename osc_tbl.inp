@@ -11,11 +11,11 @@
 # See Horizons documentation for explanation of acceptable settings.
 #
  set   EMAIL_ADDR     "benno@fam-staebler.de"
- set   CENTER         "Geocentric"
+ set   CENTER         "@Sun"          ;# "Geocentric"
  set   REF_PLANE      "ECLIP"
  set   START_TIME     "JD 2451545.0"
- set   STOP_TIME      "JD 2488070.0"
- set   STEP_SIZE      "36525 d"
+ set   STOP_TIME      "JD 2451605.0"  ;# "JD 2488070.0"
+ set   STEP_SIZE      "1 d"           ;# "36525 d"
 #
 # Uncomment variable settings below to change element table defaults.
 # Brackets (in comment text) indicate default value.
@@ -24,7 +24,7 @@
 # example: ftp://ssd.jpl.nasa.gov/pub/ssd/horizons_batch_example.long )
 #
 #set   REF_SYSTEM      "J2000"       ;# Reference frame; [J2000] pr B1950
-set   OUT_UNITS       "AU-D"        ;# Output units; [KM-S] AU-D, or KM-D
+set   OUT_UNITS       "AU-D"         ;# Output units; [KM-S] AU-D, or KM-D
 set   CSV_FORMAT      "YES"          ;# Comma-separated-values; [NO] or YES
 #set   ELM_LABELS      "YES"         ;# Label elements; [YES] or NO
 #set   TP_TYPE         "ABSOLUTE"    ;# Periapsis time; [ABSOLUTE] or RELATIVE

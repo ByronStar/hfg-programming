@@ -44,19 +44,21 @@ function init() {
   helpElem = document.getElementById('help');
   clearMessage();
   // sample();
-  scene();
+  // scene();
   check();
 }
 
 function check() {
-  var chkDate = new Date(Date.UTC(2000, 0, 1, 12, 0, 0, 0)); //Set at Epoch (J2000)
-  var jDate = satellite.jday(chkDate); // should be '2000-01-01T11:58:55.816'
+  // J2000 '2000-01-01T12:00:00.000' should be '2000-01-01T11:58:55.816'
+  var chkDate = new Date();
+  var chkGmst = satellite.gstime(chkDate);
+  var jDate = satellite.jday(chkDate);
   var T = jCentury(jDate);
-  const J2000 = 2451545.0;
-  //d0 in Mercury = d0
-  var TS = satellite.jday(new Date('1990-04-19')) - (J2000 -1.5);
-  Tx = (jDate - J2000) / 36525;
-  console.log(new Date('2000-01-01T11:58:55.816'), jDate, calcPlanet('Mars', T), jCentury(satellite.jday(new Date('2000-01-01T00:00:00'))), TS/36525); // eccAnom(kepler.Sun.elem.e + kepler.Sun.rate.e * TS, kepler.Sun.elem.M + kepler.Sun.rate.M * TS)
+  var p = 'Mars'
+  var v1 = calcPlanet(p, T)
+  // var v2 = calcSolarEcliptic(T)
+  var v3 = calcSolarPos(chkDate.getTime())
+  console.log(chkDate, jDate, T, v1, v3, vAdd(v1, v3), satellite.eciToEcf(vAdd(v1, v3), chkGmst)); // eccAnom(kepler.Sun.elem.e + kepler.Sun.rate.e * TS, kepler.Sun.elem.M + kepler.Sun.rate.M * TS)
 }
 
 function scene() {
@@ -917,7 +919,7 @@ function findVisible(startDate, max, step) {
     if (date < homeSun.dawn || date > homeSun.dusk) {
       sats.forEach(sat => {
         var satOSV = satellite.propagate(sat.satrec, date);
-        var eciSol = calcSoloarPos(dtime);
+        var eciSol = calcSolarPos(dtime);
         if (!isEclipsed(satOSV.position, eciSol)) {
           var satECF = satellite.eciToEcf(satOSV.position, gmst);
           var look = satellite.ecfToLookAngles(home, satECF, gmst);
@@ -982,7 +984,7 @@ function refineVisibility(sat) {
         }
         if (date < homeSun.dawn || date > homeSun.dusk) {
           var satOSV = satellite.propagate(sat.satrec, date);
-          var eciSol = calcSoloarPos(dtime);
+          var eciSol = calcSolarPos(dtime);
           if (!isEclipsed(satOSV.position, eciSol)) {
             var gmst = satellite.gstime(date);
             var satECF = satellite.eciToEcf(satOSV.position, gmst);
@@ -1098,62 +1100,43 @@ function vLen(vec) {
 const rad = Math.PI / 180
 const deg = 180 / Math.PI
 
-function calcSoloarPos(date) {
-  return calcSoloarPos0(new Date(date));
-  // return calcSoloarPos1(date);
-}
-
-function calcSoloarPos0(date) {
+function calcSolarPos(date) {
   // var JD = 367 * date.getFullYear() - Math.floor(7.0 * (date.getFullYear() + Math.floor(((date.getMonth() + 1) + 9.0) / 12.0)) / 4.0) + Math.floor(275.0 * (date.getMonth() + 1) / 9.0) + date.getDate() + 1721013.5 + date.getHours() / 24.0 + date.getMinutes() / 1440.0 + date.getSeconds() / 86400.0;
-  var JD = satellite.jday(date)
+  var JD = satellite.jday(new Date(date))
   var T = jCentury(JD);
-  var longMSUN = 280.4606184 + 36000.77005361 * T;
-  var mSUN = 357.5277233 + 35999.05034 * T;
-  var ecliptic = longMSUN + 1.914666471 * Math.sin(mSUN * rad) + 0.918994643 * Math.sin(2 * mSUN * rad);
-  var eccen = 23.439291 - 0.0130042 * T;
 
-  var x = Math.cos(ecliptic * rad);
-  var y = Math.cos(eccen * rad) * Math.sin(ecliptic * rad);
-  var z = Math.sin(eccen * rad) * Math.sin(ecliptic * rad);
+  // ecliptic coordinates
+  var L = 280.4606184 + 36000.77005361 * T;
+  var M = 357.5277233 + 35999.05034 * T;
+  var R = 0.989 * 1.49597870E8;
+  // var R = 1.00014 - 0.01671 * Math.cos(M * rad) - 0.00014 * Math.cos(2 * M * rad).
+  var lon = L + 1.914666471 * Math.sin(M * rad) + 0.918994643 * Math.sin(2 * M * rad);
 
-  var sunDistance = 0.989 * 1.49597870E8;
-  var vec = { x: x * sunDistance, y: y * sunDistance, z: z * sunDistance, l: sunDistance }
+  var ob = 23.439291 - 0.0130042 * T;
+  // equatorial coordinates (unused)
+  // var RA = Math.atan2(Math.cos(ob * rad) * Math.sin(M * rad), Math.cos(M * rad))
+  // var dec = Math.asin(Math.sin(ob * rad) * Math.sin(M * rad))
+
+  // rectangular equatorial coordinates
+  var x = R * Math.cos(lon * rad);
+  var y = R * Math.cos(ob * rad) * Math.sin(lon * rad);
+  var z = R * Math.sin(ob * rad) * Math.sin(lon * rad);
+
+  var vec = { x: x, y: y, z: z, l: R }
   return vec;
 }
 
-function calcSoloarPos1(date) {
-  const sr = 696000.0; // Solar radius - kilometers (IAU 76)
-  const AU = 1.49597870E8; // Astronomical unit - kilometers (IAU 76)
-  const secday = 86400.0; // Seconds per day
-  const msday = secday * 1000; // Milliseconds per day
-  const twopi = Math.PI * 2;
-
-  var jdate, mjd, year, delta_et, T, M, L, e, C, O, Lsa, nu, R, eps;
-  jdate = date.valueOf() / msday - 0.5 + 2440588;
-  // jdate = satellite.jday(date);
-
-  mjd = jdate - 2415020.0;
-  year = 1900 + mjd / 365.25;
-  // Values determined using data from 1950-1991 in the 1990 Astronomical Almanac.
-  // See DELTA_ET.WQ1 for details.
-  var delta_et = 26.465 + 0.747622 * (year - 1950) + 1.886913 * Math.sin(twopi * (year - 1975) / 33);
-  T = (mjd + delta_et / secday) / 36525.0;
-  M = rad * (((358.47583 + ((35999.04975 * T) % 360.0) - (0.000150 + 0.0000033 * T) * Math.sqrt(T)) % 360.0));
-  L = rad * (((279.69668 + ((36000.76892 * T) % 360.0) + 0.0003025 * Math.sqrt(T)) % 360.0));
-  e = 0.01675104 - (0.0000418 + 0.000000126 * T) * T;
-  C = rad * ((1.919460 - (0.004789 + 0.000014 * T) * T) * Math.sin(M) + (0.020094 - 0.000100 * T) * Math.sin(2 * M) + 0.000293 * Math.sin(3 * M));
-  O = rad * (((259.18 - 1934.142 * T) % 360.0));
-  Lsa = ((L + C - rad * (0.00569 - 0.00479 * Math.sin(O))) % twopi);
-  nu = ((M + C) % twopi);
-  R = 1.0000002 * (1 - Math.sqrt(e)) / (1 + e * Math.cos(nu));
-  eps = rad * (23.452294 - (0.0130125 + (0.00000164 - 0.000000503 * T) * T) * T + 0.00256 * Math.cos(O));
-  R = AU * R;
-  var vec = { x: R * Math.cos(Lsa), y: R * Math.sin(Lsa) * Math.cos(eps), z: R * Math.sin(Lsa) * Math.sin(eps), l: R };
-  return vec;
+function calcSolarEcliptic(T) {
+  // ecliptic coordinates
+  var L = 280.4606184 + 36000.77005361 * T;
+  var M = 357.5277233 + 35999.05034 * T;
+  var R = 0.989 * 1.49597870E8;
+  // var R = 1.00014 - 0.01671 * Math.cos(M * rad) - 0.00014 * Math.cos(2 * M * rad).
+  var lon = L + 1.914666471 * Math.sin(M * rad) + 0.918994643 * Math.sin(2 * M * rad);
+  return { x: R * Math.cos(lon * rad), y: R * Math.sin(lon * rad), z: 0.0, l: R }
 }
 
 function calcPlanet(planet, T) {
-
   var act = { o: rad * 23.43928 }
   for (k in kepler[planet].elem) {
     act[k] = kepler[planet].elem[k] + kepler[planet].rate[k] * T
@@ -1183,8 +1166,9 @@ function calcPlanet(planet, T) {
   act.yq = Math.cos(act.o) * act.y - Math.sin(act.o) * act.z
   act.zq = Math.sin(act.o) * act.y + Math.cos(act.o) * act.z
 
+  var R = 0.989 * 1.49597870E8;
   // console.log(act)
-  v = { x: act.x, y: act.y, z: act.z, l: 0 }
+  var v = { x: R * act.x, y: R * act.y, z: R * act.z, l: 0 }
   v.l = vLen(v)
   return v;
 }
@@ -1369,7 +1353,7 @@ Sun
 var kepler = {
   'Sun': {
     elem: { a: 1.000000, e: 0.20563593, i: 0.0, L: 638.9874, M: 356.0470, w1: 282.9404, N: 0.0, ob: 23.4393 },
-    rate: { a: 0.0, e: -1.151E-9, i: 0.0, L: 0.985647352*36525, M: 0.9856002585, w1: 0.0000470935, N: 0.0, ob: 3.563E-7 }
+    rate: { a: 0.0, e: -1.151E-9, i: 0.0, L: 0.985647352 * 36525, M: 0.9856002585, w1: 0.0000470935, N: 0.0, ob: 3.563E-7 }
   },
   'Mercury': {
     elem: { a: 0.38709927, e: 0.20563593, i: 7.00497902, L: 252.25032350, w1: 77.45779628, N: 48.33076593 },

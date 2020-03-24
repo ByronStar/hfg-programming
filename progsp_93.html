@@ -10,7 +10,7 @@
 
   <link rel="shortcut icon" href="img/favicon.png">
 
-  <title>Programmiersprachen - Chartjs</title>
+  <title>WLM System Utilization Check</title>
 
   <!-- Chartjs -->
   <script type="text/javascript" src="lib/Chart.min.js"></script>
@@ -37,7 +37,9 @@
 <body onload="init()">
   <div style="display:inline-block;width: 49%;">
     <div>
-      Run dir 1 <input id="runDirL" size="80"><button onclick="refreshL()">Refresh</button>
+      Run dir 1
+      <!-- <input id="runDirL" size="80"><button onclick="refreshL()">Refresh</button> -->
+      <select id="runDirL" onchange="refreshL(event)"></select>
     </div>
     <div class="chart">
       <canvas id="chart1"></canvas>
@@ -51,7 +53,9 @@
   </div>
   <div style="display:inline-block;width: 49%;">
     <div>
-      Run dir 2 <input id="runDirR" size="80"><button onclick="refreshR()">Refresh</button>
+      Run dir 2
+      <!-- <input id="runDirR" size="80"><button onclick="refreshR()">Refresh</button> -->
+      <select id="runDirR" onchange="refreshR(event)"></select>
     </div>
     <div class="chart">
       <canvas id="chart4"></canvas>
