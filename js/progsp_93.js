@@ -15,6 +15,7 @@ let charts = [
 ]
 let interval = 10
 let filter
+
 function init() {
   let url = new URL(window.location)
   filter = url.searchParams.get("filter")
@@ -26,13 +27,18 @@ function init() {
   dirNodeL = document.getElementById('runDirL')
   dirNodeR = document.getElementById('runDirR')
   Chart.defaults.global.defaultFontColor = 'LightGray'
+  Chart.defaults.global.elements.line.borderWidth = 2
+  Chart.defaults.global.elements.point.radius = 2
   if (location.hostname.match(/localhost|127.0.0.1/)) {
     // fake directory data for testing
     loadData('wlm/output.html').then(data => readDirectory(data))
+    loadSampleData()
   } else {
     loadData('output/').then(data => readDirectory(data))
   }
+}
 
+function loadSampleData() {
   // load sample data
   loadData('wlm/capture_vt_system_util.out').then(data => createChart(data, charts[0]))
   loadData('wlm/capture_vt_sched_sn.out').then(data => createChart(data, charts[1]))
@@ -43,6 +49,7 @@ function init() {
 }
 
 function readDirectory(data) {
+  let cnt = 0
   let lines = data.split(/\r?\n/)
   lines.forEach((line, l) => {
     if (line.startsWith('<li><a href="')) {
@@ -54,36 +61,30 @@ function readDirectory(data) {
         optElem = createElement(dirNodeR, 'option', {})
         optElem.appendChild(document.createTextNode(file))
         optElem.value = file
+        cnt++
+        if (cnt == 2) {
+          optElem.setAttribute('selected', 'selected')
+        }
       }
     }
   })
-}
-
-/*
-document.getElementById('addDataset').addEventListener('click', function() {
-  var colorName = colorNames[config.data.datasets.length % colorNames.length];
-  var newColor = window.chartColors[colorName];
-  var newDataset = {
-    label: 'Dataset ' + config.data.datasets.length,
-    backgroundColor: newColor,
-    borderColor: newColor,
-    data: [],
-    fill: false
-  };
-
-  for (var index = 0; index < config.data.labels.length; ++index) {
-    newDataset.data.push(randomScalingFactor());
+  if (!location.hostname.match(/localhost|127.0.0.1/)) {
+    if (cnt > 0) {
+      let runDir = dirNodeL.value
+      loadData('output/' + runDir + '/capture_vt_system_util.out').then(data => createChart(data, charts[0]))
+      loadData('output/' + runDir + '/capture_vt_sched_sn.out').then(data => createChart(data, charts[1]))
+      loadData('output/' + runDir + '/capture_vt_sched_gra.out').then(data => createChart(data, charts[2]))
+      if (cnt > 1) {
+        let runDir = dirNodeR.value
+        loadData('output/' + runDir + '/capture_vt_system_util.out').then(data => createChart(data, charts[3]))
+        loadData('output/' + runDir + '/capture_vt_sched_sn.out').then(data => createChart(data, charts[4]))
+        loadData('output/' + runDir + '/capture_vt_sched_gra.out').then(data => createChart(data, charts[5]))
+      }
+    } else {
+      loadSampleData()
+    }
   }
-
-  config.data.datasets.push(newDataset);
-  window.myLine.update();
-});
-
-document.getElementById('removeDataset').addEventListener('click', function() {
-  config.data.datasets.splice(0, 1);
-  window.myLine.update();
-});
-*/
+}
 
 function createChart(data, chart) {
   chart.config = {
@@ -197,6 +198,10 @@ function updateChart(data, chart) {
     }
   })
   chart.config.data.datasets = chart.datasets.filter(dataset => chart.selected.indexOf(dataset.label) > -1)
+  if (chart.config.data.datasets.length == 1) {
+    chart.average.data = movingAverage(chart.config.data.datasets[0].data, interval)
+    chart.config.data.datasets.push(chart.average);
+  }
   chart.chart.update()
 }
 
