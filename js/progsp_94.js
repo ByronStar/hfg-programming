@@ -1,5 +1,5 @@
 var camera, scene, renderer, controls, earth, space, earthAxis, tilt, gmst, northPole, ball, sun, moon, stars, starmap, light, compass, wall, raycaster, vector;
-var dateElem, locElem, infoElem, msgElem, nameElem, skyElem, findElem, gotoElem, timerElem, pauseElem, sunElem, menuElem, detailsElem, helpsElem, msgId;
+var url, dateElem, locElem, infoElem, msgElem, nameElem, skyElem, findElem, gotoElem, timerElem, pauseElem, sunElem, menuElem, detailsElem, helpsElem, msgId;
 var sats = [];
 var selected, matsSat, matSel, matsStars, matFont, arrowHelper, homeMarker, orbitLine, satData;
 var actDate = new Date();
@@ -22,6 +22,16 @@ var actStarMat = 3;
 var starMapsOffset;
 var satColors = ["#02ecda", "#f9004f", "#32b000", "#4333d5", "#caff14", "#db93ff", "#e2ff62", "#0182ca", "#d75800", "#8bd6ff", "#bf8a00", "#b4aaff", "#627700", "#bf79c3", "#b1ffa5", "#9e1847", "#daffd2", "#ff954f", "#3c5a1a", "#645800"]
 
+var planets = [
+  { n: 'Mercury', m: null, c: '#FF0000' },
+  { n: 'Venus', m: null, c: '#FF0000' },
+  { n: 'Mars', m: null, c: '#FF0000' },
+  { n: 'Jupiter', m: null, c: '#FF0000' },
+  { n: 'Saturn', m: null, c: '#FF0000' },
+  { n: 'Uranus', m: null, c: '#FF0000' },
+  { n: 'Neptune', m: null, c: '#FF0000' }
+];
+
 /*
  - upside down: directions correct?
 */
@@ -42,22 +52,33 @@ function init() {
   menuElem = document.getElementById('menu');
   detailsElem = document.getElementById('details');
   helpElem = document.getElementById('help');
+  url = new URL(window.location)
+
   clearMessage();
   // sample();
   scene();
-  // check();
+  // checkSun()
+  // checkPlanets()
 }
 
-function check() {
+function checkSun() {
   // J2000 '2000-01-01T12:00:00.000' should be '2000-01-01T11:58:55.816'
-  var chkDate = new Date(); // '1990-04-19T00:00:00.000'
+  var chkDate = new Date('1990-04-19T00:00:00.000');
+  var T = jCentury(satellite.jday(chkDate));
+  var v0 = calcSolarPos0(T)
+  var v1 = calcSolarPos(T)
+  console.log(chkDate, v0, v1)
+}
+
+function checkPlanets() {
+  var chkDate = new Date();
   var chkGmst = satellite.gstime(chkDate);
-  var jDate = satellite.jday(chkDate);
-  var T = jCentury(jDate);
-  // var v0 = calcSolarPos(chkDate.getTime())
-  var v0 = calcSolarPos0(chkDate)
-  // var v2 = calcSolarEcliptic(T)
-  var dist = {
+  var T = jCentury(satellite.jday(chkDate));
+  console.log(chkDate);
+  var v0 = calcSolarPos0(T)
+  var v1 = calcSolarPos(T)
+  var dist = [{
+    date: '2020-03-25',
     Mercury: 138933300,
     Venus: 105191200,
     Mars: 226111600,
@@ -65,12 +86,21 @@ function check() {
     Saturn: 1556221100,
     Uranus: 3092380200,
     Neptune: 4620619300
-  }
-  var planets = ['Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune'];
+  }, {
+    date: '2020-03-26',
+    Mercury: 140528200,
+    Venus: 104343500,
+    Mars: 22522600,
+    Jupiter: 809042600,
+    Saturn: 1554548600,
+    Uranus: 3093303600,
+    Neptune: 462010400
+  }]
   planets.forEach((p) => {
-    var v1 = calcPlanet(p, T)
-    var vx = vAdd(v0, v1)
-    console.log(chkDate, jDate, T, p, v0, v1, vx, dist[p]);
+    var vp = calcPlanet(p.n, T)
+    var vx = vAdd(v0, vp)
+    var vy = vAdd(v1, vp)
+    console.log(+vx.l.toFixed(0), +vy.l.toFixed(0), dist[1][p], p);
   })
 }
 
@@ -84,7 +114,7 @@ function scene() {
   raycaster = new THREE.Raycaster();
   vector = new THREE.Vector3();
   scene = new THREE.Scene();
-  // scene.add(new THREE.AxesHelper(90));
+  scene.add(new THREE.AxesHelper(90));
 
   // axial tilt
   tilt = satellite.degreesToRadians(23.4386111111)
@@ -115,12 +145,23 @@ function scene() {
   scene.add(createCompass());
 
 
+  var circle = new THREE.Mesh(
+    new THREE.CircleGeometry(90, 32),
+    new THREE.MeshBasicMaterial({
+      color: 0xA0A0A0,
+      side: THREE.DoubleSide,
+      opacity: 0.5,
+      transparent: true
+    })
+  )
+  circle.rotation.x = Math.PI / 2
+  space.add(circle)
+
   var T = jCentury(satellite.jday(actDate));
-  // var v0 = calcSolarPos(chkDate.getTime())
-  var sunPos = calcSolarPos0(actDate)
-  var pos = vMultS(vAdd(sunPos, calcPlanet('Mars', T)), 1E-4)
-  console.log(pos,  ecf2Vector3(satellite.eciToEcf(pos, gmst)))
-  space.add(createBall(0.5, 32, 0xFF0000, 0xFF0000, ecf2Vector3(satellite.eciToEcf(pos, gmst))));
+  var sunPos = calcSolarPos(T)
+  var pos = vMultS(vAdd(sunPos, calcPlanet(planets[2].n, T)), 1E-4)
+  planets[2].m = createBall(0.5, 32, 0xFF0000, 0xFF0000, ecf2Vector3(satellite.eciToEcf(pos, gmst)))
+  space.add(planets[2].m);
 
   // scene.add(createMarker({x: 9000, y: 0, z: 0}, 0xFF4000));
   // scene.add(createMarker({x: 0, y: 9000, z: 0}, 0x00FF00));
@@ -741,11 +782,12 @@ function createGlobe(radius, segments) {
   }
   ball.rotation.y = -Math.PI / 2;
   globe.add(ball);
-  // globe.add(addCurve(radius + 0.005, 0x808080));
-  // var equ = addCurve(radius + 0.005, 0x808080);
-  // equ.rotation.x = satellite.degreesToRadians(90);
-  // globe.add(equ);
-
+  if (url.searchParams.get("ecliptic")) {
+    globe.add(addCurve(radius + 0.005, 0x808080));
+    var equ = addCurve(radius + 0.005, 0x808080);
+    equ.rotation.x = satellite.degreesToRadians(90);
+    globe.add(equ);
+  }
   var points = [new THREE.Vector2(1.0, 0.0), new THREE.Vector2(1.0, 0.4)];
   wall = new THREE.Mesh(
     new THREE.LatheGeometry(points, 32),
@@ -828,10 +870,16 @@ function createStars(radius, segments) {
   starmap.scale.x = -1;
   stars.add(starmap);
 
-  // stars.add(addCurve(99, 0xFF00FF));
-  // var ew = addCurve(99, 0x00FFFF);
-  // ew.rotation.y = satellite.degreesToRadians(90);
-  // stars.add(ew);
+  if (url.searchParams.get("ecliptic")) {
+    stars.add(addCurve(99, 0xFF0000));
+    var ew = addCurve(99, 0x0000FF);
+    ew.rotation.y = satellite.degreesToRadians(90);
+    stars.add(ew);
+    ew = addCurve(99, 0x00FF00);
+    ew.rotation.x = satellite.degreesToRadians(90);
+    stars.add(ew);
+  }
+
   return stars;
 }
 
@@ -927,11 +975,12 @@ function findVisible(startDate, max, step) {
   // var sat = sats.find(s => s.id == 'STARLINK-1066');
 
   var dtime = Math.floor(new Date(startDate).getTime() / cut) * cut;
-  var date, gmst, sunDate, homeSun;
+  var date, gmst, T, sunDate, homeSun;
   var info = {};
   for (var s = 0; s < max; s++) {
     date = new Date(dtime);
     gmst = satellite.gstime(date);
+    T = jCentury(satellite.jday(date));
     if (date.getUTCDate() != sunDate) {
       sunDate = date.getUTCDate();
       homeSun = SunCalc.getTimes(date, homeGeo.latitude, homeGeo.longitude, homeGeo.height);
@@ -940,7 +989,7 @@ function findVisible(startDate, max, step) {
     if (date < homeSun.dawn || date > homeSun.dusk) {
       sats.forEach(sat => {
         var satOSV = satellite.propagate(sat.satrec, date);
-        var eciSol = calcSolarPos(dtime);
+        var eciSol = calcSolarPos(T);
         if (!isEclipsed(satOSV.position, eciSol)) {
           var satECF = satellite.eciToEcf(satOSV.position, gmst);
           var look = satellite.ecfToLookAngles(home, satECF, gmst);
@@ -995,17 +1044,18 @@ function refineVisibility(sat) {
   var begTime = new Date().getTime();
   sat.visible.forEach((visible, v) => {
     if (!visible.final) {
-      var date, gmst, sunDate, homeSun, info;
+      var date, gmst, T, sunDate, homeSun, info;
       var step = Math.max(1000, (visible.end.date - visible.beg.date) / 500);
       for (dtime = visible.beg.date; dtime < visible.end.date; dtime += step) {
         date = new Date(dtime);
+        T = jCentury(satellite.jday(date));
         if (date.getUTCDate() != sunDate) {
           sunDate = date.getUTCDate();
           homeSun = SunCalc.getTimes(date, homeGeo.latitude, homeGeo.longitude, homeGeo.height);
         }
         if (date < homeSun.dawn || date > homeSun.dusk) {
           var satOSV = satellite.propagate(sat.satrec, date);
-          var eciSol = calcSolarPos(dtime);
+          var eciSol = calcSolarPos(T);
           if (!isEclipsed(satOSV.position, eciSol)) {
             var gmst = satellite.gstime(date);
             var satECF = satellite.eciToEcf(satOSV.position, gmst);
@@ -1120,13 +1170,11 @@ function vLen(vec) {
 
 const rad = Math.PI / 180
 const deg = 180 / Math.PI
-// const AU = 0.989 * 1.49597870E8;
-const AU = 1.0 * 1.49597870E8;
+const AU = 1.49597870E8;
+const R = 0.989 * AU;
 
-function calcSolarPos(date) {
+function calcSolarPos0(T) {
   // var JD = 367 * date.getFullYear() - Math.floor(7.0 * (date.getFullYear() + Math.floor(((date.getMonth() + 1) + 9.0) / 12.0)) / 4.0) + Math.floor(275.0 * (date.getMonth() + 1) / 9.0) + date.getDate() + 1721013.5 + date.getHours() / 24.0 + date.getMinutes() / 1440.0 + date.getSeconds() / 86400.0;
-  var JD = satellite.jday(new Date(date))
-  var T = jCentury(JD);
 
   // ecliptic coordinates
   var L = 280.4606184 + 36000.77005361 * T;
@@ -1139,38 +1187,56 @@ function calcSolarPos(date) {
   // var dec = Math.asin(Math.sin(ob * rad) * Math.sin(M * rad))
 
   // rectangular equatorial coordinates
-  var x = AU * Math.cos(lon * rad);
-  var y = AU * Math.cos(ob * rad) * Math.sin(lon * rad);
-  var z = AU * Math.sin(ob * rad) * Math.sin(lon * rad);
+  var x = R * Math.cos(lon * rad);
+  var y = R * Math.cos(ob * rad) * Math.sin(lon * rad);
+  var z = R * Math.sin(ob * rad) * Math.sin(lon * rad);
 
-  var vec = { x: x, y: y, z: z, l: AU }
+  var vec = { x: x, y: y, z: z, l: R }
   return vec;
 }
 
-function calcSolarPos0(date) {
-  var JD = 367 * date.getFullYear() - Math.floor(7.0 * (date.getFullYear() + Math.floor(((date.getMonth() + 1) + 9.0) / 12.0)) / 4.0) + Math.floor(275.0 * (date.getMonth() + 1) / 9.0) + date.getDate() + 1721013.5 + date.getHours() / 24.0 + date.getMinutes() / 1440.0 + date.getSeconds() / 86400.0;
-  var UT1 = (JD - 2451545) / 36525;
-  var longMSUN = 280.4606184 + 36000.77005361 * UT1;
-  var mSUN = 357.5277233 + 35999.05034 * UT1;
-  var ecliptic = longMSUN + 1.914666471 * Math.sin(mSUN * rad) + 0.918994643 * Math.sin(2 * mSUN * rad);
-  var eccen = 23.439291 - 0.0130042 * UT1;
+function calcSolarPos(T) {
+  var d = T * 36525 + 1.5
+  var w = 282.9404 + 4.70935E-5 * d //  (longitude of perihelion)
+  var a = 1.000000 //  (mean distance, a.u.)
+  var e = 0.016709 - 1.151E-9 * d //  (eccentricity)
+  var ob = 23.4393 - 3.563E-7 * d
+  var M = r360(356.0470 + 0.9856002585 * d) //  (mean anomaly)
+  var L = r360(w + M)
+  var E = M + deg * e * Math.sin(M * rad) * (1 + e * Math.cos(M * rad))
+  var xec = Math.cos(E * rad) - e
+  var yec = Math.sin(E * rad) * Math.sqrt(1 - e * e)
+  var R = Math.sqrt(xec * xec + yec * yec)
+  var v = deg * Math.atan2(yec, xec) // true anomaly
+  var lon = r360(v + w) // longitude
 
-  var x = Math.cos(ecliptic * rad);
-  var y = Math.cos(eccen * rad) * Math.sin(ecliptic * rad);
-  var z = Math.sin(eccen * rad) * Math.sin(ecliptic * rad);
+  var x = R * Math.cos(lon * rad)
+  var y = R * Math.sin(lon * rad)
+  var z = 0.0
 
-  var sunDistance = 0.989 * 1.49597870E8;
-  var vec = { x: x * sunDistance, y: y * sunDistance, z: z * sunDistance, l: sunDistance }
-  return vec;
+  var xeq = x
+  var yeq = y * Math.cos(ob * rad) - z * Math.sin(ob * rad)
+  var zeq = y * Math.sin(ob * rad) + z * Math.cos(ob * rad)
+
+  // var r = Math.sqrt(xeq * xeq + yeq * yeq + zeq * zeq) // identical to R
+  var RA = deg * Math.atan2(yeq, xeq)
+  var Decl = deg * Math.atan2(zeq, Math.sqrt(xeq * xeq + yeq * yeq))
+  // console.log(v, lon, xeq, yeq, zeq, RA, Decl)
+
+  return { x: xeq * AU, y: yeq * AU, z: zeq * AU, l: R * AU }
 }
 
 function calcSolarEcliptic(T) {
   // ecliptic coordinates
-  var L = 280.4606184 + 36000.77005361 * T;
-  var M = 357.5277233 + 35999.05034 * T;
-  // var AU = 1.00014 - 0.01671 * Math.cos(M * rad) - 0.00014 * Math.cos(2 * M * rad).
-  var lon = L + 1.914666471 * Math.sin(M * rad) + 0.918994643 * Math.sin(2 * M * rad);
-  return { x: AU * Math.cos(lon * rad), y: AU * Math.sin(lon * rad), z: 0.0, l: AU }
+  var L = r360(280.4606184 + 36000.77005361 * T);
+  var M = r360(357.5277233 + 35999.05034 * T);
+  var lon = r360(L + 1.914666471 * Math.sin(M * rad) + 0.918994643 * Math.sin(2 * M * rad));
+  console.log(M, L, lon)
+  return { x: R * Math.cos(lon * rad), y: R * Math.sin(lon * rad), z: 0.0, l: R }
+}
+
+function r360(deg) {
+  return (deg % 360 + 360) % 360
 }
 
 function calcPlanet(planet, T) {
@@ -1204,7 +1270,7 @@ function calcPlanet(planet, T) {
   act.zq = Math.sin(act.o) * act.y + Math.cos(act.o) * act.z
 
   // console.log(act)
-  var v = { x: AU * act.x, y: AU * act.y, z: AU * act.z, l: 0 }
+  var v = { x: R * act.x, y: R * act.y, z: R * act.z, l: 0 }
   v.l = vLen(v)
   return v;
 }
@@ -1220,7 +1286,7 @@ function eccAnom(e, M) {
     dE = dM / (1 - e * Math.cos(rad * En))
     En = En + dE
   } while (dE < 1E-6 && i++ < 30)
-  console.log(i, En, dE)
+  // console.log(i, En, dE)
   return +En.toFixed(6)
 }
 
@@ -1370,7 +1436,7 @@ Related orbital elements are:
     q  = a*(1-e) = perihelion distance
     Q  = a*(1+e) = aphelion distance
     P  = a ^ 1.5 = orbital period (years if a is in AU, astronomical units)
-    T  = Epoch_of_M - (M(deg)/360_deg) / P  = time of perihelion
+    T  = Epoch_of_M - (M(deg)/360) / P  = time of perihelion
     v  = true anomaly (angle between position and perihelion)
     E  = eccentric anomaly
 
