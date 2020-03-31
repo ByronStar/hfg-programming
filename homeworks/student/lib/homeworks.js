@@ -2,6 +2,7 @@ var Homeworks = {};
 (function() {
   let httpPort = 11203
   let httpsPort = 11204
+  let login = { user: 'ig1', password: 'Fun2Code' }
 
   let msgTrace = false
   let ws, name
@@ -16,7 +17,7 @@ var Homeworks = {};
     res: null,
     connect: false,
     online: false,
-    server: null,
+    server: "byron.hopto.org",
     isDozent: false
   }
   let statusNode, btnNode
@@ -76,7 +77,7 @@ var Homeworks = {};
           hw: gc.hw
         })
       } else {
-        sendState('STATE', {add: true})
+        sendState('STATE', { add: true })
       }
     }
   }
@@ -127,7 +128,7 @@ var Homeworks = {};
         },
         error => {
           Homeworks.showStatus();
-          reject('⚠️ Datei "data/student.id" konnte nicht geladen werden: (' + error.statusText + ' ' + error.status + ').\nDamit die Hausaufgaben per Knopfdruck abgegeben werden können, bitte gleich das ⚠️ oben rechts anklicken.\nAnmelden mit "ig1" / "Fun2Code".')
+          reject('⚠️ Die Datei "data/student.id" wurde nicht gefunden: ' + error.statusText + ' ' + error.status + '.\nDamit die Hausaufgaben per Knopfdruck abgegeben werden können, bitte gleich das ⚠️ in der Seite oben rechts anklicken. Dann wirst Du auf eine Seite weitergeleitet, auf der Du Deine "student.id" Datei runterladen kannst.\nAnmelden mit user "' + login.user + '" und Passwort "' + login.password + '".')
         }
       )
     })
@@ -152,7 +153,7 @@ var Homeworks = {};
       statusNode.innerHTML = gc.connect ?
         (gc.student ?
           (gc.online ? '<span id="send" style="cursor: pointer;font-size: 2em;">📤</span>' : '<span id="send" style="cursor: pointer;font-size: 2em;">🔴</span>') :
-          'Datei "data/student.id" fehlt <a href="https://byron.hopto.org:11204/studentIds.html" target="_blank">⚠️</a>') :
+          'Datei "data/student.id" fehlt <a href="https://' + gc.sever + ':11204/studentIds.html" target="_blank">⚠️</a>') :
         '<span id="send" style="cursor: pointer;font-size: 2em;">🔗</span>'
       btnNode = document.getElementById('send')
       if (btnNode) {
@@ -209,8 +210,6 @@ var Homeworks = {};
     let host = url.searchParams.get("server")
     if (host) {
       gc.server = host
-    } else {
-      gc.server = "byron.hopto.org"
     }
 
     let wsUri = 'wss://' + gc.server + ':' + httpsPort
@@ -799,9 +798,8 @@ document.addEventListener("DOMContentLoaded", function() {
     Homeworks.createStatusNode();
   } else {
     // console.log(location)
-    // if (location.pathname != '/') {
-    Homeworks.gc.isDozent = true
-    Homeworks.createReviewNode();
-    // }
+    if (Homeworks.gc.isDozent) {
+      Homeworks.createReviewNode();
+    }
   }
 })

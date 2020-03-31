@@ -18,6 +18,7 @@ const path = require("path")
 
 let httpServer, httpsServer
 
+let hostname = require('os').hostname()
 let ifs = require('os').networkInterfaces()
 // console.log(ifs)
 
@@ -56,14 +57,10 @@ loadState()
 
 function setupServers() {
   let firstTime = ipAddr != state.ipAddr
-  if (fs.existsSync('/etc/letsencrypt/live/byron.hopto.org/privkey.pem')) {
-    // options = {
-    //   key: fs.readFileSync('../cert/tls.key'),
-    //   cert: fs.readFileSync('../cert/tls.crt')
-    // }
+  if (fs.existsSync('/etc/letsencrypt/live/' + state.domain + '/privkey.pem')) {
     options = {
-      key: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/privkey.pem'),
-      cert: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/fullchain.pem')
+      key: fs.readFileSync('/etc/letsencrypt/live/' + state.domain + '/privkey.pem'),
+      cert: fs.readFileSync('/etc/letsencrypt/live/' + state.domain + '/fullchain.pem')
     }
     if (state.domain) {
       ipAddr = state.domain
@@ -541,7 +538,7 @@ function handleClose(server, id) {
 function createState() {
   state = {
     ipAddr: '0.0.0.0',
-    domain: 'byron.hopto.org',
+    domain: hostname,
     xslack: '',
     students: {},
     volatile: {}
@@ -567,15 +564,22 @@ function createState() {
       lines.forEach(l => {
         if (l.length > 0 && !l.startsWith('#')) {
           let p = l.split(/;/)
-          state.students[guid7()] = {
+          let id = guid7()
+          let dir = '/' + p[13].toLowerCase() + '.' + p[12].toLowerCase()
+          state.students[id] = {
             name: p[13] + ' ' + p[12],
             group: p[9],
             date: new Date().getTime(),
-            dir: '/' + p[13].toLowerCase() + '.' + p[12].toLowerCase(),
+            dir: dir,
             uploads: 0,
             hw: [],
             res: []
           }
+          fs.mkdirSync('../students' + dir);
+          fs.mkdirSync('../students' + dir + '/js');
+          fs.symlinkSync('../shared/css', '../students' + dir + '/css', 'dir')
+          fs.symlinkSync('../shared/img', '../students' + dir + '/img', 'dir')
+          fs.symlinkSync('../shared/lib', '../students' + dir + '/lib', 'dir')
         }
       })
       saveState()
@@ -749,7 +753,7 @@ function getIds() {
     abgelelegt und Du kannst sie in das 'data' Unterverzeichnis verschieben oder kopieren.
     <p>Diese Seite kannst Du nach dem Download schliessen.
     <div>
-      <ul id="hwlist">
+      <ul id="idlist">
       ${list}
       </ul>
     </div>
@@ -784,6 +788,7 @@ function getIndex() {
 
   <title>Programmiersprachen - Hausaufgaben</title>
   <script type="text/javascript" src="/shared/lib/homeworks.js"></script>
+  <script>Homeworks.gc.isDozent=true</script>
   <link rel="stylesheet" href="/shared/css/progsp.css">
 </head>
 

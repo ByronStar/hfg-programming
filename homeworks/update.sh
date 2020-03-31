@@ -1,13 +1,24 @@
 #!/usr/bin/env bash
-scp -P 11222 server/homeworks.js pi@byron.hopto.org:/home/pi/www/rpi/homeworks/server
-scp -P 11222 student/lib/homeworks.js pi@byron.hopto.org:/home/pi/www/rpi/homeworks/students/shared/lib
-# scp -P 11222 student/css/progsp.css pi@byron.hopto.org:/home/pi/www/rpi/homeworks/students/shared/css
-# scp -P 11222 student/img/x.png pi@byron.hopto.org:/home/pi/www/rpi/homeworks/students/shared/img
-# scp -P 11222 student/img/r.png pi@byron.hopto.org:/home/pi/www/rpi/homeworks/students/shared/img
-# scp -P 11222 student/img/g.png pi@byron.hopto.org:/home/pi/www/rpi/homeworks/students/shared/img
-# scp -P 11222 student/img/y.png pi@byron.hopto.org:/home/pi/www/rpi/homeworks/students/shared/img
-# scp -P 11222 student/favicon.ico pi@byron.hopto.org:/home/pi/www/rpi/homeworks/server
-#scp -P 11222 server/studentWS1920.txt pi@byron.hopto.org:/home/pi/www/rpi/homeworks/server/students.txt
-#scp -P 11222 server/homeworks.sh pi@byron.hopto.org:/home/pi/www/rpi/homeworks/server
-#scp -P 11222 server/homeworks.json pi@byron.hopto.org:/home/pi/www/rpi/homeworks/server
-wscat -c wss://byron.hopto.org:11204 -x '{"id":"RESTART","from":"wscat script","ts":1584008662853,"data":{"rc":0}}'
+#HOST=pi@byron.hopto.org
+#DIR=/home/pi/www/rpi/homeworks
+#PORT=-P 11222
+
+HOST=node@hfg.hopto.org
+DIR=/home/node/homeworks
+PORT=
+
+scp ${PORT} server/homeworks.js ${HOST}:${DIR}/server
+scp ${PORT} server/studentWS19200.txt ${HOST}:${DIR}/server/students.txt
+# scp ${PORT} server/package.json ${HOST}:${DIR}/server
+# scp ${PORT} server/homeworks.sh ${HOST}:${DIR}/server
+# scp ${PORT} student/favicon.ico ${HOST}:${DIR}/server
+# # scp ${PORT} server/homeworks.json ${HOST}:${DIR}/server
+#
+scp ${PORT} student/lib/homeworks.js ${HOST}:${DIR}/students/shared/lib
+# scp ${PORT} student/css/progsp.css ${HOST}:${DIR}/students/shared/css
+# scp ${PORT} student/img/x.png ${HOST}:${DIR}/students/shared/img
+# scp ${PORT} student/img/r.png ${HOST}:${DIR}/students/shared/img
+# scp ${PORT} student/img/g.png ${HOST}:${DIR}/students/shared/img
+# scp ${PORT} student/img/y.png ${HOST}:${DIR}/students/shared/img
+
+#wscat -c wss://byron.hopto.org:11204 -x '{"id":"RESTART","from":"wscat script","ts":1584008662853,"data":{"rc":0}}'
