@@ -17,7 +17,7 @@ var Homeworks = {};
     res: null,
     connect: false,
     online: false,
-    server: "byron.hopto.org",
+    server: "hfg.hopto.org",
     isDozent: false
   }
   let statusNode, btnNode
@@ -153,7 +153,7 @@ var Homeworks = {};
       statusNode.innerHTML = gc.connect ?
         (gc.student ?
           (gc.online ? '<span id="send" style="cursor: pointer;font-size: 2em;">📤</span>' : '<span id="send" style="cursor: pointer;font-size: 2em;">🔴</span>') :
-          'Datei "data/student.id" fehlt <a href="https://' + gc.sever + ':11204/studentIds.html" target="_blank">⚠️</a>') :
+          'Datei "data/student.id" fehlt <a href="https://' + gc.server + ':11204/studentIds.html" target="_blank">⚠️</a>') :
         '<span id="send" style="cursor: pointer;font-size: 2em;">🔗</span>'
       btnNode = document.getElementById('send')
       if (btnNode) {

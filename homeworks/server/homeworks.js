@@ -748,9 +748,9 @@ function getIds() {
 <body class="progsp">
   <div class="overlay" style="margin: 40px;">
     <h1>Id Dateien für Hausaufgaben Abgabe</h1>
-    <p>Damit die Hausaufgaben richtig zugeordnet werden können, benötigst Du Deine Id Datei im 'data' Unterverzeichnis
-    des 'student' Ordners für IG1 Programmiersprachen. Durch Klick auf Deinen Namen, wird diese Datei im 'Download' Ordner
-    abgelelegt und Du kannst sie in das 'data' Unterverzeichnis verschieben oder kopieren.
+    <p>Damit Deine Hausaufgaben richtig zugeordnet werden können, benötigst Du Deine 'student.id' Datei im 'data' Unterverzeichnis
+    Deines 'student' Ordners für IG1 Programmiersprachen.<br>Klicke in der Liste auf Deinen Namen, dann wird Deine 'student.id' Datei im 'Download' Ordner
+    deines Rechners abgelelegt und Du kannst sie anschliessend in das 'data' Unterverzeichnis verschieben oder kopieren.
     <p>Diese Seite kannst Du nach dem Download schliessen.
     <div>
       <ul id="idlist">
