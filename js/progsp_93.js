@@ -1,4 +1,4 @@
-let dirNodeL, dirNodeR
+let dirNodeL, dirNodeR, serverL, serverR
 let colors = [
   "#fd9400", "#000da3", "#1ed013", "#ff4cb3", "#009634", "#f70074", "#01b48a", "#c30018", "#0066dd", "#d5b500",
   "#002d8a", "#ffb134", "#7384ff", "#b4d256", "#42005b", "#818d00", "#9084ff", "#235300", "#ff90f8", "#042e00",
@@ -6,12 +6,12 @@ let colors = [
   "#92004e", "#007854", "#750024", "#d9c490", "#291f4b", "#ffa293", "#015078", "#e1afa8", "#421820", "#7b617f"
 ]
 let charts = [
-  { id: 'chart1', chart: null, datasets: [], config: {}, title: 'System Utilization', xLabel: 'Minutes', yLabel: 'Percent', convert: d => Math.round(d * 100), selected: ['SPU_CPU', 'SPU_DISK', 'SPU_FABRIC', 'SPU_MEMORY'] },
-  { id: 'chart2', chart: null, datasets: [], config: {}, title: 'Scheduler SN', xLabel: 'Minutes', yLabel: 'Count', convert: d => d, selected: ["PLANS_WAITING_LONG", "PLANS_RUNNING_LONG"] },
-  { id: 'chart3', chart: null, datasets: [], config: {}, title: 'Scheduler GRA', xLabel: 'Minutes', yLabel: 'Count', convert: d => d, selected: ["SPU_CPU_SECS", "SPU_DISK_READ_SECS", "SPU_DISK_WRITE_SECS", "SPU_DATA_DISK_READ_SECS", "SPU_DATA_DISK_WRITE_SECS"] },
-  { id: 'chart4', chart: null, datasets: [], config: {}, title: 'System Utilization', xLabel: 'Minutes', yLabel: 'Percent', convert: d => Math.round(d * 100), selected: ['SPU_CPU', 'SPU_DISK', 'SPU_FABRIC', 'SPU_MEMORY'] },
-  { id: 'chart5', chart: null, datasets: [], config: {}, title: 'Scheduler SN', xLabel: 'Minutes', yLabel: 'Count', convert: d => d, selected: ["PLANS_WAITING_LONG", "PLANS_RUNNING_LONG"] },
-  { id: 'chart6', chart: null, datasets: [], config: {}, title: 'Scheduler GRA', xLabel: 'Minutes', yLabel: 'Count', convert: d => d, selected: ["SPU_CPU_SECS", "SPU_DISK_READ_SECS", "SPU_DISK_WRITE_SECS", "SPU_DATA_DISK_READ_SECS", "SPU_DATA_DISK_WRITE_SECS"] }
+  { id: 'chart1', chart: null, datasets: [], config: {}, title: 'System Utilization', xLabel: 'Minutes', yLabel: 'Percent', yMax: 100, convert: d => Math.round(d * 100), selected: ['SPU_CPU', 'SPU_DISK', 'SPU_FABRIC', 'SPU_MEMORY'] },
+  { id: 'chart2', chart: null, datasets: [], config: {}, title: 'Scheduler SN', xLabel: 'Minutes', yLabel: 'Count', yMax: 50, convert: d => d, selected: ["PLANS_STARTED", "PLANS_FINISHED"] },
+  { id: 'chart3', chart: null, datasets: [], config: {}, title: 'Scheduler GRA', xLabel: 'Minutes', yLabel: 'Count', yMax: 20, convert: d => d, selected: ["PLANS_STARTED", "PLANS_FINISHED"] },
+  { id: 'chart4', chart: null, datasets: [], config: {}, title: 'System Utilization', xLabel: 'Minutes', yLabel: 'Percent', yMax: 100, convert: d => Math.round(d * 100), selected: ['SPU_CPU', 'SPU_DISK', 'SPU_FABRIC', 'SPU_MEMORY'] },
+  { id: 'chart5', chart: null, datasets: [], config: {}, title: 'Scheduler SN', xLabel: 'Minutes', yLabel: 'Count', yMax: 50, convert: d => d, selected: ["PLANS_STARTED", "PLANS_FINISHED"] },
+  { id: 'chart6', chart: null, datasets: [], config: {}, title: 'Scheduler GRA', xLabel: 'Minutes', yLabel: 'Count', yMax: 20, convert: d => d, selected: ["PLANS_STARTED", "PLANS_FINISHED"] }
 ]
 let interval = 10
 let filter
@@ -23,44 +23,56 @@ function init() {
     filter = new RegExp(filter);
   }
   interval = url.searchParams.get("interval") || interval
+  serverL = url.searchParams.get("serverL") || ''
+  serverR = url.searchParams.get("serverR") || ''
+  document.getElementById('infoL').innerHTML = serverL == '' ? url.hostname : serverL
+  document.getElementById('infoR').innerHTML = serverR == '' ? url.hostname : serverR
 
+
+  console.log("server", serverL, serverR)
   dirNodeL = document.getElementById('runDirL')
   dirNodeR = document.getElementById('runDirR')
   Chart.defaults.global.defaultFontColor = 'LightGray'
   Chart.defaults.global.elements.line.borderWidth = 2
   Chart.defaults.global.elements.point.radius = 2
-  if (location.hostname.match(/localhost|127.0.0.1/)) {
+  if (location.hostname.match(/localhost|127.0.0.1/) && serverL == '' && serverR == '') {
     // fake directory data for testing
-    loadData('wlm/output.html').then(data => readDirectory(data))
+    loadData('data/wlm/output.html').then(data => readDirectory(data))
     loadSampleData()
   } else {
-    loadData('output/').then(data => readDirectory(data))
+    loadData(serverL + 'data/output/').then(data => readDirectory(data, serverL, dirNodeL, 0))
+    if (serverL != serverR) {
+      loadData(serverR + 'data/output/').then(data => readDirectory(data, serverR, dirNodeR, 3))
+    }
   }
+  // loadData('http://dashdb-q100m-h1.svl.ibm.com:8000/data/output/').then(data => console.log(data))
 }
 
 function loadSampleData() {
   // load sample data
-  loadData('wlm/capture_vt_system_util.out').then(data => createChart(data, charts[0]))
-  loadData('wlm/capture_vt_sched_sn.out').then(data => createChart(data, charts[1]))
-  loadData('wlm/capture_vt_sched_gra.out').then(data => createChart(data, charts[2]))
-  loadData('wlm/capture_vt_system_util.out').then(data => createChart(data, charts[3]))
-  loadData('wlm/capture_vt_sched_sn.out').then(data => createChart(data, charts[4]))
-  loadData('wlm/capture_vt_sched_gra.out').then(data => createChart(data, charts[5]))
+  loadData(serverL + 'data/wlm/capture_vt_system_util.out').then(data => createChart(data, charts[0]))
+  loadData(serverL + 'data/wlm/capture_vt_sched_sn.out').then(data => createChart(data, charts[1]))
+  loadData(serverL + 'data/wlm/capture_vt_sched_gra.out').then(data => createChart(data, charts[2]))
+  loadData(serverR + 'data/wlm/capture_vt_system_util.out').then(data => createChart(data, charts[3]))
+  loadData(serverR + 'data/wlm/capture_vt_sched_sn.out').then(data => createChart(data, charts[4]))
+  loadData(serverR + 'data/wlm/capture_vt_sched_gra.out').then(data => createChart(data, charts[5]))
 }
 
-function readDirectory(data) {
+function readDirectory(data, server, dirNode, c) {
   let cnt = 0
   let lines = data.split(/\r?\n/)
   lines.forEach((line, l) => {
     if (line.startsWith('<li><a href="')) {
       let file = line.match(/>[^<]+/).map(s => s.replace(/[>/]/g, ""))[0] //s.substr(1,s.length-2)
       if (!filter || file.match(filter)) {
-        let optElem = createElement(dirNodeL, 'option', {})
+        let optElem = createElement(dirNode, 'option', {})
         optElem.appendChild(document.createTextNode(file))
         optElem.value = file
-        optElem = createElement(dirNodeR, 'option', {})
-        optElem.appendChild(document.createTextNode(file))
-        optElem.value = file
+        if (serverL == serverR) {
+          optElem = createElement(dirNodeR, 'option', {})
+          optElem.appendChild(document.createTextNode(file))
+          optElem.value = file
+        }
         cnt++
         if (cnt == 2) {
           optElem.setAttribute('selected', 'selected')
@@ -68,17 +80,18 @@ function readDirectory(data) {
       }
     }
   })
-  if (!location.hostname.match(/localhost|127.0.0.1/)) {
+  if (!location.hostname.match(/localhost|127.0.0.1/) || serverL != '' || serverR != '') {
     if (cnt > 0) {
-      let runDir = dirNodeL.value
-      loadData('output/' + runDir + '/capture_vt_system_util.out').then(data => createChart(data, charts[0]))
-      loadData('output/' + runDir + '/capture_vt_sched_sn.out').then(data => createChart(data, charts[1]))
-      loadData('output/' + runDir + '/capture_vt_sched_gra.out').then(data => createChart(data, charts[2]))
-      if (cnt > 1) {
-        let runDir = dirNodeR.value
-        loadData('output/' + runDir + '/capture_vt_system_util.out').then(data => createChart(data, charts[3]))
-        loadData('output/' + runDir + '/capture_vt_sched_sn.out').then(data => createChart(data, charts[4]))
-        loadData('output/' + runDir + '/capture_vt_sched_gra.out').then(data => createChart(data, charts[5]))
+      runDir = dirNode.value
+      loadData(server + 'data/output/' + runDir + '/capture_vt_system_util.out').then(data => createChart(data, charts[c + 0]))
+      loadData(server + 'data/output/' + runDir + '/capture_vt_sched_sn.out').then(data => createChart(data, charts[c + 1]))
+      loadData(server + 'data/output/' + runDir + '/capture_vt_sched_gra.out').then(data => createChart(data, charts[c + 2]))
+      if (cnt > 1 && serverL == serverR) {
+        loadData(server + 'data/output/' + runDir + '/capture_vt_system_util.out').then(data => createChart(data, charts[c + 0]))
+        runDir = dirNodeR.value
+        loadData(server + 'data/output/' + runDir + '/capture_vt_system_util.out').then(data => createChart(data, charts[3]))
+        loadData(server + 'data/output/' + runDir + '/capture_vt_sched_sn.out').then(data => createChart(data, charts[4]))
+        loadData(server + 'data/output/' + runDir + '/capture_vt_sched_gra.out').then(data => createChart(data, charts[5]))
       }
     } else {
       loadSampleData()
@@ -98,6 +111,10 @@ function createChart(data, chart) {
   chart.config.options.title.text = chart.title;
   chart.config.options.scales.xAxes[0].scaleLabel.labelString = chart.xLabel;
   chart.config.options.scales.yAxes[0].scaleLabel.labelString = chart.yLabel;
+    chart.config.options.scales.yAxes[0].ticks = {
+        suggestedMin: 0,
+        suggestedMax: chart.yMax
+    }
 
   let color = '#0000FF'
   chart.average = {
@@ -165,56 +182,60 @@ function createChart(data, chart) {
 
 function refreshL() {
   let runDir = dirNodeL.value
-  loadData('output/' + runDir + '/capture_vt_system_util.out').then(data => updateChart(data, charts[0]))
-  loadData('output/' + runDir + '/capture_vt_sched_sn.out').then(data => updateChart(data, charts[1]))
-  loadData('output/' + runDir + '/capture_vt_sched_gra.out').then(data => updateChart(data, charts[2]))
+  loadData(serverL + 'data/output/' + runDir + '/capture_vt_system_util.out').then(data => updateChart(data, charts[0]))
+  loadData(serverL + 'data/output/' + runDir + '/capture_vt_sched_sn.out').then(data => updateChart(data, charts[1]))
+  loadData(serverL + 'data/output/' + runDir + '/capture_vt_sched_gra.out').then(data => updateChart(data, charts[2]))
 }
 
 function refreshR() {
   let runDir = dirNodeR.value
-  loadData('output/' + runDir + '/capture_vt_system_util.out').then(data => updateChart(data, charts[3]))
-  loadData('output/' + runDir + '/capture_vt_sched_sn.out').then(data => updateChart(data, charts[4]))
-  loadData('output/' + runDir + '/capture_vt_sched_gra.out').then(data => updateChart(data, charts[5]))
+  loadData(serverR + 'data/output/' + runDir + '/capture_vt_system_util.out').then(data => updateChart(data, charts[3]))
+  loadData(serverR + 'data/output/' + runDir + '/capture_vt_sched_sn.out').then(data => updateChart(data, charts[4]))
+  loadData(serverR + 'data/output/' + runDir + '/capture_vt_sched_gra.out').then(data => updateChart(data, charts[5]))
 }
 
 function updateChart(data, chart) {
-  let lines = data.split(/\r?\n/)
-  let start = null
-  chart.config.data.labels = []
-  chart.datasets.forEach(dataset => dataset.data = [])
-  lines.forEach((line, l) => {
-    if (line.length > 0 && !line.startsWith('result') && !line.startsWith('-----') && !line.startsWith('(')) {
-      if (l > 1) {
-        let d = line.split(/ +\| +/).map(n => +n.trim())
-        // skip first column
-        chart.datasets.forEach((dataset, i) => dataset.data.push(chart.convert(d[i + 1])))
-        if (start) {
-          chart.config.data.labels.push(Math.floor((d[0] - start) / 60000000))
-        } else {
-          start = d[0]
-          chart.config.data.labels.push(0)
+  if (chart.chart) {
+    let lines = data.split(/\r?\n/)
+    let start = null
+    chart.config.data.labels = []
+    chart.datasets.forEach(dataset => dataset.data = [])
+    lines.forEach((line, l) => {
+      if (line.length > 0 && !line.startsWith('result') && !line.startsWith('-----') && !line.startsWith('(')) {
+        if (l > 1) {
+          let d = line.split(/ +\| +/).map(n => +n.trim())
+          // skip first column
+          chart.datasets.forEach((dataset, i) => dataset.data.push(chart.convert(d[i + 1])))
+          if (start) {
+            chart.config.data.labels.push(Math.floor((d[0] - start) / 60000000))
+          } else {
+            start = d[0]
+            chart.config.data.labels.push(0)
+          }
         }
       }
+    })
+    chart.config.data.datasets = chart.datasets.filter(dataset => chart.selected.indexOf(dataset.label) > -1)
+    if (chart.config.data.datasets.length == 1) {
+      chart.average.data = movingAverage(chart.config.data.datasets[0].data, interval)
+      chart.config.data.datasets.push(chart.average);
     }
-  })
-  chart.config.data.datasets = chart.datasets.filter(dataset => chart.selected.indexOf(dataset.label) > -1)
-  if (chart.config.data.datasets.length == 1) {
-    chart.average.data = movingAverage(chart.config.data.datasets[0].data, interval)
-    chart.config.data.datasets.push(chart.average);
+    chart.chart.update()
+  } else {
+    createChart(data, chart)
   }
-  chart.chart.update()
 }
 
-function loadData(file) {
+function loadData(url) {
   return new Promise((resolve, reject) => {
     SatTrackUtils.ajax({
       type: 'GET',
-      url: 'data/' + file,
+      url: url,
       responseType: 'text',
       success: (response, context) => resolve(response),
       error: (error, headers) => {
         console.log(error)
-        alert('Error loading "' + file + '": ' + error.statusText + ', ' + error.status)
+        alert('Error loading "' + url + '": ' + error.statusText + ', ' + error.status)
       }
     })
   })
