@@ -87,7 +87,6 @@ function readDirectory(data, server, dirNode, c) {
       loadData(server + 'data/output/' + runDir + '/capture_vt_sched_sn.out').then(data => createChart(data, charts[c + 1]))
       loadData(server + 'data/output/' + runDir + '/capture_vt_sched_gra.out').then(data => createChart(data, charts[c + 2]))
       if (cnt > 1 && serverL == serverR) {
-        loadData(server + 'data/output/' + runDir + '/capture_vt_system_util.out').then(data => createChart(data, charts[c + 0]))
         runDir = dirNodeR.value
         loadData(server + 'data/output/' + runDir + '/capture_vt_system_util.out').then(data => createChart(data, charts[3]))
         loadData(server + 'data/output/' + runDir + '/capture_vt_sched_sn.out').then(data => createChart(data, charts[4]))
