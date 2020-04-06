@@ -128,7 +128,10 @@ var Homeworks = {};
         },
         error => {
           Homeworks.showStatus();
-          reject('⚠️ Die Datei "data/student.id" wurde nicht gefunden: ' + error.statusText + ' ' + error.status + '.\nDamit die Hausaufgaben per Knopfdruck abgegeben werden können, gleich einfach das ⚠️ das oben rechts auftaucht anklicken. Damit wirst Du auf eine Seite weitergeleitet, auf der Du Deine "student.id" Datei runterladen kannst.\nAnmelden mit User "' + login.user + '" und Passwort "' + login.password + '".')
+          reject('⚠️ Die Datei "data/student.id" wurde nicht gefunden: ' + error.statusText + ' ' + error.status +
+            '.\nDamit die Hausaufgaben per Knopfdruck abgegeben werden können, einfach das ⚠️ anklicken, das gleich oben rechts auftauchen wird. ' +
+            'Damit wirst Du auf eine Seite weitergeleitet, auf der Du Deine "student.id" Datei herrunterladen kannst.\nAnmelden mit User "' +
+            login.user + '" und Passwort "' + login.password + '".')
         }
       )
     })
