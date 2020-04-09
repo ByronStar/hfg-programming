@@ -19,7 +19,7 @@ scp js/progsp_93.js ${HOST}:${DIR}/analyse/js
 
 #scp ${HOST}:${DIR}/startrun.lst ./startrun.lst
 
-# export TST_ROOT=/export/home/nz/nz-test/sqltest_root
+# export TST_ROOT=/export/home/nz/nz_test/sqltest_root
 # export TEST_NAME=wlm_install_test
 # perl wlm.pl --stress --groupDetails='g1:10-100-N:dro:1,g2:10-100-N:minianalytics:1,g3:10-100-N:load:1' --testDuration=60 --graHorizon=1800 --validate='gra' > ./logfiles/$TEST_NAME.log 2>&1
 
