@@ -5,7 +5,7 @@ var Homeworks = {};
   let login = { user: 'ig1', password: 'Fun2Code' }
 
   let msgTrace = false
-  let ws, name
+  let name
   let lags = [],
     lCnt = 0
 
@@ -18,22 +18,24 @@ var Homeworks = {};
     connect: false,
     online: false,
     server: "hfg.hopto.org",
-    isDozent: false
+    isReview: false,
+    noMenu: false
   }
-  let statusNode, btnNode
+  let statusNode, sendNode, recvNode
   let reconnect = false
   let checkId = null
   let waitCnt = 0
   let quitCnt = 0
 
+  this.ws = null
   this.gc = gc
   this.aufgabe = 0
 
   this.updateState = function() {
-    if (gc.isDozent) {
-      Homeworks.showReview();
+    if (gc.isReview) {
+      Homeworks.showReview()
     } else {
-      Homeworks.showStatus();
+      Homeworks.showStatus()
     }
   }
 
@@ -41,22 +43,23 @@ var Homeworks = {};
    * dozent only part for homeworks review
    */
   this.createReviewNode = function() {
-    statusNode = document.getElementById('status');
+    gc.isReview = true
+    statusNode = document.getElementById('status')
     if (null == statusNode) {
       statusNode = createElement(document.body, 'div', { id: "status", style: "position: absolute; top:10px;right:30px;" })
     }
     let url = new URL(window.location)
     gc.student = url.searchParams.get("id")
     gc.hw = url.searchParams.get("hw")
-    Homeworks.wsinit();
+    Homeworks.wsinit()
     window.addEventListener('keydown', onKeyDown)
   }
 
   this.showReview = function() {
     if (gc.res) {
       if (null != statusNode) {
-        if (btnNode) {
-          btnNode.removeEventListener('click', process);
+        if (sendNode) {
+          sendNode.removeEventListener('click', review)
         }
         let script = document.getElementById('homework')
         if (null != script) {
@@ -65,9 +68,9 @@ var Homeworks = {};
         statusNode.innerHTML = gc.name + (gc.online ? (modal +
             ' <span style="font-size: 2em;"> <span id="review" style="cursor: pointer"><img src="img/g.png" style="border:2px solid ' + (gc.res.icon == "g.png" ? "cyan" : "gray") + ';"> <img src="img/y.png" style="border:2px solid ' + (gc.res.icon == "y.png" ? "cyan" : "gray") + ';"> <img src="img/r.png" style="border:2px solid ' + (gc.res.icon == "r.png" ? "cyan" : "gray") + ';"></span> <a href="' + script.src + '">🔬</a></span>') :
           ' <span id="review" style="cursor: pointer;font-size: 2em;">🔴</span>')
-        btnNode = document.getElementById('review')
-        if (btnNode) {
-          btnNode.addEventListener('click', review)
+        sendNode = document.getElementById('review')
+        if (sendNode) {
+          sendNode.addEventListener('click', review)
         }
       }
     } else {
@@ -89,9 +92,8 @@ var Homeworks = {};
       document.getElementById('info').value = gc.res.fb
       document.getElementById('icon').src = evt.target.src
       gc.res.icon = evt.target.src.match(/.\.png/)[0]
-
     } else {
-      Homeworks.wsinit();
+      Homeworks.wsinit()
     }
   }
 
@@ -109,7 +111,7 @@ var Homeworks = {};
   let modal = `
 <div id="modal" class="modal">
   <div class="modalbox">
-    <p>Feedback <img id="icon" src="img/g.png" style="border:2px solid cyan"></p>
+    <p style="color: #fffba7;">Feedback <img id="icon" src="img/g.png" style="border:2px solid cyan"></p>
     <textarea id="info" rows="3" cols="80">
     </textarea>
     <br><button id="done">Senden</button>
@@ -127,7 +129,7 @@ var Homeworks = {};
           resolve(true)
         },
         error => {
-          Homeworks.showStatus();
+          Homeworks.showStatus()
           reject('⚠️ Die Datei "data/student.id" wurde nicht gefunden: ' + error.statusText + ' ' + error.status +
             '.\nDamit die Hausaufgaben per Knopfdruck abgegeben werden können, einfach das ⚠️ anklicken, das gleich oben rechts auftauchen wird. ' +
             'Damit wirst Du auf eine Seite weitergeleitet, auf der Du Deine "student.id" Datei herrunterladen kannst.\nAnmelden mit User "' +
@@ -138,11 +140,11 @@ var Homeworks = {};
   }
 
   this.createStatusNode = function() {
-    statusNode = document.getElementById('status');
+    statusNode = document.getElementById('status')
     if (null == statusNode) {
       statusNode = createElement(document.body, 'div', { id: "status", style: "position: absolute; top:10px;right:30px;" })
     }
-    Homeworks.showStatus();
+    Homeworks.showStatus()
     if (location.pathname.match(/\/homeworks\/student/)) {
       window.addEventListener('keydown', onKeyDown)
     }
@@ -150,19 +152,41 @@ var Homeworks = {};
 
   this.showStatus = function() {
     if (null != statusNode) {
-      if (btnNode) {
-        btnNode.removeEventListener('click', process);
+      if (sendNode) {
+        sendNode.removeEventListener('click', process)
+      }
+      if (recvNode) {
+        recvNode.removeEventListener('click', receive)
       }
       statusNode.innerHTML = gc.connect ?
         (gc.student ?
-          (gc.online ? '<span id="send" style="cursor: pointer;font-size: 2em;">📤</span>' : '<span id="send" style="cursor: pointer;font-size: 2em;">🔴</span>') :
+          (gc.online ? (gc.res ? modal + '<span id="receive" style="cursor: pointer;font-size: 2em;">📥</span>' : '') + '<span id="send" style="cursor: pointer;font-size: 2em;">📤</span>' : '<span id="send" style="cursor: pointer;font-size: 2em;">🔴</span>') :
           'Datei "data/student.id" fehlt <a href="https://' + gc.server + ':11204/studentIds.html" target="_blank">⚠️</a>') :
         '<span id="send" style="cursor: pointer;font-size: 2em;">🔗</span>'
-      btnNode = document.getElementById('send')
-      if (btnNode) {
-        btnNode.addEventListener('click', process)
+      sendNode = document.getElementById('send')
+      if (sendNode) {
+        sendNode.addEventListener('click', process)
+      }
+      if (gc.res) {
+        recvNode = document.getElementById('receive')
+        if (recvNode) {
+          recvNode.addEventListener('click', receive)
+        }
       }
     }
+  }
+
+  function receive() {
+    document.getElementById('modal').style.display = 'block'
+    document.getElementById('done').addEventListener('click', received)
+    document.getElementById('info').value = gc.res.fb
+    document.getElementById('info').setAttribute('readonly', 'readonly')
+    document.getElementById('icon').src = 'img/' + gc.res.icon
+    document.getElementById('done').innerHTML = 'OK'
+  }
+
+  function received(evt) {
+    document.getElementById('modal').style.display = 'none'
   }
 
   function process() {
@@ -171,7 +195,7 @@ var Homeworks = {};
         if (gc.online) {
           publish()
         } else {
-          Homeworks.wsinit();
+          Homeworks.wsinit()
         }
       } else {
         Homeworks.getStudentId().then(res => Homeworks.wsinit()).catch(error => alert(error))
@@ -216,7 +240,7 @@ var Homeworks = {};
     }
 
     let wsUri = 'wss://' + gc.server + ':' + httpsPort
-    ws = createWebSocket(wsUri, onState, onReceive)
+    Homeworks.ws = createWebSocket(wsUri, onState, onReceive)
     return gc
   }
 
@@ -243,7 +267,7 @@ var Homeworks = {};
   }
 
   function onState(online, ws) {
-    // console.log(online, ws)
+    console.log(online, ws)
     if (!online) {
       waitCnt = 0
       if (reconnect) {
@@ -277,14 +301,15 @@ var Homeworks = {};
       case 'ID':
         // connected and server provides ID
         gc.id = msg.data.id
-        if (!gc.isDozent) {
+        if (msg.data.ip) {
           gc.server = msg.data.ip
         }
-        // if (gc.isDozent && location.pathname != '/' && (window.innerWidth > 800 || window.innerHeight > 600)) {
+        // if (location.pathname != '/' && (window.innerWidth > 800 || window.innerHeight > 600)) {
         //   createQRCode(location.protocol + '//' + gc.server + ':' + (location.protocol == 'http:' ? httpPort : httpsPort) + location.pathname + '?name=Mobile' + Math.floor(rand(100, 999)), 'p1')
         // }
         sendState('JOIN', {
           student: gc.student,
+          aufgabe: Homeworks.aufgabe,
           page: location.pathname
         })
         break
@@ -318,26 +343,30 @@ var Homeworks = {};
           }
         }
         break
+      case 'INFO':
+        console.log(msg.data)
+        if (msg.data && !gc.isReview) {
+          gc.res = msg.data
+          Homeworks.showStatus()
+        }
+        break
       case 'STATE':
-        if (gc.isDozent) {
-          let state = msg.data
-          let list = ''
-          for (let id in state.students) {
-            list += '<li>' + state.students[id].name
-            list += '<ol>'
-            state.students[id].hw.forEach((hw, h) => {
-              let actUrl = 'https://' + state.domain + ':' + httpsPort + state.students[id].dir + hw.html + '?id=' + id + '&hw=' + h
-              let res = state.students[id].res[hw.aufgabe]
-              list += '<li>' + (!res || hw.date > res.date ? ' 🚦' : ' ✅') + ' <img src="shared/img/' + (res ? res.icon : 'x.png') + '"> <a href="' + actUrl + '" target="_blank">' + hw.html + '</a>'
-              list += (res ? ' ' + res.fb : '') + ' ( hw=' + hw.aufgabe + ', v' + hw.version + ', ' + new Date(hw.date).toLocaleString() + (res ? ', ' + new Date(res.date).toLocaleString() : '') + ' )'
-            })
-            list += '</ol>'
-            document.getElementById('hwlist').innerHTML = list
-          }
-        } else {
-          if (!msgTrace) {
-            console.log("REC", msg)
-          }
+        let state = msg.data
+        let list = ''
+        for (let id in state.students) {
+          list += '<li>' + state.students[id].name
+          list += '<ol>'
+          state.students[id].hw.forEach((hw, h) => {
+            let actUrl = 'https://' + state.domain + ':' + httpsPort + state.students[id].dir + hw.html + '?id=' + id + '&hw=' + h
+            let res = state.students[id].res[hw.aufgabe]
+            list += '<li>' + (!res || hw.date > res.date ? ' 🚦' : ' ✅') + ' <img src="shared/img/' + (res ? res.icon : 'x.png') + '"> <a href="' + actUrl + '" target="_blank">' + hw.html + '</a>'
+            list += (res ? ' ' + res.fb : '') + ' ( hw=' + hw.aufgabe + ', v' + hw.version + ', ' + new Date(hw.date).toLocaleString() + (res ? ', ' + new Date(res.date).toLocaleString() : '') + ' )'
+          })
+          list += '</ol>'
+          document.getElementById('hwlist').innerHTML = list
+        }
+        if (!msgTrace) {
+          console.log("REC", msg)
         }
         break
       default:
@@ -352,7 +381,7 @@ var Homeworks = {};
       let aufgabe = file.match(/[0-9]/)[0]
       if (aufgabe == Homeworks.aufgabe) {
         if (waitCnt == 0) {
-          waitCnt = 2;
+          waitCnt = 2
           checkId = setTimeout(checkUpload, 10000)
           upload(script)
         } else {
@@ -377,10 +406,10 @@ var Homeworks = {};
   function upload(script) {
     getFile(script.src, 'text/javascript').then(data => sendFile(data, {
       file: new URL(script.src).pathname
-    }));
+    }))
     getFile(location.origin + location.pathname, 'text/html').then(data => sendFile(data, {
       file: location.pathname
-    }));
+    }))
   }
 
   function sendFile(text, context) {
@@ -434,14 +463,12 @@ var Homeworks = {};
       const ws = new WebSocket(wsUri, 'echo-protocol')
 
       ws.onopen = function(evt) {
+        // console.log("OPEN")
         onChange(true, ws)
       }
 
       ws.onclose = function(evt) {
-        onChange(false, null)
-      }
-
-      ws.onping = function(evt) {
+        // console.log("CLOSE")
         onChange(false, null)
       }
 
@@ -458,25 +485,25 @@ var Homeworks = {};
       ws.calcLag = function(msg, ts) {
         if (msg.from === ws.user.ID) {
           // own message - confirmation of SND, can be used to calculate lag
-          lags[lCnt++ % 5] = (ts - msg.ts) / 2;
-          let lag = 0;
+          lags[lCnt++ % 5] = (ts - msg.ts) / 2
+          let lag = 0
           if (lags.length > 4) {
-            let med = lags.slice().sort()[2];
-            let ll = 0;
+            let med = lags.slice().sort()[2]
+            let ll = 0
             for (let l = 0; l < lags.length; l++) {
               if (Math.abs(lags[l] - med) < 1000.0) {
-                lag += lags[l];
+                lag += lags[l]
                 ll++
               }
             }
-            lag /= ll;
-            console.log('lag', lag);
+            lag /= ll
+            console.log('lag', lag)
           }
           //for (let  i = 0; i < lags.length; i++) {
-          //  lag += lags[i];
+          //  lag += lags[i]
           //}
-          //lag /= lags.length;
-          //console.log('lag', lag);
+          //lag /= lags.length
+          //console.log('lag', lag)
         }
       }
 
@@ -488,7 +515,7 @@ var Homeworks = {};
   }
 
   const sendState = (msgId, data) => {
-    if (ws && ws.readyState === WebSocket.OPEN) {
+    if (Homeworks.ws && Homeworks.ws.readyState === WebSocket.OPEN) {
       const msg = {
         id: msgId,
         from: gc.id,
@@ -498,7 +525,7 @@ var Homeworks = {};
       if (msgTrace) {
         console.log("SND", msg)
       }
-      ws.send(JSON.stringify(msg))
+      Homeworks.ws.send(JSON.stringify(msg))
       if (msg.id == 'RESTART' && msg.data.rc == 0) {
         setTimeout(reload, 2000)
       }
@@ -534,12 +561,12 @@ var Homeworks = {};
   }
 
   function createElement(parent, type, attrList) {
-    var elem = document.createElementNS(parent.namespaceURI, type);
-    parent.appendChild(elem);
+    var elem = document.createElementNS(parent.namespaceURI, type)
+    parent.appendChild(elem)
     for (attr in attrList) {
-      elem.setAttribute(attr, attrList[attr]);
+      elem.setAttribute(attr, attrList[attr])
     }
-    return elem;
+    return elem
   }
 
   function trace(arg) {
@@ -566,22 +593,22 @@ var Homeworks = {};
               req.context.xxx = xxx
             }
           }
-          // console.log(xmlhttp);
+          // console.log(xmlhttp)
           switch (req.responseType) {
             case "arraybuffer":
             case "blob":
               req.success(xmlhttp.response, req.context)
-              break;
+              break
             case "document":
               req.success(xmlhttp.responseXML, req.context)
-              break;
+              break
             case "json":
               req.success(xmlhttp.response, req.context)
-              break;
+              break
             case "":
             case "text":
               req.success(xmlhttp.responseText, req.context)
-              break;
+              break
             default:
               req.success(xmlhttp.responseText, req.context)
           }
@@ -649,14 +676,14 @@ var Homeworks = {};
 
   function hashCode(text) {
     let hash = 0,
-      i, chr;
-    if (text.length === 0) return hash;
+      i, chr
+    if (text.length === 0) return hash
     for (i = 0; i < text.length; i++) {
-      hash = ((hash << 5) - hash) + text.charCodeAt(i);
+      hash = ((hash << 5) - hash) + text.charCodeAt(i)
       hash |= 0; // Convert to 32bit integer
     }
-    return hash;
-  };
+    return hash
+  }
 
   /**
    *
@@ -798,11 +825,11 @@ var Homeworks = {};
 }).apply(Homeworks)
 document.addEventListener("DOMContentLoaded", function() {
   if (location.hostname.match(/localhost|127.0.0.1/)) {
-    Homeworks.createStatusNode();
+    Homeworks.createStatusNode()
   } else {
     // console.log(location)
-    if (Homeworks.gc.isDozent) {
-      Homeworks.createReviewNode();
+    if (!Homeworks.gc.noMenu) {
+      Homeworks.createReviewNode()
     }
   }
 })

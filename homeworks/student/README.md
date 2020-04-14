@@ -8,6 +8,7 @@ The general structure is as follows:
     root directory           administrative files and the more important all the .html files (our documents)
     |- css directory         stylesheet files for look and feel of our documents
     |- img directory         images of various types
+    |- data directory        data files to be processed by our javascript programs
     |- js directory          javascript files for the actual programming
     |- lib directory         javascript library files from others with ready-made functionality
 

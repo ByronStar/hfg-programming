@@ -5,6 +5,7 @@
   "main": "homeworks.js",
   "scripts": {
     "start": "./homeworks.sh",
+    "trace": "./homeworks.sh -trace",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

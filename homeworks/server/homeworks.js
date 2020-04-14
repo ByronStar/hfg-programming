@@ -107,7 +107,7 @@ function setupServers() {
       response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="HfG Homeworks"' });
       response.end('HTTP Error 401 Unauthorized: Access is denied');
     } else {
-      let pathname = url.parse(request.url).pathname
+      let pathname = url.parse(decodeURIComponent(request.url)).pathname
       if (pathname == '/' || pathname == '/rootCA') {
         response.writeHead(200, {
           "Content-Type": "application/x-x509-ca-cert"
@@ -129,13 +129,14 @@ function setupServers() {
   // Byron:$2a$08$5IZmi9StV.mBmOSmZQ.hfeENTxsGzBa647uJFzbIpRUgSEwdS1L32
   // ig1:$2a$08$uGD7MtlHnvRQikJLGiUuIuye8dTapGoz2pXSuXyna9FFwUPRPYSIC
   httpsServer = https.createServer(options, function(request, response) {
-    // console.log(request.url)
+    // console.log(decodeURIComponent(request.url))
     var userpass = new Buffer((request.headers.authorization || '').split(' ')[1] || '', 'base64').toString();
     if (bcrypt.compareSync(userpass, '$2a$08$5IZmi9StV.mBmOSmZQ.hfeENTxsGzBa647uJFzbIpRUgSEwdS1L32')) {
-      let actUrl = url.parse(request.url, true)
+      let actUrl = url.parse(decodeURIComponent(request.url), true)
       let pathname = actUrl.pathname
       switch (pathname) {
         case '/':
+        case '/index.html':
           response.writeHead(200, {
             "Content-Type": "text/html"
           })
@@ -180,7 +181,7 @@ function setupServers() {
       }
     } else {
       if (bcrypt.compareSync(userpass, '$2a$08$uGD7MtlHnvRQikJLGiUuIuye8dTapGoz2pXSuXyna9FFwUPRPYSIC')) {
-        let actUrl = url.parse(request.url, true)
+        let actUrl = url.parse(decodeURIComponent(request.url), true)
         let pathname = actUrl.pathname
         switch (pathname) {
           case '/student.id':
@@ -288,7 +289,7 @@ function setupServers() {
 
     // Client did sent a hearbeat
     client.on('pong', () => {
-      // console.log("PONG", id)
+      console.log(new Date().getTime(), "PONG", id)
       client.isAlive = true
     })
 
@@ -315,20 +316,20 @@ function setupServers() {
   setInterval(function ping() {
     wsServer.clients.forEach(function each(client) {
       if (client.isAlive === false) {
-        console.log("TERM", client.upgradeReq.headers['sec-websocket-key'])
+        console.log(new Date().getTime(), "TERM", client.upgradeReq.headers['sec-websocket-key'])
         return client.terminate();
       }
       client.isAlive = false;
-      // console.log("PING", client.upgradeReq.headers['sec-websocket-key'])
+      // console.log(new Date().getTime(), "PING", client.upgradeReq.headers['sec-websocket-key'])
       client.ping(noop);
     })
     wssServer.clients.forEach(function each(client) {
       if (client.isAlive === false) {
-        console.log("TERM", client.upgradeReq.headers['sec-websocket-key'])
+        console.log(new Date().getTime(), "TERM", client.upgradeReq.headers['sec-websocket-key'])
         return client.terminate();
       }
       client.isAlive = false;
-      // console.log("PING", client.upgradeReq.headers['sec-websocket-key'])
+      console.log(new Date().getTime(), "PING", client.upgradeReq.headers['sec-websocket-key'])
       client.ping(noop);
     })
   }, 30000)
@@ -426,6 +427,12 @@ function handleMessage(server, message, id, client) {
               uploads: 0,
               hw: []
             }
+          } else {
+            client.send(JSON.stringify({
+              id: 'INFO',
+              from: 'SERVER',
+              data: state.students[student].res[msg.data.aufgabe]
+            }))
           }
           if (!(student in state.volatile)) {
             state.volatile[student] = {}
@@ -532,7 +539,9 @@ function handleMessage(server, message, id, client) {
 function handleClose(server, id) {
   delete clients[id]
   subscriber = subscriber.filter(sId => sId != id)
-  console.log('%s EXIT <%s> (%d clients)', new Date().getTime(), 'Client ' + id + ' left', (server.clients.length ? server.clients.length : server.clients.size))
+  if (msgTrace) {
+    console.log('%s EXIT <%s> (%d clients)', new Date().getTime(), 'Client ' + id + ' left', (server.clients.length ? server.clients.length : server.clients.size))
+  }
 }
 
 function createState() {
@@ -550,7 +559,7 @@ function createState() {
           name: 'Benno Stäbler',
           group: 'IG1',
           date: new Date().getTime(),
-          dir: '/benno.staebler',
+          dir: '/benno.stäbler',
           uploads: 0,
           hw: [],
           res: []
@@ -742,6 +751,7 @@ function getIds() {
 
   <title>Programmiersprachen - Hausaufgaben</title>
   <script type="text/javascript" src="/shared/lib/homeworks.js"></script>
+  <script>Homeworks.gc.noMenu=true</script>
   <link rel="stylesheet" href="/shared/css/progsp.css">
 </head>
 
@@ -788,7 +798,6 @@ function getIndex() {
 
   <title>Programmiersprachen - Hausaufgaben</title>
   <script type="text/javascript" src="/shared/lib/homeworks.js"></script>
-  <script>Homeworks.gc.isDozent=true</script>
   <link rel="stylesheet" href="/shared/css/progsp.css">
 </head>
 

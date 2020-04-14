@@ -1,1 +1,40 @@
+Tue Apr 14 2020 12:17:41 GMT+0200 (Central European Summer Time) Homeworks Server erreichbar unter http://hfg.hopto.org:11203
+Tue Apr 14 2020 12:17:41 GMT+0200 (Central European Summer Time) Homeworks Server erreichbar unter https://hfg.hopto.org:11204
+(node:8644) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.
+1586859464761 SND <{"id":"ID","from":"SERVER","data":{"id":"vvubzHTRuQP3/6VZbiWV8Q==","ip":"hfg.hopto.org","seq":0}}>
+1586859464777 REC <{"id":"STATE","from":null,"ts":1586859464765,"data":{"add":true}}>
+1586859464779 REC <{"id":"JOIN","from":"vvubzHTRuQP3/6VZbiWV8Q==","ts":1586859464769,"data":{"student":null,"aufgabe":0,"page":"/index.html"}}>
+1586859469095 SND <{"id":"ID","from":"SERVER","data":{"id":"cv0n0YfDPEgwae8kq+uwiQ==","ip":"hfg.hopto.org","seq":1}}>
+1586859469117 REC <{"id":"JOIN","from":"cv0n0YfDPEgwae8kq+uwiQ==","ts":1586859469106,"data":{"student":"60764802-1675-4591-9b84-29400cd215a4","aufgabe":1,"page":"/progsp_1.html"}}>
+1586859491458 'PING' 'vvubzHTRuQP3/6VZbiWV8Q=='
+1586859491462 'PING' 'cv0n0YfDPEgwae8kq+uwiQ=='
+1586859491478 'PONG' 'vvubzHTRuQP3/6VZbiWV8Q=='
+1586859491479 'PONG' 'cv0n0YfDPEgwae8kq+uwiQ=='
+
+1586860091886 'PING' 'cv0n0YfDPEgwae8kq+uwiQ=='
+1586860091903 'PONG' 'vvubzHTRuQP3/6VZbiWV8Q=='
+1586860091904 'PONG' 'cv0n0YfDPEgwae8kq+uwiQ=='
+1586860121916 'PING' 'vvubzHTRuQP3/6VZbiWV8Q=='
+1586860121916 'PING' 'cv0n0YfDPEgwae8kq+uwiQ=='
+1586860151946 'TERM' 'vvubzHTRuQP3/6VZbiWV8Q=='
+1586860151950 'TERM' 'cv0n0YfDPEgwae8kq+uwiQ=='
+1586860151954 EXIT <Client cv0n0YfDPEgwae8kq+uwiQ== left> (1 clients)
+1586860151955 EXIT <Client vvubzHTRuQP3/6VZbiWV8Q== left> (0 clients)
+1586860183817 SND <{"id":"ID","from":"SERVER","data":{"id":"jklgMXAu8dFp2SCuFvK2BA==","ip":"hfg.hopto.org","seq":0}}>
+1586860183834 REC <{"id":"STATE","from":null,"ts":1586860183825,"data":{"add":true}}>
+1586860183837 REC <{"id":"JOIN","from":"jklgMXAu8dFp2SCuFvK2BA==","ts":1586860183825,"data":{"student":null,"aufgabe":0,"page":"/index.html"}}>
+1586860211995 'PING' 'jklgMXAu8dFp2SCuFvK2BA=='
+1586860212011 'PONG' 'jklgMXAu8dFp2SCuFvK2BA=='
+1586860242026 'PING' 'jklgMXAu8dFp2SCuFvK2BA=='
+1586860272057 'TERM' 'jklgMXAu8dFp2SCuFvK2BA=='
+1586860272059 EXIT <Client jklgMXAu8dFp2SCuFvK2BA== left> (0 clients)
+
+
+for d in adrian.jans alisa.bogukanin anika.schulz benno.staebler felix.rei?ner gianluca.coronato lucas.franz max.schindler svetlana.rodionova tobias.reinhart alina.zimmermann andre?.hieber anita.tapaszto? dominik.vassilakopoulos felix.weber ina.kaller maurice.vater thanh.nguyen vanessa.pieronczyk;do
+  rm -rf %d
+done
+
+(1586860121916 - 1586860091886)/60000
+(1586860121916 - 1586859491458)/60000
+
 curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Host: echo.websocket.org" -H "Origin: http://www.websocket.org" http://echo.websocket.org
