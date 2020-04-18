@@ -289,7 +289,7 @@ function setupServers() {
 
     // Client did sent a hearbeat
     client.on('pong', () => {
-      console.log(new Date().getTime(), "PONG", id)
+      // console.log(new Date().getTime(), "PONG", id)
       client.isAlive = true
     })
 
@@ -329,7 +329,7 @@ function setupServers() {
         return client.terminate();
       }
       client.isAlive = false;
-      console.log(new Date().getTime(), "PING", client.upgradeReq.headers['sec-websocket-key'])
+      // console.log(new Date().getTime(), "PING", client.upgradeReq.headers['sec-websocket-key'])
       client.ping(noop);
     })
   }, 30000)

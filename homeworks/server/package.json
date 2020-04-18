@@ -4,8 +4,8 @@
   "description": "HfG Programming Web/WebSocket Server",
   "main": "homeworks.js",
   "scripts": {
-    "start": "./homeworks.sh",
-    "trace": "./homeworks.sh -trace",
+    "start": "nohup ./homeworks.sh > homeworks.log 2>&1 &",
+    "trace": "nohup ./homeworks.sh -trace > homeworks.log 2>&1 &",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

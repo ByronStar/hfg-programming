@@ -1,0 +1,9 @@
+Liebe IG1ler,
+
+herzlich willkommen im 1. Semester des Studiengangs IG. Ich freue mich, Euch im Kurs Programmiersprachen 1 begrüßen zu können.
+
+Damit wir gemeinsam einen guten Start haben, macht bitte Eure Mit-Studierenden auf diesen Post aufmerksam :tada: es gibt hier ein paar wichtige Vorab-Infos zum Kurs!
+
+Hier findet ihr das Starter Paket student.zip (mit dem Kursmaterial und den ersten Aufgaben), das ihr am besten schon vor Kurs beginn auf Euren Rechner kopiert und in einem Ordner Eurer Wahl entpackt. Sollte es damit Probleme geben, können wir diesen Schritt auch gemeinsam im Kurs noch machen.
+
+Das Paket enthält den Ordern student mit allem Notwendigen für das Semester. Die HTML Seite progsp.html könnt ihr im Browser öffnen, sie enthält die notwendigen Erläuterungen zum Kurs und den Voraussetzungen (Atom Editor installieren!) und auch weiterführende Links z.B. auf das gesamte Kursmaterial http://studenten.hfg-gmuend.de/ig1/progsp/index.html.

@@ -29,11 +29,6 @@ Tue Apr 14 2020 12:17:41 GMT+0200 (Central European Summer Time) Homeworks Serve
 1586860272057 'TERM' 'jklgMXAu8dFp2SCuFvK2BA=='
 1586860272059 EXIT <Client jklgMXAu8dFp2SCuFvK2BA== left> (0 clients)
 
-
-for d in adrian.jans alisa.bogukanin anika.schulz benno.staebler felix.rei?ner gianluca.coronato lucas.franz max.schindler svetlana.rodionova tobias.reinhart alina.zimmermann andre?.hieber anita.tapaszto? dominik.vassilakopoulos felix.weber ina.kaller maurice.vater thanh.nguyen vanessa.pieronczyk;do
-  rm -rf %d
-done
-
 (1586860121916 - 1586860091886)/60000
 (1586860121916 - 1586859491458)/60000
 
