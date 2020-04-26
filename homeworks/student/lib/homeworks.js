@@ -30,6 +30,7 @@ var Homeworks = {};
   this.ws = null
   this.gc = gc
   this.aufgabe = 0
+  this.version = 'v1.0.1'
 
   this.updateState = function() {
     if (gc.isReview) {

@@ -186,9 +186,9 @@ function setupServers() {
         switch (pathname) {
           case '/student.id':
             response.writeHead(200, {
-              "Content-Type": "text/html"
+              "Content-Type": "application/octet-stream"
             })
-            response.write(actUrl.searchParams.get(id))
+            response.write(actUrl.query.id)
             response.end()
             break
           case '/studentIds.html':

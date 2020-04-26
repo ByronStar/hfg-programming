@@ -12,7 +12,10 @@ scp ${PORT} server/homeworks.js ${HOST}:${DIR}/server
 # scp ${PORT} server/package.json ${HOST}:${DIR}/server
 # scp ${PORT} server/homeworks.sh ${HOST}:${DIR}/server
 # scp ${PORT} student/favicon.ico ${HOST}:${DIR}/server
-scp ${PORT} server/homeworks.json ${HOST}:${DIR}/server
+# scp ${PORT} server/homeworks.json ${HOST}:${DIR}/server
+
+# scp ${PORT} ${HOST}:${DIR}/server/homeworks.json server
+# scp ${PORT} ${HOST}:${DIR}/server/homeworks.log server
 
 
 # cp student/lib/homeworks.js /Users/benno/Desktop/student/lib
