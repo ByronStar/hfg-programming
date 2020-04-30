@@ -127,11 +127,13 @@ function setupServers() {
   console.log((new Date()) + ' Homeworks Server erreichbar unter http://' + ipAddr + ':' + httpPort)
 
   // Byron:$2a$08$5IZmi9StV.mBmOSmZQ.hfeENTxsGzBa647uJFzbIpRUgSEwdS1L32
+  // Bene:$2a$10$yJv.PbSvcZpc3THj8iPukeEGR7cM/9GoUgKcAnEs4TA90GvPr4eFi
   // ig1:$2a$08$uGD7MtlHnvRQikJLGiUuIuye8dTapGoz2pXSuXyna9FFwUPRPYSIC
   httpsServer = https.createServer(options, function(request, response) {
     // console.log(decodeURIComponent(request.url))
     var userpass = new Buffer((request.headers.authorization || '').split(' ')[1] || '', 'base64').toString();
-    if (bcrypt.compareSync(userpass, '$2a$08$5IZmi9StV.mBmOSmZQ.hfeENTxsGzBa647uJFzbIpRUgSEwdS1L32')) {
+    if (bcrypt.compareSync(userpass, '$2a$08$5IZmi9StV.mBmOSmZQ.hfeENTxsGzBa647uJFzbIpRUgSEwdS1L32') ||
+      bcrypt.compareSync(userpass, '$2a$10$yJv.PbSvcZpc3THj8iPukeEGR7cM/9GoUgKcAnEs4TA90GvPr4eFi')) {
       let actUrl = url.parse(decodeURIComponent(request.url), true)
       let pathname = actUrl.pathname
       switch (pathname) {
@@ -520,6 +522,13 @@ function handleMessage(server, message, id, client) {
           data: state
         }))
         break
+      case 'ADDUSER':
+        console.log(msg.data)
+        if (msg.data.firstname && msg.data.name && msg.data.group) {
+          addUser(msg.data.firstname, msg.data.name, msg.data.group)
+          saveState()
+      }
+        break
       case 'RESTART':
         process.exit(msg.data.rc)
         break
@@ -542,6 +551,25 @@ function handleClose(server, id) {
   if (msgTrace) {
     console.log('%s EXIT <%s> (%d clients)', new Date().getTime(), 'Client ' + id + ' left', (server.clients.length ? server.clients.length : server.clients.size))
   }
+}
+
+function addUser(vorname, name, gruppe) {
+  let id = guid7()
+  let dir = '/' + vorname.toLowerCase() + '.' + name.toLowerCase()
+  state.students[id] = {
+    name: vorname + ' ' + name,
+    group: gruppe,
+    date: new Date().getTime(),
+    dir: dir,
+    uploads: 0,
+    hw: [],
+    res: []
+  }
+  fs.mkdirSync('../students' + dir);
+  fs.mkdirSync('../students' + dir + '/js');
+  fs.symlinkSync('../shared/css', '../students' + dir + '/css', 'dir')
+  fs.symlinkSync('../shared/img', '../students' + dir + '/img', 'dir')
+  fs.symlinkSync('../shared/lib', '../students' + dir + '/lib', 'dir')
 }
 
 function createState() {
@@ -573,22 +601,7 @@ function createState() {
       lines.forEach(l => {
         if (l.length > 0 && !l.startsWith('#')) {
           let p = l.split(/;/)
-          let id = guid7()
-          let dir = '/' + p[13].toLowerCase() + '.' + p[12].toLowerCase()
-          state.students[id] = {
-            name: p[13] + ' ' + p[12],
-            group: p[9],
-            date: new Date().getTime(),
-            dir: dir,
-            uploads: 0,
-            hw: [],
-            res: []
-          }
-          fs.mkdirSync('../students' + dir);
-          fs.mkdirSync('../students' + dir + '/js');
-          fs.symlinkSync('../shared/css', '../students' + dir + '/css', 'dir')
-          fs.symlinkSync('../shared/img', '../students' + dir + '/img', 'dir')
-          fs.symlinkSync('../shared/lib', '../students' + dir + '/lib', 'dir')
+          addUser(p[13], p[12], p[9])
         }
       })
       saveState()

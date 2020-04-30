@@ -9,6 +9,7 @@ hfg-programming.iml
 node_modules
 homeworks.json*
 homeworks.log*
+hwadmin.js
 data/osc
 aprx_pos_planets.pdf
 index.html.1
