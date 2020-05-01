@@ -3,6 +3,7 @@
 let httpPort = 11203
 let httpsPort = 11204
 
+let actVersion = 'v1.0.1'
 let msgTrace = false
 
 const WebSocket = require('ws')
@@ -162,6 +163,9 @@ function setupServers() {
           response.write(getIds())
           response.end()
           break
+        case '/homeworks.js':
+          sendResponse(response, '../students/shared/lib/homeworks.js', "application/octet-stream")
+          break
         case '/state.json':
           response.writeHead(200, {
             "Content-Type": contentTypesByExtension['.json']
@@ -199,6 +203,9 @@ function setupServers() {
             })
             response.write(getIds())
             response.end()
+            break
+          case '/homeworks.js':
+            sendResponse(response, '../students/shared/lib/homeworks.js', "application/octet-stream")
             break
           default:
             response.writeHead(404, {
@@ -336,16 +343,21 @@ function setupServers() {
     })
   }, 30000)
 
-  if (firstTime && ipAddr != 'localhost') {
-    if (state.domain) {
-      announce("Neuer externer Homeworks Server `https://" + state.domain + ":" + httpsPort + "`", "#99_benno")
-    } else {
-      announce("Neuer lokaler Homeworks Server " + ipAddr + " - <https://" + ipAddr + ":" + httpsPort + "|Ausprobieren> (wenn Du im gleichen Netz bist)", "#99_benno")
-    }
+  if (actVersion != state.version) {
+    announce("Eine neue Version der Homeworks Library ist verfügbar. Bitte von https://" + state.domain + ":" + httpsPort + "/homeworks.js herunterladen und in euren \"student/lib\" Ordner kopieren.", "#2020ss-ig1-programmiersprachen-1")
+    state.version = actVersion
+    saveState()
   }
+  // if (firstTime && ipAddr != 'localhost') {
+  //   if (state.domain) {
+  //     announce("Neuer externer Homeworks Server `https://" + state.domain + ":" + httpsPort + "`", "#99_benno")
+  //   } else {
+  //     announce("Neuer lokaler Homeworks Server " + ipAddr + " - <https://" + ipAddr + ":" + httpsPort + "|Ausprobieren> (wenn Du im gleichen Netz bist)", "#99_benno")
+  //   }
+  // }
 }
 
-function sendResponse(response, filename) {
+function sendResponse(response, filename, contentType) {
   fs.exists(filename, function(exists) {
     if (!exists) {
       response.writeHead(404, {
@@ -371,8 +383,10 @@ function sendResponse(response, filename) {
       }
 
       let headers = {}
-      let contentType = contentTypesByExtension[path.extname(filename)]
-      if (contentType) headers["Content-Type"] = contentType
+      contentType = contentType || contentTypesByExtension[path.extname(filename)]
+      if (contentType) {
+        headers["Content-Type"] = contentType
+      }
       response.writeHead(200, headers)
       response.write(file, "binary")
       response.end()
@@ -419,6 +433,7 @@ function handleMessage(server, message, id, client) {
     active[ip] = true
     switch (msg.id) {
       case 'JOIN':
+        let cVersion = msg.data.version || 'v1.0.0'
         if (msg.data.student) {
           student = msg.data.student
           if (!(student in state.students)) {
@@ -430,11 +445,19 @@ function handleMessage(server, message, id, client) {
               hw: []
             }
           } else {
-            client.send(JSON.stringify({
-              id: 'INFO',
-              from: 'SERVER',
-              data: state.students[student].res[msg.data.aufgabe]
-            }))
+            if (cVersion == 'v1.0.0') {
+              client.send(JSON.stringify({
+                id: 'INFO',
+                from: 'SERVER',
+                data: state.students[student].res[msg.data.aufgabe]
+              }))
+            } else {
+              client.send(JSON.stringify({
+                id: 'INFO',
+                from: 'SERVER',
+                data: { res: state.students[student].res[msg.data.aufgabe], version: actVersion }
+              }))
+            }
           }
           if (!(student in state.volatile)) {
             state.volatile[student] = {}
@@ -462,6 +485,7 @@ function handleMessage(server, message, id, client) {
       case 'STORE':
         student = msg.data.student
         let file = msg.data.file
+        file = file.replace(/.*\/student\//, '/')
         let part = file.endsWith('.js') ? 'js' : 'html'
         if (state.volatile[student].act) {
           state.volatile[student].act[part] = file
@@ -527,7 +551,7 @@ function handleMessage(server, message, id, client) {
         if (msg.data.firstname && msg.data.name && msg.data.group) {
           addUser(msg.data.firstname, msg.data.name, msg.data.group)
           saveState()
-      }
+        }
         break
       case 'RESTART':
         process.exit(msg.data.rc)
@@ -646,6 +670,7 @@ function saveState() {
 }
 
 function announce(info, channel) {
+  console.log(info, channel)
   if (state.slack) {
     if (null == channel) {
       channel = "#programmieren"

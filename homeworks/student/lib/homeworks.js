@@ -159,11 +159,17 @@ var Homeworks = {};
       if (recvNode) {
         recvNode.removeEventListener('click', receive)
       }
-      statusNode.innerHTML = gc.connect ?
-        (gc.student ?
-          (gc.online ? (gc.res ? modal + '<span id="receive" style="cursor: pointer;font-size: 2em;">📥</span>' : '') + '<span id="send" style="cursor: pointer;font-size: 2em;">📤</span>' : '<span id="send" style="cursor: pointer;font-size: 2em;">🔴</span>') :
-          'Datei "data/student.id" fehlt <a href="https://' + gc.server + ':11204/studentIds.html" target="_blank">⚠️</a>') :
-        '<span id="send" style="cursor: pointer;font-size: 2em;">🔗</span>'
+      statusNode.innerHTML = location.protocol != 'file:' ?
+        (gc.connect ?
+          (gc.student ?
+            (gc.online ?
+              (gc.version == Homeworks.version ?
+                (gc.res ? modal + '<span id="receive" style="cursor: pointer;font-size: 2em;">📥</span>' : '') + '<span id="send" style="cursor: pointer;font-size: 2em;">📤</span>' :
+                'Bitte neue Homeworks Version "' + gc.version + '" herunterladen und nach "student/lib" kopieren <a href="https://' + gc.server + ':11204/homeworks.js" target="_blank">🎁</a>') :
+              '<span id="send" style="cursor: pointer;font-size: 2em;">🔴</span>') :
+            'Datei "data/student.id" fehlt <a href="https://' + gc.server + ':11204/studentIds.html" target="_blank">⚠️</a>') :
+          '<span id="send" style="cursor: pointer;font-size: 2em;">🔗</span>') :
+        '<span id="send" style="cursor: pointer;font-size: 2em;">🚫</span>'
       sendNode = document.getElementById('send')
       if (sendNode) {
         sendNode.addEventListener('click', process)
@@ -191,19 +197,23 @@ var Homeworks = {};
   }
 
   function process() {
-    if (gc.connect) {
-      if (gc.student) {
-        if (gc.online) {
-          publish()
+    if (location.protocol != 'file:') {
+      if (gc.connect) {
+        if (gc.student) {
+          if (gc.online) {
+            publish()
+          } else {
+            Homeworks.wsinit()
+          }
         } else {
-          Homeworks.wsinit()
+          Homeworks.getStudentId().then(res => Homeworks.wsinit()).catch(error => alert(error))
         }
       } else {
+        gc.connect = true
         Homeworks.getStudentId().then(res => Homeworks.wsinit()).catch(error => alert(error))
       }
     } else {
-      gc.connect = true
-      Homeworks.getStudentId().then(res => Homeworks.wsinit()).catch(error => alert(error))
+      alert("Du mußt die Seite über den Atom-Live-Server öffnen und nicht aus dem Dateisystem, wenn Du die automatische Hausaufgaben-Abgabe nutzen willst.")
     }
   }
 
@@ -311,7 +321,8 @@ var Homeworks = {};
         sendState('JOIN', {
           student: gc.student,
           aufgabe: Homeworks.aufgabe,
-          page: location.pathname
+          page: location.pathname,
+          version: Homeworks.version
         })
         break
       case 'EXIT':
@@ -347,7 +358,8 @@ var Homeworks = {};
       case 'INFO':
         console.log(msg.data)
         if (msg.data && !gc.isReview) {
-          gc.res = msg.data
+          gc.res = msg.data.res
+          gc.version = msg.data.version
           Homeworks.showStatus()
         }
         break
@@ -825,7 +837,7 @@ var Homeworks = {};
   }
 }).apply(Homeworks)
 document.addEventListener("DOMContentLoaded", function() {
-  if (location.hostname.match(/localhost|127.0.0.1/)) {
+  if (location.protocol == 'file:' || location.hostname.match(/localhost|127.0.0.1/)) {
     Homeworks.createStatusNode()
   } else {
     // console.log(location)
