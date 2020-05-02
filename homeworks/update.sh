@@ -31,6 +31,3 @@ wscat -c wss://hfg.hopto.org:11204 -x '{"id":"RESTART","from":"wscat script","ts
 scp ${PORT} ${HOST}:${DIR}/server/homeworks.log server
 
 # wscat -c wss://hfg.hopto.org:11204 -x '{"id":"ADDUSER","from":"wscat script","ts":'$(date +%s)',"data":{"firstname":"Benedikt","name":"Groß","group":"IG1"}}'
-
-# curl -X POST --data-urlencode "payload={\"channel\":\"#2020ss-ig1-programmiersprachen-1\",\"username\":\"HomeworksServer\",\"text\":\"Es gibt eine neue Version der Homeworks Library. Bitte von https://hfg.hopto.org:11204/homeworks.js herunterladen und in euren `student/lib` Ordner kopieren.\"}" https://hooks.slack.com/services/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
-# curl -X POST --data-urlencode "payload={\"channel\":\"@benno.staebler\",\"username\":\"HomeworksServer\",\"text\":\"Es gibt eine neue Version der Homeworks Library. Bitte von https://hfg.hopto.org:11204/homeworks.js herunterladen und in euren 'student/lib' Ordner kopieren.\"}" https://hooks.slack.com/services/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
