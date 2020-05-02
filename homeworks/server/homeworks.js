@@ -344,7 +344,8 @@ function setupServers() {
   }, 30000)
 
   if (actVersion != state.version) {
-    announce("Eine neue Version der Homeworks Library ist verfügbar. Bitte von https://" + state.domain + ":" + httpsPort + "/homeworks.js herunterladen und in euren \"student/lib\" Ordner kopieren.", "#2020ss-ig1-programmiersprachen-1")
+    announce("Es gibt eine neue Version der Homeworks Library. Bitte von https://" + state.domain + ":" + httpsPort + "/homeworks.js herunterladen und in euren 'student/lib' Ordner kopieren.", "#2020ss-ig1-programmiersprachen-1")
+    //announce("Es gibt eine neue Version der Homeworks Library. Bitte von https://" + state.domain + ":" + httpsPort + "/homeworks.js herunterladen und in euren 'student/lib' Ordner kopieren.", "@benno.staebler")
     state.version = actVersion
     saveState()
   }
@@ -660,17 +661,18 @@ function saveState() {
       data: state
     }))
   });
-  fs.writeFile(stateFile, JSON.stringify(state), { encoding: 'utf8', flag: 'w' }, (err, data) => {
-    if (err) {
-      console.log(err)
-    } else {
-      // console.log(stateFile + " updated")
-    }
-  })
+  fs.writeFileSync(stateFile, JSON.stringify(state), { encoding: 'utf8', flag: 'w' })
+  // fs.writeFile(stateFile, JSON.stringify(state), { encoding: 'utf8', flag: 'w' }, (err, data) => {
+  //   if (err) {
+  //     console.log(err)
+  //   } else {
+  //     // console.log(stateFile + " updated")
+  //   }
+  // })
 }
 
 function announce(info, channel) {
-  console.log(info, channel)
+  // console.log(info, channel)
   if (state.slack) {
     if (null == channel) {
       channel = "#programmieren"
@@ -679,8 +681,8 @@ function announce(info, channel) {
     let data = {
       channel: channel,
       username: "HomeworksServer",
-      text: info,
-      icon_emoji: ":ghost:"
+      text: info
+      // icon_emoji: ":ghost:"
       // ,attachments: [{
       //   fallback: "New open task [Urgent]: <http://url_to_task|Test out Slack message attachments>",
       //   pretext: "New open task [Urgent]: <http://url_to_task|Test out Slack message attachments>",

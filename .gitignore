@@ -7,7 +7,7 @@ hfg-programming.iml
 /img/globe/3*
 /img/globe/galaxy_starfield.png
 node_modules
-homeworks.json*
+homeworks*.json
 homeworks.log*
 hwadmin.js
 data/osc
