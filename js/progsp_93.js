@@ -1,4 +1,4 @@
-let dirNodeL, dirNodeR, serverL, serverR
+let dirNodeL, dirNodeR, serverL, serverR, tableL, tableR
 let colors = [
   "#fd9400", "#000da3", "#1ed013", "#ff4cb3", "#009634", "#f70074", "#01b48a", "#c30018", "#0066dd", "#d5b500",
   "#002d8a", "#ffb134", "#7384ff", "#b4d256", "#42005b", "#818d00", "#9084ff", "#235300", "#ff90f8", "#042e00",
@@ -8,10 +8,10 @@ let colors = [
 let charts = [
   { id: 'chart1', chart: null, datasets: [], config: {}, title: 'System Utilization', xLabel: 'Minutes', yLabel: 'Percent', yMax: 100, convert: d => Math.round(d * 100), selected: ['SPU_CPU', 'SPU_DISK', 'SPU_FABRIC', 'SPU_MEMORY'] },
   { id: 'chart2', chart: null, datasets: [], config: {}, title: 'Scheduler SN', xLabel: 'Minutes', yLabel: 'Count', yMax: 50, convert: d => d, selected: ["PLANS_STARTED", "PLANS_FINISHED"] },
-  { id: 'chart3', chart: null, datasets: [], config: {}, title: 'Scheduler GRA', xLabel: 'Minutes', yLabel: 'Count', yMax: 20, convert: d => d, selected: ["PLANS_STARTED", "PLANS_FINISHED"] },
+  { id: 'chart3', chart: null, datasets: [], config: {}, title: 'Scheduler GRA', xLabel: 'Minutes', yLabel: 'Count', yMax: 20, convert: d => d, selected: ["PLANS_RUNNING_SHORT", "PLANS_RUNNING_LONG"] },
   { id: 'chart4', chart: null, datasets: [], config: {}, title: 'System Utilization', xLabel: 'Minutes', yLabel: 'Percent', yMax: 100, convert: d => Math.round(d * 100), selected: ['SPU_CPU', 'SPU_DISK', 'SPU_FABRIC', 'SPU_MEMORY'] },
   { id: 'chart5', chart: null, datasets: [], config: {}, title: 'Scheduler SN', xLabel: 'Minutes', yLabel: 'Count', yMax: 50, convert: d => d, selected: ["PLANS_STARTED", "PLANS_FINISHED"] },
-  { id: 'chart6', chart: null, datasets: [], config: {}, title: 'Scheduler GRA', xLabel: 'Minutes', yLabel: 'Count', yMax: 20, convert: d => d, selected: ["PLANS_STARTED", "PLANS_FINISHED"] }
+  { id: 'chart6', chart: null, datasets: [], config: {}, title: 'Scheduler GRA', xLabel: 'Minutes', yLabel: 'Count', yMax: 20, convert: d => d, selected: ["PLANS_RUNNING_SHORT", "PLANS_RUNNING_LONG"] }
 ]
 let interval = 10
 let filter
@@ -27,22 +27,21 @@ function init() {
   serverR = url.searchParams.get("serverR") || ''
   document.getElementById('infoL').innerHTML = serverL == '' ? url.hostname : serverL
   document.getElementById('infoR').innerHTML = serverR == '' ? url.hostname : serverR
-
-
   console.log("server", serverL, serverR)
   dirNodeL = document.getElementById('runDirL')
   dirNodeR = document.getElementById('runDirR')
+  tableL = document.getElementById('tableL')
+  tableR = document.getElementById('tableR')
+
   Chart.defaults.global.defaultFontColor = 'LightGray'
   Chart.defaults.global.elements.line.borderWidth = 2
   Chart.defaults.global.elements.point.radius = 2
   if (location.hostname.match(/localhost|127.0.0.1/) && serverL == '' && serverR == '') {
-    // fake directory data for testing
-    loadData('data/wlm/output.html').then(data => readDirectory(data))
     loadSampleData()
   } else {
-    loadData(serverL + 'data/output/').then(data => readDirectory(data, serverL, dirNodeL, 0))
+    loadData(serverL + 'data/output/').then(data => readDirectory(data, serverL, dirNodeL, 0, tableL))
     if (serverL != serverR) {
-      loadData(serverR + 'data/output/').then(data => readDirectory(data, serverR, dirNodeR, 3))
+      loadData(serverR + 'data/output/').then(data => readDirectory(data, serverR, dirNodeR, 3, tableR))
     }
   }
   // loadData('http://dashdb-q100m-h1.svl.ibm.com:8000/data/output/').then(data => console.log(data))
@@ -56,9 +55,11 @@ function loadSampleData() {
   loadData(serverR + 'data/wlm/capture_vt_system_util.out').then(data => createChart(data, charts[3]))
   loadData(serverR + 'data/wlm/capture_vt_sched_sn.out').then(data => createChart(data, charts[4]))
   loadData(serverR + 'data/wlm/capture_vt_sched_gra.out').then(data => createChart(data, charts[5]))
+  loadData(serverL + 'data/wlm/test_time.stats', true).then(data => createSummaryChart(data, tableL))
+  loadData(serverL + 'data/wlm/test_time.statss', true).then(data => createSummaryChart(data, tableR))
 }
 
-function readDirectory(data, server, dirNode, c) {
+function readDirectory(data, server, dirNode, c, tblNode) {
   let cnt = 0
   let lines = data.split(/\r?\n/)
   lines.forEach((line, l) => {
@@ -86,16 +87,45 @@ function readDirectory(data, server, dirNode, c) {
       loadData(server + 'data/output/' + runDir + '/capture_vt_system_util.out').then(data => createChart(data, charts[c + 0]))
       loadData(server + 'data/output/' + runDir + '/capture_vt_sched_sn.out').then(data => createChart(data, charts[c + 1]))
       loadData(server + 'data/output/' + runDir + '/capture_vt_sched_gra.out').then(data => createChart(data, charts[c + 2]))
+      loadData(server + 'data/output/' + runDir + '/test_time.stats', true).then(data => createSummaryChart(data, tblNode))
       if (cnt > 1 && serverL == serverR) {
         runDir = dirNodeR.value
         loadData(server + 'data/output/' + runDir + '/capture_vt_system_util.out').then(data => createChart(data, charts[3]))
         loadData(server + 'data/output/' + runDir + '/capture_vt_sched_sn.out').then(data => createChart(data, charts[4]))
         loadData(server + 'data/output/' + runDir + '/capture_vt_sched_gra.out').then(data => createChart(data, charts[5]))
+        loadData(server + 'data/output/' + runDir + '/test_time.stats', true).then(data => createSummaryChart(data, tableR))
       }
     } else {
       loadSampleData()
     }
   }
+}
+
+function createSummaryChart(data, parent) {
+  let table = createElement(clearElement(parent), 'table');
+  table.setAttribute('style', 'text-align:right;margin-top: 10px;')
+  table.setAttribute('border', '1px')
+  let lines = data.split(/\r?\n/)
+  lines.forEach((line, l) => {
+    if (line.length > 0 && line.startsWith('STATS_LEVEL')) {
+      let columns = line.split(/ +\| +/).map(d => d.trim());
+      let row = table.insertRow(-1)
+      for (let i = 3; i < columns.length - 4; i++) {
+        let cell = row.insertCell(-1)
+        // cell.style.backgroundColor = hc.n
+        cell.innerHTML = columns[i]
+      }
+    }
+    if (line.length > 0 && line.startsWith('GROUP_WORKLOAD_FILE_LEVEL')) {
+      let d = line.split(/ +\| +/).map(n => n.trim())
+      let row = table.insertRow(-1)
+      for (let i = 3; i < d.length - 4; i++) {
+        let cell = row.insertCell(-1)
+        // cell.style.backgroundColor = hc.n
+        cell.innerHTML = d[i]
+      }
+    }
+  })
 }
 
 function createChart(data, chart) {
@@ -110,10 +140,10 @@ function createChart(data, chart) {
   chart.config.options.title.text = chart.title;
   chart.config.options.scales.xAxes[0].scaleLabel.labelString = chart.xLabel;
   chart.config.options.scales.yAxes[0].scaleLabel.labelString = chart.yLabel;
-    chart.config.options.scales.yAxes[0].ticks = {
-        suggestedMin: 0,
-        suggestedMax: chart.yMax
-    }
+  chart.config.options.scales.yAxes[0].ticks = {
+    suggestedMin: 0,
+    suggestedMax: chart.yMax
+  }
 
   let color = '#0000FF'
   chart.average = {
@@ -184,6 +214,7 @@ function refreshL() {
   loadData(serverL + 'data/output/' + runDir + '/capture_vt_system_util.out').then(data => updateChart(data, charts[0]))
   loadData(serverL + 'data/output/' + runDir + '/capture_vt_sched_sn.out').then(data => updateChart(data, charts[1]))
   loadData(serverL + 'data/output/' + runDir + '/capture_vt_sched_gra.out').then(data => updateChart(data, charts[2]))
+  loadData(serverL + 'data/output/' + runDir + '/test_time.stats', true).then(data => createSummaryChart(data, tableL))
 }
 
 function refreshR() {
@@ -191,6 +222,7 @@ function refreshR() {
   loadData(serverR + 'data/output/' + runDir + '/capture_vt_system_util.out').then(data => updateChart(data, charts[3]))
   loadData(serverR + 'data/output/' + runDir + '/capture_vt_sched_sn.out').then(data => updateChart(data, charts[4]))
   loadData(serverR + 'data/output/' + runDir + '/capture_vt_sched_gra.out').then(data => updateChart(data, charts[5]))
+  loadData(serverR + 'data/output/' + runDir + '/test_time.stats', true).then(data => createSummaryChart(data, tableR))
 }
 
 function updateChart(data, chart) {
@@ -225,7 +257,9 @@ function updateChart(data, chart) {
   }
 }
 
-function loadData(url) {
+function loadData(url, silent) {
+  // silent = silent == true | false
+  // console.log(silent)
   return new Promise((resolve, reject) => {
     SatTrackUtils.ajax({
       type: 'GET',
@@ -234,7 +268,9 @@ function loadData(url) {
       success: (response, context) => resolve(response),
       error: (error, headers) => {
         console.log(error)
-        alert('Error loading "' + url + '": ' + error.statusText + ', ' + error.status)
+        if (!silent) {
+          alert('Error loading "' + url + '": ' + error.statusText + ', ' + error.status)
+        }
       }
     })
   })
@@ -297,6 +333,12 @@ let baseOptions = {
       }
     }]
   }
+}
+
+function clearElement(elem) {
+  var copy = elem.cloneNode(false);
+  elem.parentNode.replaceChild(copy, elem);
+  return copy;
 }
 
 function createElement(parent, type, attrList) {

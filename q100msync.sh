@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
 HOST=nz@dashdb-q100m-h1.svl.ibm.com
 DIR=/export/home/nz/WLM
-#scp progsp_93.html ${HOST}:${DIR}/analyse
+DIR=/export/home/nz/nz-test/sqltest_root/WLM
+scp progsp_93.html ${HOST}:${DIR}/analyse
 scp js/progsp_93.js ${HOST}:${DIR}/analyse/js
 #scp analyseServer.py ${HOST}:${DIR}/analyse
+#scp ${HOST}:/export/home/nz/nz-test/tools/perl/WLM/JobRunner.pm JobRunner_M.pm
+# scp ${HOST}:/export/home/nz/nz-test/tools/perl/WLM/JobRunner.pm.orig JobRunner_O.pm
+#scp ${HOST}:/export/home/nz/nz-test/tools/perl/WLM/ResultAnalysis.pm ResultAnalysis_M.pm
+# scp ${HOST}:/export/home/nz/nz-test/tools/perl/WLM/ResultAnalysis.pm.orig ResultAnalysis_O.pm
 
-HOST=root@hqa-mpv4-14.swg.usma.ibm.com
-DIR=/mount/pag-data02/benno
+#HOST=root@hqa-mpv4-14.swg.usma.ibm.com
+#DIR=/mount/pag-data02/benno
 #scp progsp_93.html ${HOST}:${DIR}/analyse
-scp js/progsp_93.js ${HOST}:${DIR}/analyse/js
+## X scp js/progsp_93.js ${HOST}:${DIR}/analyse/js
 #scp analyseServer.py ${HOST}:${DIR}/analyse
 #scp js/xutils.js ${HOST}:${DIR}/analyse/js
 #scp img/favicon.ico ${HOST}:${DIR}/analyse/img
@@ -17,15 +22,18 @@ scp js/progsp_93.js ${HOST}:${DIR}/analyse/js
 #scp data/wlm/capture_vt_sched_sn.out ${HOST}:${DIR}/analyse/data/wlm
 #scp data/wlm/capture_vt_sched_gra.out ${HOST}:${DIR}/analyse/data/wlm
 
-#scp ${HOST}:${DIR}/startrun.lst ./startrun.lst
-
 # export TST_ROOT=/export/home/nz/nz_test/sqltest_root
 # export TEST_NAME=wlm_install_test
 # perl wlm.pl --stress --groupDetails='g1:10-100-N:dro:1,g2:10-100-N:minianalytics:1,g3:10-100-N:load:1' --testDuration=60 --graHorizon=1800 --validate='gra' > ./logfiles/$TEST_NAME.log 2>&1
 
 HOST=root@9.18.74.179
 DIR=/root/benno
-#scp progsp_93.html ${HOST}:${DIR}/analyse
+#scp ${HOST}:${DIR}/check/tools/perl/WLM/JobRunner.pm JobRunner_I.pm
+#scp ${HOST}:${DIR}/check/tools/perl/WLM/ResultAnalysis.pm ResultAnalysis_I.pm
+#scp JobRunner_M.pm ${HOST}:${DIR}/JobRunner_M.pm
+#scp ResultAnalysis_M.pm ${HOST}:${DIR}/ResultAnalysis_M.pm
+
+scp progsp_93.html ${HOST}:${DIR}/analyse
 scp js/progsp_93.js ${HOST}:${DIR}/analyse/js
 #scp analyseServer.py ${HOST}:${DIR}/analyse
 #zip analyse.zip progsp_93.html js/progsp_93.js js/xutils.js img/favicon.ico lib/Chart.min.js data/wlm/capture_vt_system_util.out data/wlm/capture_vt_sched_sn.out data/wlm/capture_vt_sched_gra.out
