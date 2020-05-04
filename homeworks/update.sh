@@ -27,10 +27,12 @@ PORT=
 # scp ${PORT} server/homeworks.sh ${HOST}:${DIR}/server
 
 #scp ${PORT} server/homeworks.json ${HOST}:${DIR}/server
-#scp ${PORT} ${HOST}:${DIR}/server/homeworks.json server
-scp ${PORT} server/homeworks.js ${HOST}:${DIR}/server
-wscat -c wss://hfg.hopto.org:11204 -x '{"id":"RESTART","from":"wscat script","ts":'$(date +%s)',"data":{"rc":0}}'
+scp ${PORT} ${HOST}:${DIR}/server/homeworks.json server
+#scp ${PORT} server/homeworks.js ${HOST}:${DIR}/server
+#wscat -c wss://hfg.hopto.org:11204 -x '{"id":"RESTART","from":"wscat script","ts":'$(date +%s)',"data":{"rc":0}}'
 # scp ${PORT} ${HOST}:${DIR}/server/homeworks.log_20200502002056 server
+# scp ${PORT} ${HOST}:${DIR}/server/homeworks.log_20200502083227 server
 scp ${PORT} ${HOST}:${DIR}/server/homeworks.log server
+scp ${PORT} ${HOST}:${DIR}/students.zip .
 
 # wscat -c wss://hfg.hopto.org:11204 -x '{"id":"ADDUSER","from":"wscat script","ts":'$(date +%s)',"data":{"firstname":"Benedikt","name":"Groß","group":"IG1"}}'

@@ -510,6 +510,9 @@ function handleMessage(server, message, id, client) {
         //console.log(msg.data.code, buff, buff.toString(), buff.toString('utf-8'))
         let dir = '../students' + state.students[student].dir + path.dirname(file);
         if (!fs.existsSync(dir)) {
+          if (!fs.existsSync(state.students[student].dir)) {
+            setupUserDir(state.students[student].dir)
+          }
           mkDir(dir);
         }
         fs.writeFile('../students' + state.students[student].dir + file, buff.toString('utf-8'), 'utf8', (err, data) => {
@@ -590,6 +593,10 @@ function addUser(vorname, name, gruppe) {
     hw: [],
     res: []
   }
+  setupUserDir(dir)
+}
+
+function setupUserDir(dir) {
   fs.mkdirSync('../students' + dir);
   fs.mkdirSync('../students' + dir + '/js');
   fs.symlinkSync('../shared/css', '../students' + dir + '/css', 'dir')
