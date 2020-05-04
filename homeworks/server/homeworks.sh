@@ -10,3 +10,5 @@ while [ $rc = 0 ]; do
   node homeworks.js $*
   rc=$?
 done
+
+curl -X POST --data-urlencode "payload={\"channel\": \"@benno.staebler\", \"username\": \"HomeworksServer\", \"text\": \"HomeworksServer wurde unerwartet beendet!\", \"icon_emoji\": \":ghost:\"}" https://hooks.slack.com/services/$(cat slack.txt)

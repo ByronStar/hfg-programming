@@ -23,8 +23,11 @@ PORT=
 # scp ${PORT} student/lib/homeworks.js ${HOST}:${DIR}/students/shared/lib
 # zip -r student.zip student -x */*neu.html */data/*.id
 
-# scp ${PORT} server/homeworks.json ${HOST}:${DIR}/server
-# scp ${PORT} ${HOST}:${DIR}/server/homeworks.json server
+# wscat -c wss://hfg.hopto.org:11204 -x '{"id":"RESTART","from":"wscat script","ts":'$(date +%s)',"data":{"rc":-1}}'
+# scp ${PORT} server/homeworks.sh ${HOST}:${DIR}/server
+
+#scp ${PORT} server/homeworks.json ${HOST}:${DIR}/server
+#scp ${PORT} ${HOST}:${DIR}/server/homeworks.json server
 scp ${PORT} server/homeworks.js ${HOST}:${DIR}/server
 wscat -c wss://hfg.hopto.org:11204 -x '{"id":"RESTART","from":"wscat script","ts":'$(date +%s)',"data":{"rc":0}}'
 # scp ${PORT} ${HOST}:${DIR}/server/homeworks.log_20200502002056 server
