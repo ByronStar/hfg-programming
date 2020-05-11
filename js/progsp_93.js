@@ -102,7 +102,10 @@ function readDirectory(data, server, dirNode, c, tblNode) {
 }
 
 function createSummaryChart(data, parent) {
-  let table = createElement(clearElement(parent), 'table');
+  if (parent.children.length > 0) {
+    parent.removeChild(parent.children[0])
+  }
+  let table = createElement(parent, 'table')
   table.setAttribute('style', 'text-align:right;margin-top: 10px;')
   table.setAttribute('border', '1px')
   let lines = data.split(/\r?\n/)

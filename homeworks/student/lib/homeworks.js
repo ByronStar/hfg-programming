@@ -30,7 +30,7 @@ var Homeworks = {};
   this.ws = null
   this.gc = gc
   this.aufgabe = 0
-  this.version = 'v1.0.1'
+  this.version = 'v1.0.2'
 
   this.updateState = function() {
     if (gc.isReview) {
@@ -52,6 +52,7 @@ var Homeworks = {};
     let url = new URL(window.location)
     gc.student = url.searchParams.get("id")
     gc.hw = url.searchParams.get("hw")
+    gc.view = url.searchParams.get("view")
     Homeworks.wsinit()
     window.addEventListener('keydown', onKeyDown)
   }
@@ -366,18 +367,43 @@ var Homeworks = {};
       case 'STATE':
         let state = msg.data
         let list = ''
-        for (let id in state.students) {
-          list += '<li>' + state.students[id].name
-          list += '<ol>'
-          state.students[id].hw.forEach((hw, h) => {
-            let actUrl = 'https://' + state.domain + ':' + httpsPort + state.students[id].dir + hw.html + '?id=' + id + '&hw=' + h
-            let res = state.students[id].res[hw.aufgabe]
-            list += '<li>' + (!res || hw.date > res.date ? ' 🚦' : ' ✅') + ' <img src="shared/img/' + (res ? res.icon : 'x.png') + '"> <a href="' + actUrl + '" target="_blank">' + hw.html + '</a>'
-            list += (res ? ' ' + res.fb : '') + ' ( hw=' + hw.aufgabe + ', v' + hw.version + ', ' + new Date(hw.date).toLocaleString() + (res ? ', ' + new Date(res.date).toLocaleString() : '') + ' )'
-          })
-          list += '</ol>'
-          document.getElementById('hwlist').innerHTML = list
+        if (gc.view == 'table') {
+          list = '<table border="1"><tr><th>Name</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>Feedback</th></tr>'
+          for (let id in state.students) {
+            list += '<tr><td>' + state.students[id].name + '</td>'
+            let fb = '-'
+            for (let a = 1; a < 8; a++) {
+              let icon = 'x.png'
+              state.students[id].hw.forEach((hw, h) => {
+                if (a == hw.aufgabe) {
+                  // let actUrl = 'https://' + state.domain + ':' + httpsPort + state.students[id].dir + hw.html + '?id=' + id + '&hw=' + h
+                  let res = state.students[id].res[hw.aufgabe]
+                  if (res) {
+                    fb = res.fb
+                    icon = res.icon
+                  }
+                }
+              })
+              list += '<td><img src="shared/img/' + icon + '"></td>'
+            }
+            list += '<td>' + fb + '</td>'
+            list += '</tr>'
+          }
+          list += '</table>'
+        } else {
+          for (let id in state.students) {
+            list += '<li>' + state.students[id].name
+            list += '<ol>'
+            state.students[id].hw.forEach((hw, h) => {
+              let actUrl = 'https://' + state.domain + ':' + httpsPort + state.students[id].dir + hw.html + '?id=' + id + '&hw=' + h
+              let res = state.students[id].res[hw.aufgabe]
+              list += '<li>' + (!res || hw.date > res.date ? ' 🚦' : ' ✅') + ' <img src="shared/img/' + (res ? res.icon : 'x.png') + '"> <a href="' + actUrl + '" target="_blank">' + hw.html + '</a>'
+              list += (res ? ' ' + res.fb : '') + ' ( hw=' + hw.aufgabe + ', v' + hw.version + ', ' + new Date(hw.date).toLocaleString() + (res ? ', ' + new Date(res.date).toLocaleString() : '') + ' )'
+            })
+            list += '</ol>'
+          }
         }
+        document.getElementById('hwlist').innerHTML = list
         if (!msgTrace) {
           console.log("REC", msg)
         }
