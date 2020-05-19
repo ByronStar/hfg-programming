@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 HOST=nz@dashdb-q100m-h1.svl.ibm.com
 DIR=/export/home/nz/WLM
-DIR=/export/home/nz/nz-test/sqltest_root/WLM
-scp progsp_93.html ${HOST}:${DIR}/analyse
+#DIR=/export/home/nz/nz-test/sqltest_root/WLM
+# scp progsp_93.html ${HOST}:${DIR}/analyse
 scp js/progsp_93.js ${HOST}:${DIR}/analyse/js
 #scp analyseServer.py ${HOST}:${DIR}/analyse
 #scp ${HOST}:/export/home/nz/nz-test/tools/perl/WLM/JobRunner.pm JobRunner_M.pm
@@ -33,11 +33,15 @@ DIR=/root/benno
 #scp JobRunner_M.pm ${HOST}:${DIR}/JobRunner_M.pm
 #scp ResultAnalysis_M.pm ${HOST}:${DIR}/ResultAnalysis_M.pm
 
-scp progsp_93.html ${HOST}:${DIR}/analyse
-scp js/progsp_93.js ${HOST}:${DIR}/analyse/js
+#scp progsp_93.html ${HOST}:${DIR}/analyse
+#scp js/progsp_93.js ${HOST}:${DIR}/analyse/js
 #scp analyseServer.py ${HOST}:${DIR}/analyse
-#zip analyse.zip progsp_93.html js/progsp_93.js js/xutils.js img/favicon.ico lib/Chart.min.js data/wlm/capture_vt_system_util.out data/wlm/capture_vt_sched_sn.out data/wlm/capture_vt_sched_gra.out
-#scp analyse.zip ${HOST}:${DIR}
+
+HOST=root@dashdbperf01.svl.ibm.com
+DIR=/root/analyse
+cp progsp_93.html index.html
+zip analyse.zip README.VT_CHART.md analyseServer.py index.html js/progsp_93.js js/xutils.js img/favicon.ico lib/Chart.min.js data/wlm/capture_vt_system_util.out data/wlm/capture_vt_sched_sn.out data/wlm/capture_vt_sched_gra.out
+scp analyse.zip ${HOST}:${DIR}
 
 # nzsql -d TPCDS1024B -Ant -f check_sizes.sql
 # SELECT COUNT(*) FROM CALL_CENTER;

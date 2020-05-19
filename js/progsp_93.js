@@ -1,4 +1,6 @@
-let dirNodeL, dirNodeR, serverL, serverR, tableL, tableR
+// 127.0.0.1:3000/index.html?serverL=http://dashdb-q100m-h1.svl.ibm.com:8000/&dataL=data/outputIPS/&serverR=http://dashdb-q100m-h1.svl.ibm.com:8000/&dataR=data/outputMako/
+// http://dashdb-q100m-h1.svl.ibm.com:8000/index.html?dataL=data/outputIPS/&dataR=data/outputMako/
+let dirNodeL, dirNodeR, serverL, serverR, dataDirL, dataDirR, tableL, tableR, singleSource
 let colors = [
   "#fd9400", "#000da3", "#1ed013", "#ff4cb3", "#009634", "#f70074", "#01b48a", "#c30018", "#0066dd", "#d5b500",
   "#002d8a", "#ffb134", "#7384ff", "#b4d256", "#42005b", "#818d00", "#9084ff", "#235300", "#ff90f8", "#042e00",
@@ -18,15 +20,19 @@ let filter
 
 function init() {
   let url = new URL(window.location)
+  console.log(url)
   filter = url.searchParams.get("filter")
   if (filter) {
     filter = new RegExp(filter);
   }
   interval = url.searchParams.get("interval") || interval
   serverL = url.searchParams.get("serverL") || ''
+  dataDirL = url.searchParams.get("dataL") || 'data/output/'
   serverR = url.searchParams.get("serverR") || ''
-  document.getElementById('infoL').innerHTML = serverL == '' ? url.hostname : serverL
-  document.getElementById('infoR').innerHTML = serverR == '' ? url.hostname : serverR
+  dataDirR = url.searchParams.get("dataR") || 'data/output/'
+  singleSource = serverL + dataDirL == serverR + dataDirR
+  document.getElementById('infoL').innerHTML = (serverL == '' ? url.origin + '/' : serverL) + dataDirL
+  document.getElementById('infoR').innerHTML = (serverR == '' ? url.origin + '/' : serverR) + dataDirR
   console.log("server", serverL, serverR)
   dirNodeL = document.getElementById('runDirL')
   dirNodeR = document.getElementById('runDirR')
@@ -36,13 +42,11 @@ function init() {
   Chart.defaults.global.defaultFontColor = 'LightGray'
   Chart.defaults.global.elements.line.borderWidth = 2
   Chart.defaults.global.elements.point.radius = 2
-  if (location.hostname.match(/localhost|127.0.0.1/) && serverL == '' && serverR == '') {
+  if (location.hostname.match(/localhost|127.0.0.1/) && singleSource) {
     loadSampleData()
   } else {
-    loadData(serverL + 'data/output/').then(data => readDirectory(data, serverL, dirNodeL, 0, tableL))
-    if (serverL != serverR) {
-      loadData(serverR + 'data/output/').then(data => readDirectory(data, serverR, dirNodeR, 3, tableR))
-    }
+    loadData(serverL + dataDirL).then(data => readDirectory(data, serverL, dataDirL, dirNodeL, 0, tableL))
+    loadData(serverR + dataDirR).then(data => readDirectory(data, serverR, dataDirR, dirNodeR, 3, tableR))
   }
   // loadData('http://dashdb-q100m-h1.svl.ibm.com:8000/data/output/').then(data => console.log(data))
 }
@@ -59,7 +63,7 @@ function loadSampleData() {
   loadData(serverL + 'data/wlm/test_time.statss', true).then(data => createSummaryChart(data, tableR))
 }
 
-function readDirectory(data, server, dirNode, c, tblNode) {
+function readDirectory(data, server, dataDir, dirNode, c, tblNode) {
   let cnt = 0
   let lines = data.split(/\r?\n/)
   lines.forEach((line, l) => {
@@ -81,19 +85,19 @@ function readDirectory(data, server, dirNode, c, tblNode) {
       }
     }
   })
-  if (!location.hostname.match(/localhost|127.0.0.1/) || serverL != '' || serverR != '') {
+  if (!location.hostname.match(/localhost|127.0.0.1/) || !singleSource) {
     if (cnt > 0) {
       runDir = dirNode.value
-      loadData(server + 'data/output/' + runDir + '/capture_vt_system_util.out').then(data => createChart(data, charts[c + 0]))
-      loadData(server + 'data/output/' + runDir + '/capture_vt_sched_sn.out').then(data => createChart(data, charts[c + 1]))
-      loadData(server + 'data/output/' + runDir + '/capture_vt_sched_gra.out').then(data => createChart(data, charts[c + 2]))
-      loadData(server + 'data/output/' + runDir + '/test_time.stats', true).then(data => createSummaryChart(data, tblNode))
-      if (cnt > 1 && serverL == serverR) {
+      loadData(server + dataDir + runDir + '/capture_vt_system_util.out').then(data => createChart(data, charts[c + 0]))
+      loadData(server + dataDir + runDir + '/capture_vt_sched_sn.out').then(data => createChart(data, charts[c + 1]))
+      loadData(server + dataDir + runDir + '/capture_vt_sched_gra.out').then(data => createChart(data, charts[c + 2]))
+      loadData(server + dataDir + runDir + '/test_time.stats', true).then(data => createSummaryChart(data, tblNode))
+      if (cnt > 1 && singleSource) {
         runDir = dirNodeR.value
-        loadData(server + 'data/output/' + runDir + '/capture_vt_system_util.out').then(data => createChart(data, charts[3]))
-        loadData(server + 'data/output/' + runDir + '/capture_vt_sched_sn.out').then(data => createChart(data, charts[4]))
-        loadData(server + 'data/output/' + runDir + '/capture_vt_sched_gra.out').then(data => createChart(data, charts[5]))
-        loadData(server + 'data/output/' + runDir + '/test_time.stats', true).then(data => createSummaryChart(data, tableR))
+        loadData(server + dataDir + runDir + '/capture_vt_system_util.out').then(data => createChart(data, charts[3]))
+        loadData(server + dataDir + runDir + '/capture_vt_sched_sn.out').then(data => createChart(data, charts[4]))
+        loadData(server + dataDir + runDir + '/capture_vt_sched_gra.out').then(data => createChart(data, charts[5]))
+        loadData(server + dataDir + runDir + '/test_time.stats', true).then(data => createSummaryChart(data, tableR))
       }
     } else {
       loadSampleData()
@@ -214,18 +218,18 @@ function createChart(data, chart) {
 
 function refreshL() {
   let runDir = dirNodeL.value
-  loadData(serverL + 'data/output/' + runDir + '/capture_vt_system_util.out').then(data => updateChart(data, charts[0]))
-  loadData(serverL + 'data/output/' + runDir + '/capture_vt_sched_sn.out').then(data => updateChart(data, charts[1]))
-  loadData(serverL + 'data/output/' + runDir + '/capture_vt_sched_gra.out').then(data => updateChart(data, charts[2]))
-  loadData(serverL + 'data/output/' + runDir + '/test_time.stats', true).then(data => createSummaryChart(data, tableL))
+  loadData(serverL + dataDirL + runDir + '/capture_vt_system_util.out').then(data => updateChart(data, charts[0]))
+  loadData(serverL + dataDirL + runDir + '/capture_vt_sched_sn.out').then(data => updateChart(data, charts[1]))
+  loadData(serverL + dataDirL + runDir + '/capture_vt_sched_gra.out').then(data => updateChart(data, charts[2]))
+  loadData(serverL + dataDirL + runDir + '/test_time.stats', true).then(data => createSummaryChart(data, tableL))
 }
 
 function refreshR() {
   let runDir = dirNodeR.value
-  loadData(serverR + 'data/output/' + runDir + '/capture_vt_system_util.out').then(data => updateChart(data, charts[3]))
-  loadData(serverR + 'data/output/' + runDir + '/capture_vt_sched_sn.out').then(data => updateChart(data, charts[4]))
-  loadData(serverR + 'data/output/' + runDir + '/capture_vt_sched_gra.out').then(data => updateChart(data, charts[5]))
-  loadData(serverR + 'data/output/' + runDir + '/test_time.stats', true).then(data => createSummaryChart(data, tableR))
+  loadData(serverR + dataDirR + runDir + '/capture_vt_system_util.out').then(data => updateChart(data, charts[3]))
+  loadData(serverR + dataDirR + runDir + '/capture_vt_sched_sn.out').then(data => updateChart(data, charts[4]))
+  loadData(serverR + dataDirR + runDir + '/capture_vt_sched_gra.out').then(data => updateChart(data, charts[5]))
+  loadData(serverR + dataDirR + runDir + '/test_time.stats', true).then(data => createSummaryChart(data, tableR))
 }
 
 function updateChart(data, chart) {
