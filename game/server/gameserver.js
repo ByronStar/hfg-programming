@@ -1,8 +1,12 @@
 "use strict"
-
+let lib = 'MultiplayerGame'
 let httpPort = 8090
 let httpsPort = 8091
+let stateFile = './gamestate.json'
+let studentsFile = './students.txt'
+let subscriber = [];
 
+let actVersion = 'v1.0.1'
 let msgTrace = false
 
 const WebSocket = require('ws')
@@ -10,6 +14,7 @@ const WebSocketServer = WebSocket.Server
 const https = require('https')
 const fs = require('fs')
 const forge = require('node-forge')
+const bcrypt = require('bcryptjs');
 
 const http = require('http')
 const url = require("url")
@@ -17,11 +22,12 @@ const path = require("path")
 
 let httpServer, httpsServer
 
+let hostname = require('os').hostname()
 let ifs = require('os').networkInterfaces()
 // console.log(ifs)
 
 let options = {}
-let ipAddr = 'localhost'
+let ipAddr = '127.0.0.1'
 if (process.argv.length < 3 || process.argv[2] != '-local') {
   let ipAddrs = Object.keys(ifs).map(x => ifs[x].filter(x => x.family === 'IPv4' && !x.internal)[0]).filter(x => x)
   // console.log(ipAddrs)
@@ -43,26 +49,25 @@ let contentTypesByExtension = {
   '.html': "text/html",
   '.css': "text/css",
   '.js': "text/javascript",
+  '.json': "application/json",
   '.pem': "application/x-x509-ca-cert"
 }
 
 let state
-let stateFile = './gamestate.json'
 loadState()
 
 function setupServers() {
   let firstTime = ipAddr != state.ipAddr
-  if (fs.existsSync('../cert/tls.key')) {
+  if (fs.existsSync('/etc/letsencrypt/live/' + state.domain + '/privkey.pem')) {
     options = {
-      key: fs.readFileSync('../cert/tls.key'),
-      cert: fs.readFileSync('../cert/tls.crt')
+      key: fs.readFileSync('/etc/letsencrypt/live/' + state.domain + '/privkey.pem'),
+      cert: fs.readFileSync('/etc/letsencrypt/live/' + state.domain + '/fullchain.pem')
     }
-    // options = {
-    //   key: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/privkey.pem'),
-    //   cert: fs.readFileSync('/etc/letsencrypt/live/byron.hopto.org/fullchain.pem')
-    // }
+    if (state.domain) {
+      ipAddr = state.domain
+    }
   } else {
-    if (!fs.existsSync('progsp.hfg-gmuend.de.key') || (ipAddr != 'localhost' && ipAddr != state.ipAddr)) {
+    if (!fs.existsSync('progsp.hfg-gmuend.de.key') || (ipAddr != '127.0.0.1' && ipAddr != state.ipAddr)) {
       //createCA('hfg.hopto.org', ipAddr)
       // generate a key pair
       let keys = forge.pki.rsa.generateKeyPair(2048)
@@ -95,60 +100,100 @@ function setupServers() {
     }
   }
 
+  // Self signed root certificate only
+  // ig1:$2a$08$uGD7MtlHnvRQikJLGiUuIuye8dTapGoz2pXSuXyna9FFwUPRPYSIC
   httpServer = http.createServer(function(request, response) {
-    let pathname = url.parse(request.url).pathname
-    if (pathname == '/') {
-      response.writeHead(200, {
-        "Content-Type": "text/html"
-      })
-      response.write(getIndex())
-      response.end()
+    var userpass = new Buffer((request.headers.authorization || '').split(' ')[1] || '', 'base64').toString();
+    if (!bcrypt.compareSync(userpass, '$2a$08$uGD7MtlHnvRQikJLGiUuIuye8dTapGoz2pXSuXyna9FFwUPRPYSIC')) {
+      response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="HfG ' + lib + '"' });
+      response.end('HTTP Error 401 Unauthorized: Access is denied');
     } else {
-      if (pathname == '/rootCA') {
+      let pathname = url.parse(decodeURIComponent(request.url)).pathname
+      if (pathname == '/' || pathname == '/rootCA') {
         response.writeHead(200, {
           "Content-Type": "application/x-x509-ca-cert"
         })
         response.write(rootCA())
         response.end()
       } else {
-        let filename
-        if (pathname.startsWith('/client')) {
-          filename = ".." + pathname
-        } else {
-          filename = "../client" + pathname
-        }
-        filename = path.join(process.cwd(), filename)
-        //console.log(url.parse(request.url).pathname, filename)
-        sendResponse(response, filename)
+        response.writeHead(404, {
+          "Content-Type": "text/plain"
+        })
+        response.write("404 Not Found\n")
+        response.end()
       }
     }
   })
   httpServer.listen(httpPort)
-  console.log((new Date()) + ' GameServer erreichbar unter http://' + ipAddr + ':' + httpPort)
+  console.log((new Date()) + ' ' + lib + ' Server erreichbar unter http://' + ipAddr + ':' + httpPort)
 
+  // Byron:$2a$08$5IZmi9StV.mBmOSmZQ.hfeENTxsGzBa647uJFzbIpRUgSEwdS1L32
+  // Bene:$2a$10$yJv.PbSvcZpc3THj8iPukeEGR7cM/9GoUgKcAnEs4TA90GvPr4eFi
+  // ig1:$2a$08$uGD7MtlHnvRQikJLGiUuIuye8dTapGoz2pXSuXyna9FFwUPRPYSIC
   httpsServer = https.createServer(options, function(request, response) {
-    let pathname = url.parse(request.url).pathname
-    if (pathname == '/') {
-      response.writeHead(200, {
-        "Content-Type": "text/html"
-      })
-      response.write(getIndex())
-      response.end()
-    } else {
-      let filename
-      if (pathname.startsWith('/client')) {
-        filename = ".." + pathname
-      } else {
-        filename = "../client" + pathname
+    console.log(decodeURIComponent(request.url))
+    var userpass = new Buffer((request.headers.authorization || '').split(' ')[1] || '', 'base64').toString();
+    if (bcrypt.compareSync(userpass, '$2a$08$5IZmi9StV.mBmOSmZQ.hfeENTxsGzBa647uJFzbIpRUgSEwdS1L32') ||
+      bcrypt.compareSync(userpass, '$2a$10$yJv.PbSvcZpc3THj8iPukeEGR7cM/9GoUgKcAnEs4TA90GvPr4eFi') ||
+      bcrypt.compareSync(userpass, '$2a$08$uGD7MtlHnvRQikJLGiUuIuye8dTapGoz2pXSuXyna9FFwUPRPYSIC')) {
+      let actUrl = url.parse(decodeURIComponent(request.url), true)
+      let pathname = actUrl.pathname
+      switch (pathname) {
+        case '/':
+        case '/index.html':
+          response.writeHead(200, {
+            "Content-Type": "text/html"
+          })
+          response.write(getIndex())
+          response.end()
+          break
+        case '/student.id':
+          response.writeHead(200, {
+            "Content-Type": "application/octet-stream"
+          })
+          // for (let key in actUrl.query) {
+          //   console.log(key, actUrl.query[key])
+          // }
+          response.write(actUrl.query.id)
+          response.end()
+          break
+        case '/studentIds.html':
+          response.writeHead(200, {
+            "Content-Type": "text/html"
+          })
+          response.write(getIds())
+          response.end()
+          break
+        case '/gameserver.js':
+          sendResponse(response, 'lib/gameserver.js', "application/octet-stream")
+          break
+        case '/state.json':
+          response.writeHead(200, {
+            "Content-Type": contentTypesByExtension['.json']
+          })
+          response.write(JSON.stringify(state))
+          response.end()
+          break
+        default:
+          let filename
+          if (pathname.startsWith('/client')) {
+            filename = ".." + pathname
+          } else {
+            filename = "../client" + pathname
+          }
+          filename = path.join(process.cwd(), filename)
+          // console.log(pathname, filename)
+          sendResponse(response, filename)
+          break
       }
-      filename = path.join(process.cwd(), filename)
-      //console.log(url.parse(request.url).pathname, filename)
-      sendResponse(response, filename)
+    } else {
+      response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="HfG ' + lib + '"' });
+      response.end('HTTP Error 401 Unauthorized: Access is denied');
     }
   })
   httpsServer.listen(httpsPort)
+  console.log((new Date()) + ' ' + lib + ' Server erreichbar unter https://' + ipAddr + ':' + httpsPort)
 
-  console.log((new Date()) + ' GameServer erreichbar unter https://' + ipAddr + ':' + httpsPort)
   let wsServer = new WebSocketServer({
     server: httpServer
   })
@@ -192,7 +237,7 @@ function setupServers() {
       }
     })
     client.send(message)
-    console.log('%s JOIN <%s> (%d players)', new Date().getTime(), message, (wsServer.clients.length ? wsServer.clients.length : wsServer.clients.size))
+    console.log('%s JOIN <%s> (%d clients)', new Date().getTime(), message, (wsServer.clients.length ? wsServer.clients.length : wsServer.clients.size))
   })
 
   let wssServer = new WebSocketServer({
@@ -223,7 +268,7 @@ function setupServers() {
 
     // Client did sent a hearbeat
     client.on('pong', () => {
-      console.log("PONG", id)
+      // console.log(new Date().getTime(), "PONG", id)
       client.isAlive = true
     })
 
@@ -250,34 +295,40 @@ function setupServers() {
   setInterval(function ping() {
     wsServer.clients.forEach(function each(client) {
       if (client.isAlive === false) {
-        console.log("TERM", client.upgradeReq.headers['sec-websocket-key'])
+        console.log(new Date().getTime(), "TERM", client.upgradeReq.headers['sec-websocket-key'])
         return client.terminate();
       }
       client.isAlive = false;
-      // console.log("PING", client.upgradeReq.headers['sec-websocket-key'])
+      // console.log(new Date().getTime(), "PING", client.upgradeReq.headers['sec-websocket-key'])
       client.ping(noop);
     })
     wssServer.clients.forEach(function each(client) {
       if (client.isAlive === false) {
-        console.log("TERM", client.upgradeReq.headers['sec-websocket-key'])
+        console.log(new Date().getTime(), "TERM", client.upgradeReq.headers['sec-websocket-key'])
         return client.terminate();
       }
       client.isAlive = false;
-      // console.log("PING", client.upgradeReq.headers['sec-websocket-key'])
+      // console.log(new Date().getTime(), "PING", client.upgradeReq.headers['sec-websocket-key'])
       client.ping(noop);
     })
   }, 30000)
 
-  if (firstTime && ipAddr != 'localhost') {
-    if (state.domain) {
-      announce("Neuer externer GameServer `https://" + state.domain + ":" + httpsPort + "`", "#99_benno")
-    } else {
-      announce("Neuer lokaler GameServer " + ipAddr + " - <https://" + ipAddr + ":" + httpsPort + "|Ausprobieren> (wenn Du im gleichen Netz bist)", "#99_benno")
-    }
+  if (actVersion != state.version) {
+    announce("Es gibt eine neue Version der " + lib + " Library. Bitte von https://" + state.domain + ":" + httpsPort + "/gameserver.js herunterladen und in euren 'student/lib' Ordner kopieren.", "#2020ss-ig1-programmiersprachen-1")
+    //announce("Es gibt eine neue Version der " + lib + " Library. Bitte von https://" + state.domain + ":" + httpsPort + "/gameserver.js herunterladen und in euren 'student/lib' Ordner kopieren.", "@benno.staebler")
+    state.version = actVersion
+    saveState()
   }
+  // if (firstTime && ipAddr != '127.0.0.1') {
+  //   if (state.domain) {
+  //     announce("Neuer externer " + lib + " Server `https://" + state.domain + ":" + httpsPort + "`", "#99_benno")
+  //   } else {
+  //     announce("Neuer lokaler " + lib + " Server " + ipAddr + " - <https://" + ipAddr + ":" + httpsPort + "|Ausprobieren> (wenn Du im gleichen Netz bist)", "#99_benno")
+  //   }
+  // }
 }
 
-function sendResponse(response, filename) {
+function sendResponse(response, filename, contentType) {
   fs.exists(filename, function(exists) {
     if (!exists) {
       response.writeHead(404, {
@@ -303,8 +354,10 @@ function sendResponse(response, filename) {
       }
 
       let headers = {}
-      let contentType = contentTypesByExtension[path.extname(filename)]
-      if (contentType) headers["Content-Type"] = contentType
+      contentType = contentType || contentTypesByExtension[path.extname(filename)]
+      if (contentType) {
+        headers["Content-Type"] = contentType
+      }
       response.writeHead(200, headers)
       response.write(file, "binary")
       response.end()
@@ -314,7 +367,7 @@ function sendResponse(response, filename) {
 
 function broadcast(server, message) {
   if (msgTrace) {
-    console.log('%s SND <%s> (%d players)', new Date().getTime(), message, (server.clients.length ? server.clients.length : server.clients.size))
+    console.log('%s SND <%s> (%d clients)', new Date().getTime(), message, (server.clients.length ? server.clients.length : server.clients.size))
   }
   server.clients.forEach(function each(client) {
     try {
@@ -327,7 +380,7 @@ function broadcast(server, message) {
 
 function forward(server, message, active) {
   if (msgTrace) {
-    console.log('%s FWD <%s> ([%s] %d players)', new Date().getTime(), message, active, active.length)
+    console.log('%s FWD <%s> ([%s] %d clients)', new Date().getTime(), message, active, active.length)
   }
   active.forEach(function each(id) {
     try {
@@ -343,7 +396,7 @@ function forward(server, message, active) {
 function handleMessage(server, message, id, client) {
   let ip = client.upgradeReq.connection.remoteAddress
   if (msgTrace) {
-    console.log('%s REC <%s>', new Date().getTime(), message)
+    console.log('%s REC <%s>', new Date().getTime(), message.replace(/"code":"[^"]+"/, '"code":"..."'))
   }
   let msg = JSON.parse(message)
   if (!active[ip]) {
@@ -536,29 +589,35 @@ function handleClose(server, id) {
   updateGames(server)
 }
 
+function createState() {
+  state = {
+    ipAddr: '0.0.0.0',
+    domain: hostname,
+    xslack: '',
+    games: {
+      0: {
+        id: 0,
+        js: "/client/js/progsp_game.js",
+        html: "/client/progsp_game.html",
+        name: "Demo Spiel",
+        version: 0,
+        players: []
+      }
+    },
+    files: {
+      "/client/js/progsp_game.js": 0,
+      "/client/progsp_game.html": 0
+    },
+    players: {}
+  }
+  saveState()
+}
+
 function loadState() {
   fs.readFile(stateFile, 'utf-8', (err, data) => {
     if (err) {
       if (err.code == 'ENOENT') {
-        state = {
-          ipAddr: '0.0.0.0',
-          games: {
-            0: {
-              id: 0,
-              js: "/client/js/progsp_game.js",
-              html: "/client/progsp_game.html",
-              name: "Demo Spiel",
-              version: 0,
-              players: []
-            }
-          },
-          files: {
-            "/client/js/progsp_game.js": 0,
-            "/client/progsp_game.html": 0
-          },
-          players: {}
-        }
-        saveState()
+        createState();
       } else {
         console.log(err, err.code)
       }
@@ -580,16 +639,17 @@ function loadState() {
 }
 
 function announce(info, channel) {
-  if (state.slackHook) {
+  // console.log(info, channel)
+  if (state.slack) {
     if (null == channel) {
       channel = "#programmieren"
     }
 
     let data = {
       channel: channel,
-      username: "GameServer",
-      text: info,
-      icon_emoji: ":ghost:"
+      username: lib,
+      text: info
+      // icon_emoji: ":ghost:"
       // ,attachments: [{
       //   fallback: "New open task [Urgent]: <http://url_to_task|Test out Slack message attachments>",
       //   pretext: "New open task [Urgent]: <http://url_to_task|Test out Slack message attachments>",
@@ -602,11 +662,10 @@ function announce(info, channel) {
       // }]
     }
     data = JSON.stringify(data)
-
     let options = {
       hostname: 'hooks.slack.com',
       port: 443,
-      path: '/services/' + state.slackHook,
+      path: '/services/' + state.slack,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json; charset=utf-8',
@@ -637,13 +696,14 @@ function announce(info, channel) {
 }
 
 function saveState() {
-  fs.writeFile(stateFile, JSON.stringify(state), { encoding: 'utf8', flag: 'w' }, (err, data) => {
-    if (err) {
-      console.log(err)
-    } else {
-      // console.log(stateFile + " updated")
-    }
-  })
+  subscriber.forEach(sId => {
+    clients[sId].send(JSON.stringify({
+      id: 'STATE',
+      from: 'SERVER',
+      data: state
+    }))
+  });
+  fs.writeFileSync(stateFile, JSON.stringify(state), { encoding: 'utf8', flag: 'w' })
 }
 
 let lut = []
@@ -662,6 +722,45 @@ function guid7() {
     lut[d3 & 0xff] + lut[d3 >> 8 & 0xff] + lut[d3 >> 16 & 0xff] + lut[d3 >> 24 & 0xff]
 }
 
+function getIds() {
+  let list = ''
+  for (let id in state.students) {
+    list += '<li><a href="/student.id?id=' + id + '">' + state.students[id].name + '</a>'
+  }
+  return `
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="HfG GameServer">
+  <meta name="author" content="ByronStar">
+
+  <title>WebTechnology - Multiplayer Game</title>
+  <script type="text/javascript" src="/client/lib/gameserver.js"></script>
+  <script>Homeworks.gc.noMenu=true</script>
+  <link rel="stylesheet" href="/client/css/progsp.css">
+</head>
+
+<body class="progsp">
+  <div class="overlay" style="margin: 40px;">
+    <h1>Id Dateien für Spiele</h1>
+    <p>Damit Deine Spiele richtig zugeordnet werden können, benötigst Du Deine 'student.id' Datei im 'data' Unterverzeichnis
+    Deines 'student' Ordners für IG4 WebTechnology.<br>Klicke in der Liste auf Deinen Namen, dann wird Deine 'student.id' Datei im 'Download' Ordner
+    deines Rechners abgelelegt und Du kannst sie anschliessend in das 'data' Unterverzeichnis verschieben oder kopieren.
+    <p>Diese Seite kannst Du nach dem Download schliessen.
+    <div>
+      <ul id="idlist">
+      ${list}
+      </ul>
+    </div>
+  </div>
+</body>
+</html>`
+}
+
 function getIndex() {
   return `
 <!DOCTYPE html>
@@ -671,7 +770,7 @@ function getIndex() {
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Multiplayer Game">
+  <meta name="description" content="WebTechnology - Multiplayer Game">
   <meta name="author" content="ByronStar">
 
   <title>Programmiersprachen - Multiplayer</title>

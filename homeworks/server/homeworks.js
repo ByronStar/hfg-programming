@@ -1,7 +1,11 @@
 "use strict"
 
+let lib = 'Homeworks'
 let httpPort = 11203
 let httpsPort = 11204
+let stateFile = './homeworks.json'
+let studentsFile = './students.txt'
+let subscriber = [];
 
 let actVersion = 'v1.0.1'
 let msgTrace = false
@@ -24,7 +28,7 @@ let ifs = require('os').networkInterfaces()
 // console.log(ifs)
 
 let options = {}
-let ipAddr = 'localhost'
+let ipAddr = '127.0.0.1'
 if (process.argv.length < 3 || process.argv[2] != '-local') {
   let ipAddrs = Object.keys(ifs).map(x => ifs[x].filter(x => x.family === 'IPv4' && !x.internal)[0]).filter(x => x)
   // console.log(ipAddrs)
@@ -41,7 +45,6 @@ if (process.argv.length > 2 && process.argv[2] == '-trace') {
 let clients = {}
 // track active IP Addresses
 let active = {}
-let subscriber = [];
 
 let contentTypesByExtension = {
   '.html': "text/html",
@@ -52,8 +55,6 @@ let contentTypesByExtension = {
 }
 
 let state
-let stateFile = './homeworks.json'
-let studentsFile = './students.txt'
 loadState()
 
 function setupServers() {
@@ -67,7 +68,7 @@ function setupServers() {
       ipAddr = state.domain
     }
   } else {
-    if (!fs.existsSync('progsp.hfg-gmuend.de.key') || (ipAddr != 'localhost' && ipAddr != state.ipAddr)) {
+    if (!fs.existsSync('progsp.hfg-gmuend.de.key') || (ipAddr != '127.0.0.1' && ipAddr != state.ipAddr)) {
       //createCA('hfg.hopto.org', ipAddr)
       // generate a key pair
       let keys = forge.pki.rsa.generateKeyPair(2048)
@@ -105,7 +106,7 @@ function setupServers() {
   httpServer = http.createServer(function(request, response) {
     var userpass = new Buffer((request.headers.authorization || '').split(' ')[1] || '', 'base64').toString();
     if (!bcrypt.compareSync(userpass, '$2a$08$uGD7MtlHnvRQikJLGiUuIuye8dTapGoz2pXSuXyna9FFwUPRPYSIC')) {
-      response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="HfG Homeworks"' });
+      response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="HfG ' + lib + '"' });
       response.end('HTTP Error 401 Unauthorized: Access is denied');
     } else {
       let pathname = url.parse(decodeURIComponent(request.url)).pathname
@@ -125,7 +126,7 @@ function setupServers() {
     }
   })
   httpServer.listen(httpPort)
-  console.log((new Date()) + ' Homeworks Server erreichbar unter http://' + ipAddr + ':' + httpPort)
+  console.log((new Date()) + ' ' + lib + ' Server erreichbar unter http://' + ipAddr + ':' + httpPort)
 
   // Byron:$2a$08$5IZmi9StV.mBmOSmZQ.hfeENTxsGzBa647uJFzbIpRUgSEwdS1L32
   // Bene:$2a$10$yJv.PbSvcZpc3THj8iPukeEGR7cM/9GoUgKcAnEs4TA90GvPr4eFi
@@ -216,13 +217,13 @@ function setupServers() {
             break
         }
       } else {
-        response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="HfG Homeworks"' });
+        response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="HfG ' + lib + '"' });
         response.end('HTTP Error 401 Unauthorized: Access is denied');
       }
     }
   })
   httpsServer.listen(httpsPort)
-  console.log((new Date()) + ' Homeworks Server erreichbar unter https://' + ipAddr + ':' + httpsPort)
+  console.log((new Date()) + ' ' + lib + ' Server erreichbar unter https://' + ipAddr + ':' + httpsPort)
 
   let wsServer = new WebSocketServer({
     server: httpServer
@@ -344,16 +345,16 @@ function setupServers() {
   }, 30000)
 
   if (actVersion != state.version) {
-    announce("Es gibt eine neue Version der Homeworks Library. Bitte von https://" + state.domain + ":" + httpsPort + "/homeworks.js herunterladen und in euren 'student/lib' Ordner kopieren.", "#2020ss-ig1-programmiersprachen-1")
-    //announce("Es gibt eine neue Version der Homeworks Library. Bitte von https://" + state.domain + ":" + httpsPort + "/homeworks.js herunterladen und in euren 'student/lib' Ordner kopieren.", "@benno.staebler")
+    announce("Es gibt eine neue Version der " + lib + " Library. Bitte von https://" + state.domain + ":" + httpsPort + "/homeworks.js herunterladen und in euren 'student/lib' Ordner kopieren.", "#2020ss-ig1-programmiersprachen-1")
+    //announce("Es gibt eine neue Version der " + lib + " Library. Bitte von https://" + state.domain + ":" + httpsPort + "/homeworks.js herunterladen und in euren 'student/lib' Ordner kopieren.", "@benno.staebler")
     state.version = actVersion
     saveState()
   }
-  // if (firstTime && ipAddr != 'localhost') {
+  // if (firstTime && ipAddr != '127.0.0.1') {
   //   if (state.domain) {
-  //     announce("Neuer externer Homeworks Server `https://" + state.domain + ":" + httpsPort + "`", "#99_benno")
+  //     announce("Neuer externer " + lib + " Server `https://" + state.domain + ":" + httpsPort + "`", "#99_benno")
   //   } else {
-  //     announce("Neuer lokaler Homeworks Server " + ipAddr + " - <https://" + ipAddr + ":" + httpsPort + "|Ausprobieren> (wenn Du im gleichen Netz bist)", "#99_benno")
+  //     announce("Neuer lokaler " + lib + " Server " + ipAddr + " - <https://" + ipAddr + ":" + httpsPort + "|Ausprobieren> (wenn Du im gleichen Netz bist)", "#99_benno")
   //   }
   // }
 }
@@ -687,7 +688,7 @@ function announce(info, channel) {
 
     let data = {
       channel: channel,
-      username: "HomeworksServer",
+      username: lib,
       text: info
       // icon_emoji: ":ghost:"
       // ,attachments: [{

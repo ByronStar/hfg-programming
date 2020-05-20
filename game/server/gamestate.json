@@ -1,1 +1,21 @@
-{"ipAddr":"0.0.0.0","domain":"byron.hopto.org","games":{"0":{"id":0,"js":"/client/js/progsp_game.js","html":"/client/progsp_game.html","name":"Demo Spiel","version":0,"players":[]}},"files":{"/client/js/progsp_game.js":0,"/client/progsp_game.html":0},"players":{}}
+{
+  "ipAddr": "127.0.0.1",
+  "domain": "localhost",
+  "xslack": "",
+  "games": {
+    "0": {
+      "id": 0,
+      "js": "/client/js/progsp_game.js",
+      "html": "/client/progsp_game.html",
+      "name": "Demo Spiel",
+      "version": 0,
+      "players": []
+    }
+  },
+  "files": {
+    "/client/js/progsp_game.js": 0,
+    "/client/progsp_game.html": 0
+  },
+  "players": {},
+  "version": "v1.0.1"
+}
