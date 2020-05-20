@@ -37,7 +37,7 @@ if (process.argv.length < 3 || process.argv[2] != '-local') {
   }
   ipAddr = ipAddrs[0].address
 }
-if (process.argv.length > 2 && process.argv[2] == '-trace') {
+if (process.argv.length > 2 && process.argv[2] == '-trace' || process.argv.length > 3 && process.argv[3] == '-trace') {
   msgTrace = true
 }
 

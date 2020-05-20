@@ -11,6 +11,8 @@ unzip -o ${dir}game/mpg_client.zip
 unzip -o ${dir}game/mpg_server.zip
 cd -
 
+wscat -n -c wss://127.0.0.1:8091 -x '{"id":"RESTART","from":"wscat script","ts":'$(date +%s)',"data":{"rc":0}}'
+
 # https://medium.com/@auchenberg/detecting-multi-touch-trackpad-gestures-in-javascript-a2505babb10e
 # https://developer.mozilla.org/en-US/docs/Web/API/Touch_events/Using_Touch_Events
 # https://stackoverflow.com/questions/29173810/detect-if-mouse-move-in-circle-way

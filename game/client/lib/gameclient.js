@@ -78,11 +78,11 @@ function wsinit(onMove, node, status) {
   if (host) {
     gc.server = host
   } else {
-    gc.server = location.hostname ? location.hostname : "localhost"
+    gc.server = location.hostname ? location.hostname : '127.0.0.1'
   }
   let wsUri = location.protocol === 'https:' ? 'wss://' + gc.server + ':' + wssPort : 'ws://' + gc.server + ':' + wsPort
   ws = createWebSocket(wsUri, onState, onReceive)
-  console.log(location, ws)
+  // console.log(location, ws)
   window.addEventListener('keydown', onKeyDownGC)
   if (location.pathname != '/') {
     document.getElementsByTagName('h1')[0].innerHTML += (location.port == httpsPort ? " (published)" : " (develop)")

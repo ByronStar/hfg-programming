@@ -4,7 +4,8 @@
   "description": "HfG Programming Web/WebSocket Server",
   "main": "gameserver.js",
   "scripts": {
-    "start": "./gameserver.sh",
+    "start": "nohup ./gameserver.sh > gameserver.log 2>&1 &",
+    "trace": "nohup ./gameserver.sh -local -trace > gameserver.log 2>&1 &",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
