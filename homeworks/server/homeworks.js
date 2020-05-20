@@ -7,7 +7,7 @@ let stateFile = './homeworks.json'
 let studentsFile = './students.txt'
 let subscriber = [];
 
-let actVersion = 'v1.0.1'
+let actVersion = 'v1.0.2'
 let msgTrace = false
 
 const WebSocket = require('ws')
