@@ -1,11 +1,11 @@
 {
   "name": "hfg-homeworks",
-  "version": "0.1.0",
+  "version": "1.0.2",
   "description": "HfG Programming Web/WebSocket Server",
   "main": "homeworks.js",
   "scripts": {
-    "start": "nohup ./homeworks.sh > homeworks.log 2>&1 &",
-    "trace": "nohup ./homeworks.sh -trace > homeworks.log 2>&1 &",
+    "start": "nohup ./homeworks.sh >> homeworks.log 2>&1 &",
+    "trace": "nohup ./homeworks.sh -trace >> homeworks.log 2>&1 &",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

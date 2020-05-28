@@ -67,8 +67,11 @@ var Homeworks = {};
         if (null != script) {
           let file = new URL(script.src).pathname.replace(/.*\//, "")
         }
-        statusNode.innerHTML = gc.name + (gc.online ? (modal +
-            ' <span style="font-size: 2em;"> <span id="review" style="cursor: pointer"><img src="img/g.png" style="border:2px solid ' + (gc.res.icon == "g.png" ? "cyan" : "gray") + ';"> <img src="img/y.png" style="border:2px solid ' + (gc.res.icon == "y.png" ? "cyan" : "gray") + ';"> <img src="img/r.png" style="border:2px solid ' + (gc.res.icon == "r.png" ? "cyan" : "gray") + ';"></span> <a href="' + script.src + '">🔬</a></span>') :
+        statusNode.innerHTML = gc.name + (gc.online ?
+          (modal + ' <span style="font-size: 2em;"> <span id="review" style="cursor: pointer"><img src="img/g.png" style="border:2px solid ' +
+          (gc.res.icon == "g.png" ? "cyan" : "gray") + ';"> <img src="img/y.png" style="border:2px solid ' +
+          (gc.res.icon == "y.png" ? "cyan" : "gray") + ';"> <img src="img/r.png" style="border:2px solid ' +
+          (gc.res.icon == "r.png" ? "cyan" : "gray") + ';"></span> <a href="' + script.src + '" target="_script">🔬</a></span>') :
           ' <span id="review" style="cursor: pointer;font-size: 2em;">🔴</span>')
         sendNode = document.getElementById('review')
         if (sendNode) {
@@ -94,6 +97,7 @@ var Homeworks = {};
       document.getElementById('info').value = gc.res.fb
       document.getElementById('icon').src = evt.target.src
       gc.res.icon = evt.target.src.match(/.\.png/)[0]
+      window.removeEventListener('keydown', onKeyDown)
     } else {
       Homeworks.wsinit()
     }
@@ -108,6 +112,7 @@ var Homeworks = {};
         res: { icon: gc.res.icon, fb: document.getElementById('info').value }
       })
     }
+    window.addEventListener('keydown', onKeyDown)
   }
 
   let modal = `

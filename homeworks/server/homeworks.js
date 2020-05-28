@@ -7,7 +7,8 @@ let stateFile = './homeworks.json'
 let studentsFile = './students.txt'
 let subscriber = [];
 
-let actVersion = 'v1.0.2'
+let clientVersion = 'v1.0.2'
+let serverVersion = 'v1.0.3'
 let msgTrace = false
 
 const WebSocket = require('ws')
@@ -344,10 +345,10 @@ function setupServers() {
     })
   }, 30000)
 
-  if (actVersion != state.version) {
+  if (clientVersion != state.version) {
     announce("Es gibt eine neue Version der " + lib + " Library. Bitte von https://" + state.domain + ":" + httpsPort + "/homeworks.js herunterladen und in euren 'student/lib' Ordner kopieren.", "#2020ss-ig1-programmiersprachen-1")
     //announce("Es gibt eine neue Version der " + lib + " Library. Bitte von https://" + state.domain + ":" + httpsPort + "/homeworks.js herunterladen und in euren 'student/lib' Ordner kopieren.", "@benno.staebler")
-    state.version = actVersion
+    state.version = clientVersion
     saveState()
   }
   // if (firstTime && ipAddr != '127.0.0.1') {
@@ -457,7 +458,7 @@ function handleMessage(server, message, id, client) {
               client.send(JSON.stringify({
                 id: 'INFO',
                 from: 'SERVER',
-                data: { res: state.students[student].res[msg.data.aufgabe], version: actVersion }
+                data: { res: state.students[student].res[msg.data.aufgabe], version: clientVersion }
               }))
             }
           }
@@ -511,9 +512,7 @@ function handleMessage(server, message, id, client) {
         //console.log(msg.data.code, buff, buff.toString(), buff.toString('utf-8'))
         let dir = '../students' + state.students[student].dir + path.dirname(file);
         if (!fs.existsSync(dir)) {
-          if (!fs.existsSync(state.students[student].dir)) {
-            setupUserDir(state.students[student].dir)
-          }
+          setupUserDir(state.students[student].dir)
           mkDir(dir);
         }
         fs.writeFile('../students' + state.students[student].dir + file, buff.toString('utf-8'), 'utf8', (err, data) => {
@@ -598,11 +597,13 @@ function addUser(vorname, name, gruppe) {
 }
 
 function setupUserDir(dir) {
-  fs.mkdirSync('../students' + dir);
-  fs.mkdirSync('../students' + dir + '/js');
-  fs.symlinkSync('../shared/css', '../students' + dir + '/css', 'dir')
-  fs.symlinkSync('../shared/img', '../students' + dir + '/img', 'dir')
-  fs.symlinkSync('../shared/lib', '../students' + dir + '/lib', 'dir')
+  if (!fs.existsSync('../students' + dir)) {
+    fs.mkdirSync('../students' + dir);
+    fs.mkdirSync('../students' + dir + '/js');
+    fs.symlinkSync('../shared/css', '../students' + dir + '/css', 'dir')
+    fs.symlinkSync('../shared/img', '../students' + dir + '/img', 'dir')
+    fs.symlinkSync('../shared/lib', '../students' + dir + '/lib', 'dir')
+  }
 }
 
 function createState() {
