@@ -40,7 +40,7 @@ DIR=/root/benno
 HOST=root@dashdbperf01.svl.ibm.com
 DIR=/root/analyse
 cp progsp_93.html index.html
-zip analyse.zip README.VT_CHART.md analyseServer.py index.html js/progsp_93.js js/xutils.js img/favicon.ico lib/Chart.min.js data/wlm/capture_vt_system_util.out data/wlm/capture_vt_sched_sn.out data/wlm/capture_vt_sched_gra.out
+zip analyse.zip README_VT_CHART.md analyseServer.py index.html js/progsp_93.js js/xutils.js img/favicon.ico lib/Chart.min.js data/wlm/capture_vt_system_util.out data/wlm/capture_vt_sched_sn.out data/wlm/capture_vt_sched_gra.out
 scp analyse.zip ${HOST}:${DIR}
 
 # nzsql -d TPCDS1024B -Ant -f check_sizes.sql
