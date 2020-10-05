@@ -10,11 +10,11 @@ Bedeutung 'Operators', 'Special Characters', es sei denn sie sind Teil eines 'St
 */
 
 // Wir starten mit den Daten - 'Variable' - eines 'Programs', erkennbar am Schlüsselwort 'Keyword'
-// 'var' gefolgt von einem frei wählbaren Namen.
-var hugo1;
+// 'let' gefolgt von einem frei wählbaren Namen.
+let hugo1;
 
 // Eine 'Variable' kann (muss aber nicht) sofort mit einem Wert - 'Value' versehen werden:
-var hugo2 = 0;
+let hugo2 = 0;
 
 // Das war die erste Anweisung - 'Statement' - im 'Program'. Ein 'Statement' wird mit ';' beendet
 // Das ist nicht mehr zwingend notwendig, aber für Programmieranfänger hilfreich, weil dann
@@ -22,37 +22,37 @@ var hugo2 = 0;
 
 // Es gibt unterschiedliche Arten - 'Type' - von Daten in Javascript:
 // 'Number':
-var myNumber1 = 0;
+let myNumber1 = 0;
 
 // 'Number' mit Kommastellen (das Komma ist in Javascript ein Punkt!):
-var myNumber1 = 0.05;
+let myNumber1a = 0.05;
 
 // 'String': der Wert wird mit " " oder ' ' geklammert
-var myText1 = "Hallo";
-var myText2 = 'Hallo';
+let myText1 = "Hallo";
+let myText2 = 'Hallo';
 
 // 'Boolean': (wahr oder falsch)
-var myBoolean = true;
+let myBoolean = true;
 
 // Das waren die einfachen 'Types', ab hier wird es komplizierter
 // 'Array': eine beliebige Liste von Werten - 'Values' mit einem Namen: mit [ ] geklammert
-var myArray = [0, 'Hallo', true, 0.05, false];
+let myArray = [0, 'Hallo', true, 0.05, false];
 
 // 'Object': eine beliebige Zusammenfassung von Namen - 'Attributes' - und 'Values': mit { } geklammert
-var myObject = { name: 'Hugo', alter: 29, programmierer: true };
+let myObject = { name: 'Hugo', alter: 29, programmierer: true };
 
 // 'Function': eine Zusammenfassung von 'Statements', erkennbar am Schlüsselwort 'function' gefolgt
 // von ( und ), gefolgt von 'Statements' die mit { } geklammert sind:
-var myFunction = function() {
+let myFunction = function() {
   console.log("Hallo");
 }
 
 // Bisher waren das alles unbenutzte 'Variables' für Beispiele
 // Hier ist eine 'Variable', die wir wirklich nutzen und sie hat einen sprechenden 'Name'
 // "layer" weist irgendwie auf eine Ebene hin - mal sehen wieso
-var layer;
+let layer;
 
-// Häufiger verden 'Functions' aber einfach ohne das 'var' aufgeschrieben - 'Definition' - wobei
+// Häufiger verden 'Functions' aber einfach ohne das 'let' aufgeschrieben - 'Definition' - wobei
 // der Name z.B. "init" zwischen 'function' und ( ) rutscht: function init() { ... }
 
 // Die 'Statements' einer 'Function' werden nicht sofort beim Lesen der Datei ausgeführt!
@@ -70,7 +70,7 @@ function init() {
   // Alles zwischen { und } ist nicht 'Global'. Die 'Variable' "uri" ist nur innerhalb von init bekannt
   // überall sonst meldet der Browser einen Fehler."
   // Sie bekommt ihren Wert aus dem 'Attribute' namespaceURI der 'Variable' "layer" (hat den 'Type' 'Object')
-  var uri = layer.namespaceURI;
+  let uri = layer.namespaceURI;
 
   // Innerhalb von init können wir aber auf den Wert zugreifen. console.log ist eine 'Function', die
   // ebenfalls vom Browser bereitgestellt wird, um etwas auf der Browser Konsole auszugeben.
@@ -86,10 +86,10 @@ function init() {
   // der 'Function' wieder in einer Variablen gespeichert werden.
 
   // z.B.
-  // var myElems = createPattern(layer, 40, 6, 5, '#00FFFF', 1);
+  // let myElems = createPattern(layer, 40, 6, 5, '#00FFFF', 1);
 
   // oder ein anderer 'Function Call' kann völlig andere 'Values' verwenden
-  var myElems = createPattern(layer, 20, 20, 5, '#FF00FF', 2);
+  let myElems = createPattern(layer, 20, 20, 5, '#FF00FF', 2);
 
   // Bei einem Array hat das erste Element die Hausnummer 'Index' 0, das zweite die 1, usw.
   // Hier verändern wir die Farbe des 5. Elements!
@@ -118,40 +118,42 @@ console.log("Fehler!", uri);
 function createPattern(parent, width, count, gap, color, mode) {
 
   // Ein leere 'Array', in dem wir die erzeugten Elemente speichern wollen zur späteren Verwendung
-  var elements = [];
+  let elements = [];
 
   // Eine 'Variable' für das neue Element
-  var newElem;
+  let newElem;
 
   // Aus den Werten der 'Parameters' "width" und "gap" berechnen wir den Platzbedarf für die Elemente, die
   // wir erzeugen möchten und merken uns diesen für die Verwendung weiter unten in der 'Variable' "box"
-  var box = width + 2 * gap;
+  let box = width + 2 * gap;
 
   // Aus "box" und den Werten der 'Parameters' "gap" und "count" berechnen wir die obere linke Position
   // für die Elemente, die wir erzeugen möchten und merken uns diese in der 'Variable' "offset"
-  var offset = -box * count / 2 + gap;
+  let offset = -box * count / 2 + gap;
 
-
+  // Zwei Variablen ohne Wert definiert
+  let klecks, scale;
   // Eine weitere 'Controlstructure': 'if' 'else' führt 'Statements' in Abhängigkeit von dem Zutreffen der Bedingung
   // 'Condition' zwischen ( und ) aus. der 'if' Teil nur wenn die 'Condition' 'true' ist ansonsten den 'else' Teil, der
   // aber auch fehlen kann. Vergleiche müssen mit == gemacht werden. = würde nur den 'Value' der 'Variable' ändern.
   if (mode == 2) {
 
-    var klecks = document.getElementById('klecks');
-    var scale = width * 1.5 / Math.max(klecks.getBBox().width, klecks.getBBox().height);
+    // hier bekommen sie ihren Wert zugewiesen
+    klecks = document.getElementById('klecks');
+    scale = width * 1.5 / Math.max(klecks.getBBox().width, klecks.getBBox().height);
 
   }
 
   // Hier ist ein Beispiel für den nächsten Teil eines Javascript 'Programs': 'Controlstructures'.
   // Das sind 'Statements', die den Ablauf des 'Programs' bestimmen. In diesem Fall ist es eine
   // Wiederholungsschleife: Die 'Statements' zwischen { und } der 'for loop' werde so oft wiederholt,
-  // wie es in der Schleifendefinition bestimmt wird: Die Variable "col" wird mit 0 initialisiert (var col = 0)
+  // wie es in der Schleifendefinition bestimmt wird: Die Variable "col" wird mit 0 initialisiert (let col = 0)
   // nach jedem Durchlauf wird sie verändert (coll++) und es wird geprüft, ob die Bedingung (col < count) zutrifft.
   // Wenn das nicht mehr der Fall ist, wird die Schleife beendet und das 'Statement' nach } wird ausgeführt.
-  for (var col = 0; col < count; col++) {
+  for (let col = 0; col < count; col++) {
 
     // Das geht natürlich auch geschachtelt mit eine weiteren 'for loop' - diesmal wird die 'Variable' "row" verwendet
-    for (var row = 0; row < count; row++) {
+    for (let row = 0; row < count; row++) {
 
       // Ein weiterer 'Function Call' mit 3 'Values': der Wert von parent, der Text "rect" und einem grösseren 'Object' {...},
       // das alle 'Attribute: Value' Paare für das zu erzeugende Element enthält.
@@ -202,7 +204,7 @@ function createElement(parent, type, attrList) {
 
   // Über das document 'Object' (vom Browser) greifen wir auf eine Funktion des Browsers zu, die uns ein neues Element erzeugt.
   // Diese Element wird in der 'Variable' mit dem Namen "elem" gespeichert
-  var elem = document.createElementNS(parent.namespaceURI, type);
+  let elem = document.createElementNS(parent.namespaceURI, type);
 
   // Das neue Element "elem" wird an das Elternelement "parent" angehängt über die 'Function' "appendChild" über die jedes
   // Element eines Documents verfügt
@@ -227,18 +229,18 @@ function createElement(parent, type, attrList) {
 function cloneElement(parent, elem, attrList) {
 
   // Hier wird vom Element "elem" über dessen 'Function' "cloneNode" dupliziert
-  var clone = elem.cloneNode(true);
+  let clone = elem.cloneNode(true);
 
   // Das neue Element muss mit Hilfe einer neuen Gruppe an die richtige Stelle in der richtigen Grösse verschoben werden
   // Das ist nötig weil wir hier den Aufbau des Elements nicht kennen
-  var place = createElement(parent, 'g', attrList);
+  let place = createElement(parent, 'g', attrList);
 
   // Jetzt wird die Kopie des Elements in diese Gruppe bewegt und ist damit richtig positioniert
   place.appendChild(clone);
 
   // Damit wir die Kopie des Elements später manipulieren könne (Animation, Interaktion) müssen wir das Ganze nochmal
   // in eine Gruppe verpacken, deren 'Attributes' leer sind, damit wir sie später füllen können
-  var wrap = createElement(parent, 'g', {});
+  let wrap = createElement(parent, 'g', {});
   wrap.appendChild(place);
 
   // Das erzeugte Element "wrap" wird dem Aufrufer 'Caller' der 'Function' zur weiteren Verwendung zurückgegeben 'returned'

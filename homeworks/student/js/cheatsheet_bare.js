@@ -1,23 +1,23 @@
-var hugo1;
-var hugo2 = 0;
-var myNumber1 = 0;
-var myNumber1 = 0.05;
-var myText1 = "Hallo";
-var myText2 = 'Hallo';
-var myBoolean = true;
-var myArray = [0, 'Hallo', true, 0.05, false];
-var myObject = { name: 'Hugo', alter: 29, programmierer: true };
-var myFunction = function() {
+let hugo1;
+let hugo2 = 0;
+let myNumber1 = 0;
+let myNumber1a = 0.05;
+let myText1 = "Hallo";
+let myText2 = 'Hallo';
+let myBoolean = true;
+let myArray = [0, 'Hallo', true, 0.05, false];
+let myObject = { name: 'Hugo', alter: 29, programmierer: true };
+let myFunction = function() {
   console.log("Hallo");
 }
 
-var layer;
+let layer;
 
 function init() {
   layer = document.getElementById('layer1');
-  var uri = layer.namespaceURI;
+  let uri = layer.namespaceURI;
   console.log("Innerhalb von init ist uri=", uri);
-  var myElems = createPattern(layer, 20, 20, 5, '#FF00FF', 2);
+  let myElems = createPattern(layer, 20, 20, 5, '#FF00FF', 2);
   myElems[4].setAttribute('fill', 'lime');
   console.log(myElems[4]);
   svg = document.getElementById('svg');
@@ -28,23 +28,24 @@ function init() {
 console.log("Fehler!", uri);
 
 function createPattern(parent, width, count, gap, color, mode) {
-  var elements = [];
-  var newElem;
-  var box = width + 2 * gap;
-  var offset = -box * count / 2 + gap;
+  let elements = [];
+  let newElem;
+  let box = width + 2 * gap;
+  let offset = -box * count / 2 + gap;
+  let klecks, scale;
   if (mode == 2) {
-    var klecks = document.getElementById('klecks');
-    var scale = width * 1.5 / Math.max(klecks.getBBox().width, klecks.getBBox().height);
+    klecks = document.getElementById('klecks');
+    scale = width * 1.5 / Math.max(klecks.getBBox().width, klecks.getBBox().height);
   }
-  for (var col = 0; col < count; col++) {
-    for (var row = 0; row < count; row++) {
-      if (mode == 0)  {
+  for (let col = 0; col < count; col++) {
+    for (let row = 0; row < count; row++) {
+      if (mode == 0) {
         newElem = createElement(parent, 'rect', { x: offset + row * box, y: offset + col * box, width: width, height: width, fill: color });
       } else {
-        if (mode == 1)  {
-          newElem = createElement(parent, 'circle', { cx: offset + row * box + width/2, cy: offset + col * box + width/2, r: width/2, fill: color });
+        if (mode == 1) {
+          newElem = createElement(parent, 'circle', { cx: offset + row * box + width / 2, cy: offset + col * box + width / 2, r: width / 2, fill: color });
         } else {
-          newElem = cloneElement(parent, klecks, { transform: 'translate(' + (offset + row * box + width / 2) + ' ' + (offset + col * box + width / 2) + ') scale(' + scale + ' ' + scale + ')'});
+          newElem = cloneElement(parent, klecks, { transform: 'translate(' + (offset + row * box + width / 2) + ' ' + (offset + col * box + width / 2) + ') scale(' + scale + ' ' + scale + ')' });
           newElem.setAttribute('fill', color);
         }
       }
@@ -55,7 +56,7 @@ function createPattern(parent, width, count, gap, color, mode) {
 }
 
 function createElement(parent, type, attrList) {
-  var elem = document.createElementNS(parent.namespaceURI, type);
+  let elem = document.createElementNS(parent.namespaceURI, type);
   parent.appendChild(elem);
   for (attr in attrList) {
     elem.setAttribute(attr, attrList[attr]);
@@ -64,10 +65,10 @@ function createElement(parent, type, attrList) {
 }
 
 function cloneElement(parent, elem, attrList) {
-  var clone = elem.cloneNode(true);
-  var place = createElement(parent, 'g', attrList);
+  let clone = elem.cloneNode(true);
+  let place = createElement(parent, 'g', attrList);
   place.appendChild(clone);
-  var wrap = createElement(parent, 'g', {});
+  let wrap = createElement(parent, 'g', {});
   wrap.appendChild(place);
   return wrap;
 }
