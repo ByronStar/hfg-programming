@@ -7,7 +7,7 @@ let stateFile = './homeworks.json'
 let studentsFile = './students.txt'
 let subscriber = [];
 
-let clientVersion = 'v1.0.2'
+let clientVersion = 'v1.0.3'
 let serverVersion = 'v1.0.3'
 let msgTrace = false
 
@@ -346,7 +346,8 @@ function setupServers() {
   }, 30000)
 
   if (clientVersion != state.version) {
-    announce("Es gibt eine neue Version der " + lib + " Library. Bitte von https://" + state.domain + ":" + httpsPort + "/homeworks.js herunterladen und in euren 'student/lib' Ordner kopieren.", "#2020ss-ig1-programmiersprachen-1")
+    announce("Es gibt eine neue Version der " + lib + " Library. Bitte von https://" + state.domain + ":" + httpsPort + "/homeworks.js herunterladen und in euren 'student/lib' Ordner kopieren.", "#2021-ig1_a-programmiersprachen-1-a")
+    announce("Es gibt eine neue Version der " + lib + " Library. Bitte von https://" + state.domain + ":" + httpsPort + "/homeworks.js herunterladen und in euren 'student/lib' Ordner kopieren.", "#2021-ig1_b-programmiersprachen-1-b")
     //announce("Es gibt eine neue Version der " + lib + " Library. Bitte von https://" + state.domain + ":" + httpsPort + "/homeworks.js herunterladen und in euren 'student/lib' Ordner kopieren.", "@benno.staebler")
     state.version = clientVersion
     saveState()
@@ -614,6 +615,13 @@ function createState() {
     students: {},
     volatile: {}
   }
+  if (!fs.existsSync('../students')) {
+    fs.mkdirSync('../students');
+    fs.mkdirSync('../students/shared');
+    fs.mkdirSync('../students/shared/css');
+    fs.mkdirSync('../students/shared/img');
+    fs.mkdirSync('../students/shared/lib');
+  }
   fs.readFile(studentsFile, 'utf-8', (err, data) => {
     if (err) {
       if (err.code == 'ENOENT') {
@@ -684,7 +692,7 @@ function announce(info, channel) {
   // console.log(info, channel)
   if (state.slack) {
     if (null == channel) {
-      channel = "#programmieren"
+      channel = "@benno.staebler"
     }
 
     let data = {
