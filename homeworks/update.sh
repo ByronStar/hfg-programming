@@ -24,19 +24,20 @@ PORT=
 # scp ${PORT} server/homeworks.sh ${HOST}:${DIR}/server
 
 # semester setup
-scp ${PORT} student/lib/homeworks.js ${HOST}:${DIR}/students/shared/lib
-scp ${PORT} student/css/progsp.css ${HOST}:${DIR}/students/shared/css
-scp ${PORT} student/img/x.png ${HOST}:${DIR}/students/shared/img
-scp ${PORT} student/img/r.png ${HOST}:${DIR}/students/shared/img
-scp ${PORT} student/img/g.png ${HOST}:${DIR}/students/shared/img
-scp ${PORT} student/img/y.png ${HOST}:${DIR}/students/shared/img
-scp ${PORT} student/img/arrow_d.png ${HOST}:${DIR}/students/shared/img
+#scp ${PORT} student/lib/homeworks.js ${HOST}:${DIR}/students/shared/lib
+#scp ${PORT} student/css/progsp.css ${HOST}:${DIR}/students/shared/css
+#scp ${PORT} student/img/x.png ${HOST}:${DIR}/students/shared/img
+#scp ${PORT} student/img/r.png ${HOST}:${DIR}/students/shared/img
+#scp ${PORT} student/img/g.png ${HOST}:${DIR}/students/shared/img
+#scp ${PORT} student/img/y.png ${HOST}:${DIR}/students/shared/img
+#scp ${PORT} student/img/arrow_d.png ${HOST}:${DIR}/students/shared/img
 
 # refresh test setup
 #cp student/lib/homeworks.js /Users/benno/Desktop/student/lib
 
 # create students package
-# zip -r student.zip student -x */*neu.html */data/*.id
+rm student.zip
+zip -r student.zip student -x "student/data/*.id" -x "student**.DS_Store"
 
 # replace transactional data
 # scp ${PORT} server/homeworks.json ${HOST}:${DIR}/server
