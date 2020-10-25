@@ -14,10 +14,6 @@ PORT=
 # upload students list
 #scp ${PORT} server/studentWS2021.txt ${HOST}:${DIR}/server/students.txt
 
-# upload new server (and restart)
-#scp ${PORT} server/homeworks.js ${HOST}:${DIR}/server
-# wscat -c wss://hfg.hopto.org:11204 -x '{"id":"RESTART","from":"wscat script","ts":'$(date +%s)',"data":{"rc":0}}'
-
 # intial setup
 # scp ${PORT} server/package.json ${HOST}:${DIR}/server
 # scp ${PORT} student/favicon.ico ${HOST}:${DIR}/server
@@ -36,11 +32,15 @@ PORT=
 #cp student/lib/homeworks.js /Users/benno/Desktop/student/lib
 
 # create students package
-rm student.zip
-zip -r student.zip student -x "student/data/*.id" -x "student**.DS_Store"
+#rm student.zip
+#zip -r student.zip student -x "student/data/*.id" -x "student**.DS_Store"
 
 # replace transactional data
 # scp ${PORT} server/homeworks.json ${HOST}:${DIR}/server
+
+# upload new server (and restart)
+#scp ${PORT} server/homeworks.js ${HOST}:${DIR}/server
+#wscat -c wss://hfg.hopto.org:11204 -x '{"id":"RESTART","from":"wscat script","ts":'$(date +%s)',"data":{"rc":0}}'
 
 # save transactional data
 # scp ${PORT} ${HOST}:${DIR}/server/homeworks.json server/homeworks_crash.json

@@ -373,9 +373,10 @@ var Homeworks = {};
         let state = msg.data
         let list = ''
         if (gc.view == 'table') {
-          list = '<table border="1"><tr><th>Name</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>Feedback</th></tr>'
+          list = '<table border="1"><tr><th>Name</th><th>Gruppe</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>Feedback</th></tr>'
           for (let id in state.students) {
             list += '<tr><td>' + state.students[id].name + '</td>'
+            list += '<td>' + state.students[id].group + '</td>'
             let fb = '-'
             for (let a = 1; a < 8; a++) {
               let icon = 'x.png'
@@ -397,7 +398,7 @@ var Homeworks = {};
           list += '</table>'
         } else {
           for (let id in state.students) {
-            list += '<li>' + state.students[id].name
+            list += '<li>' + state.students[id].name + ' (' + state.students[id].group + ')'
             list += '<ol>'
             state.students[id].hw.forEach((hw, h) => {
               let actUrl = 'https://' + state.domain + ':' + httpsPort + state.students[id].dir + hw.html + '?id=' + id + '&hw=' + h
