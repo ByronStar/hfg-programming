@@ -43,8 +43,17 @@ PORT=
 #wscat -c wss://hfg.hopto.org:11204 -x '{"id":"RESTART","from":"wscat script","ts":'$(date +%s)',"data":{"rc":0}}'
 
 # save transactional data
+scp ${PORT} ${HOST}:${DIR}/server/homeworks.json server
 # scp ${PORT} ${HOST}:${DIR}/server/homeworks.json server/homeworks_crash.json
-# scp ${PORT} ${HOST}:${DIR}/server/homeworks.json server
+
+# update transactional data
+#scp ${PORT} ${HOST}:${DIR}/server/homeworks.json server
+#cd server
+#node repair.js
+#cd ..
+#scp ${PORT} server/homeworks.json ${HOST}:${DIR}/server
+#wscat -c wss://hfg.hopto.org:11204 -x '{"id":"RESTART","from":"wscat script","ts":'$(date +%s)',"data":{"rc":0}}'
+
 # scp ${PORT} ${HOST}:${DIR}/server/homeworks.json_20200525091424 server
 
 # save logs
