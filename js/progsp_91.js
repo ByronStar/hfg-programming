@@ -2,10 +2,6 @@
 let url, layer, idx, trello, cards
 let cols = [320, 1060, 1800]
 
-// curl 'https://api.trello.com/1/members/me/boards?key=46715633098623bfa325ad862d9b179e&token=308eba89714d74b32098367393b8941af4536922f651e5434cdc4e782001e96c'
-// curl 'https://api.trello.com/1/boards/5f3c3d9efd54c38f818d2d97/cards?key=46715633098623bfa325ad862d9b179e&token=308eba89714d74b32098367393b8941af4536922f651e5434cdc4e782001e96c'
-// curl 'https://api.trello.com/1/boards/5f3c3d9efd54c38f818d2d97/labels?key=46715633098623bfa325ad862d9b179e&token=308eba89714d74b32098367393b8941af4536922f651e5434cdc4e782001e96c' > info_trello_labels.json
-// curl 'https://api.trello.com/1/boards/5f3c3d9efd54c38f818d2d97/lists?key=46715633098623bfa325ad862d9b179e&token=308eba89714d74b32098367393b8941af4536922f651e5434cdc4e782001e96c' > info_trello_lists.json
 function init() {
   console.log("screen = " + screen.width + " x " + screen.height + ", " + window.innerWidth + " x " + window.innerHeight)
   url = new URL(window.location.href)
@@ -13,49 +9,78 @@ function init() {
   layer = document.getElementById('layer0')
   // createGrid()
   // createLabels()
-  loadCards()
+  initTrello()
 }
 
-// 370
-// +385
-
-
-function createGrid() {
-  createElement(layer, 'line', { x1: 690, y1: 0, x2: 690, y2: 2970 })
-  createElement(layer, 'line', { x1: 1430, y1: 0, x2: 1430, y2: 2970 })
-  for (let r = 0; r < 8; r++) {
-    let row = -15 + r * 383
-    createElement(layer, 'line', { x1: 0, y1: row, x2: 2100, y2: row })
-  }
-}
-
-function loadCards() {
+function initTrello() {
   getFile('info_trello.json', 'application/json').then(
     data => {
-      trello = JSON.parse(data);
-      let url = 'https://api.trello.com/1/boards/' + trello.board + '/cards?key=' + trello.key + '&token=' + trello.token
-      // console.log(url);
-      // url = 'info_trello_cards.json'
-      getFile(url, 'application/json').then(
-        data => {
-          cards = JSON.parse(data)
-          cards.forEach((card, i) => {
-            if (card.idLabels.indexOf('5f3c3d9efd54c38f818d2db6') == -1) {
-              console.log(card.name, card.shortUrl);
-              let words = card.name.split(" ")
-              createLabel(layer, Math.floor(2 * idx / 3), (2 * idx) % 3, words[0], words[1], card.shortUrl)
-              createLabel(layer, Math.floor((2 * idx + 1) / 3), (2 * idx + 1) % 3, words[0], words[1], card.shortUrl)
-              idx++
-            }
-          })
-        },
-        error => {
-          console.log("Trello Error")
-        }
-      )
+      trello = JSON.parse(data)
+      runTrello()
     },
     error => {
       console.log("info_trello.json not loaded")
+    }
+  )
+}
+
+function runTrello() {
+  loadCards()
+  // createCards()
+}
+
+function createCards() {
+  addCard("Benno 06", '5f3c3d9efd54c38f818d2d9c').then(
+    data => {
+      let card = JSON.parse(data)
+      console.log(card);
+    },
+    error => {
+      console.log("Trello Error: " + error)
+    }
+  )
+}
+
+function addCard(name, idList) {
+  let url = 'https://api.trello.com/1/cards'
+  return new Promise((resolve, reject) => {
+    ajax({
+      type: 'POST',
+      url: url,
+      responseType: 'text',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      data: JSON.stringify({
+        key: trello.key,
+        token: trello.token,
+        name: name,
+        idList: idList
+      }),
+      success: (response, context) => resolve(response),
+      error: (error, headers) => reject(error)
+    })
+  })
+}
+
+function loadCards() {
+  let url = 'https://api.trello.com/1/boards/' + trello.board + '/cards?key=' + trello.key + '&token=' + trello.token
+  getFile(url, 'application/json').then(
+    data => {
+      cards = JSON.parse(data)
+      console.log(cards.length + " cards loaded")
+      cards.forEach((card, i) => {
+        if (card.idLabels.indexOf('5f3c3d9efd54c38f818d2db6') == -1) {
+          console.log(card.name, card.shortUrl);
+          let words = card.name.split(" ")
+          createLabel(layer, Math.floor(2 * idx / 3), (2 * idx) % 3, words[0], words[1], card.shortUrl)
+          createLabel(layer, Math.floor((2 * idx + 1) / 3), (2 * idx + 1) % 3, words[0], words[1], card.shortUrl)
+          idx++
+        }
+      })
+    },
+    error => {
+      console.log("Trello Error")
     }
   )
 }
@@ -84,6 +109,15 @@ function createLabels() {
         box++
       }
     }
+  }
+}
+
+function createGrid() {
+  createElement(layer, 'line', { x1: 690, y1: 0, x2: 690, y2: 2970 })
+  createElement(layer, 'line', { x1: 1430, y1: 0, x2: 1430, y2: 2970 })
+  for (let r = 0; r < 8; r++) {
+    let row = -15 + r * 383
+    createElement(layer, 'line', { x1: 0, y1: row, x2: 2100, y2: row })
   }
 }
 
