@@ -21,7 +21,7 @@
   <style type="text/css">
     .progsp {
       font-family: 'Ubuntu', sans-serif;
-      font-size: 6em;
+      font-size: 1em;
       font-weight: bolder;
       text-anchor: middle;
       stroke: black;
@@ -37,8 +37,24 @@
       fill: #FFFFFF;
     }
 
-    .centered {
-      text-align: center;
+    .progsp .overlay {
+      position: relative;
+      margin: 20px;
+    }
+
+    .progsp svg {
+      position: absolute;
+      top: 0;
+      font-size: 6em;
+    }
+
+    .progsp a {
+      color: #00a9fe;
+      text-decoration: none;
+    }
+    
+    .progsp a:hover {
+      color: #ffa312;
     }
   </style>
 </head>
@@ -62,6 +78,9 @@
     <g id="layer0">
     </g>
   </svg>
+  <div id="info" class="overlay">
+    <h3>Etiketten</h3>
+  </div>
 </body>
 
 </html>

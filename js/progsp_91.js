@@ -1,14 +1,16 @@
 'strict'
-let url, layer, idx, trello, cards
+let url, layer, info, idx, trello, cards
 let cols = [320, 1060, 1800]
+let lblPrinted = '5f3c3d9efd54c38f818d2db6'
 
 function init() {
   console.log("screen = " + screen.width + " x " + screen.height + ", " + window.innerWidth + " x " + window.innerHeight)
   url = new URL(window.location.href)
   idx = url.searchParams.get("skip") || 0
   layer = document.getElementById('layer0')
+  info = document.getElementById('info')
   // createGrid()
-  // createLabels()
+  // simulateLabels()
   initTrello()
 }
 
@@ -16,6 +18,12 @@ function initTrello() {
   getFile('info_trello.json', 'application/json').then(
     data => {
       trello = JSON.parse(data)
+      trello.idMap = {}
+      trello.lists.forEach((list, i) => {
+        trello.idMap[list.id] = list
+        list.cardCnt = 0
+      })
+      trello.labelCnt = 0
       runTrello()
     },
     error => {
@@ -25,23 +33,28 @@ function initTrello() {
 }
 
 function runTrello() {
-  loadCards()
-  // createCards()
+  let page = url.searchParams.get("page")
+  if (null != page) {
+    createLabels(page, url.searchParams.get("update"))
+  } else {
+    checkCards(url.searchParams.get("add") || 0, 3)
+    // cleanPrinted()
+  }
 }
 
-function createCards() {
-  addCard("Benno 06", '5f3c3d9efd54c38f818d2d9c').then(
+function updateCards() {
+  updateCard('5fabf33c18a1743865cc706b', { idLabels: lblPrinted }).then(
     data => {
       let card = JSON.parse(data)
       console.log(card);
     },
     error => {
-      console.log("Trello Error: " + error)
+      console.log("Trello: " + error)
     }
   )
 }
 
-function addCard(name, idList) {
+function createCard(name, idList) {
   let url = 'https://api.trello.com/1/cards'
   return new Promise((resolve, reject) => {
     ajax({
@@ -63,24 +76,131 @@ function addCard(name, idList) {
   })
 }
 
-function loadCards() {
+function updateCard(idCard, data) {
+  let url = 'https://api.trello.com/1/cards/' + idCard
+  return new Promise((resolve, reject) => {
+    data.key = trello.key
+    data.token = trello.token
+    ajax({
+      type: 'PUT',
+      url: url,
+      responseType: 'text',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      data: JSON.stringify(data),
+      success: (response, context) => resolve(response),
+      error: (error, headers) => reject(error)
+    })
+  })
+}
+
+function checkCards(add, max) {
   let url = 'https://api.trello.com/1/boards/' + trello.board + '/cards?key=' + trello.key + '&token=' + trello.token
   getFile(url, 'application/json').then(
     data => {
       cards = JSON.parse(data)
       console.log(cards.length + " cards loaded")
       cards.forEach((card, i) => {
-        if (card.idLabels.indexOf('5f3c3d9efd54c38f818d2db6') == -1) {
-          console.log(card.name, card.shortUrl);
-          let words = card.name.split(" ")
-          createLabel(layer, Math.floor(2 * idx / 3), (2 * idx) % 3, words[0], words[1], card.shortUrl)
-          createLabel(layer, Math.floor((2 * idx + 1) / 3), (2 * idx + 1) % 3, words[0], words[1], card.shortUrl)
-          idx++
+        let list = trello.idMap[card.idList]
+        if (card.name.startsWith(list.name + " ")) {
+          console.log(card.name)
+          list.cardCnt++
+          if (card.idLabels.indexOf(lblPrinted) == -1) {
+            trello.labelCnt++
+          }
         }
+      })
+      trello.lists.forEach((list, i) => {
+        let last = list.cardCnt + Math.min(add, max - list.cardCnt)
+        if (list.cardCnt < max) {
+          for (let c = list.cardCnt + 1; c <= last; c++) { // Math.min(add, max - list.cardCnt))
+            console.log(list.name + ' ' + (c < 10 ? '0' + c : c), list.id)
+            createCard(list.name + ' ' + (c < 10 ? '0' + c : c), list.id).then(
+              data => {
+                let card = JSON.parse(data)
+                console.log(card);
+                cards.push(card)
+                trello.labelCnt++
+              },
+              error => {
+                console.log("Trello: " + error)
+              }
+            )
+          }
+        }
+      })
+      console.log(cards.length + " / " + trello.labelCnt + " cards total / new")
+      if (trello.labelCnt > 0) {
+        let ul = createElement(info, 'ul', {})
+        for (let l = 0; l < Math.floor(trello.labelCnt / 12) + 1; l++) {
+          let li = createElement(ul, 'li', {})
+          li.innerHTML = '<a href="' + location.pathname + '?page=' + l + '" target="page">Etiketten Seite ' + (l + 1) + '</a>'
+        }
+      }
+    },
+    error => {
+      console.log("Trello:" + error)
+    }
+  )
+}
+
+function cleanPrinted() {
+  let url = 'https://api.trello.com/1/boards/' + trello.board + '/cards?key=' + trello.key + '&token=' + trello.token
+  getFile(url, 'application/json').then(
+    data => {
+      cards = JSON.parse(data)
+      console.log(cards.length + " cards loaded")
+      cards.filter((card, i) => card.idLabels.indexOf(lblPrinted) > -1).forEach((card, i) => {
+        card.idLabels.filter((label, i) => label != lblPrinted)
+        updateCard(card.id, { idLabels: card.idLabels.filter((label, i) => label != lblPrinted).join(',') }).then(
+          data => {
+            let card = JSON.parse(data)
+            console.log(card);
+          },
+          error => {
+            console.log("Trello update card: " + error)
+          }
+        )
       })
     },
     error => {
-      console.log("Trello Error")
+      console.log("Trello:" + error)
+    }
+  )
+}
+
+function createLabels(page, doUpdate) {
+  info.setAttribute('style', 'display:none')
+  let url = 'https://api.trello.com/1/boards/' + trello.board + '/cards?key=' + trello.key + '&token=' + trello.token
+  getFile(url, 'application/json').then(
+    data => {
+      cards = JSON.parse(data)
+      console.log(cards.length + " cards loaded")
+      cards.filter((card, i) => card.idLabels.indexOf(lblPrinted) == -1).filter((card, i) => Math.floor(i / 12) == page).forEach((card, i) => {
+        console.log(card.name, card.shortUrl);
+        let words = card.name.split(" ")
+        createLabel(layer, Math.floor(2 * idx / 3), (2 * idx) % 3, words[0], words[1], card.shortUrl)
+        createLabel(layer, Math.floor((2 * idx + 1) / 3), (2 * idx + 1) % 3, words[0], words[1], card.shortUrl)
+        if (doUpdate) {
+          card.idLabels.push(lblPrinted)
+          console.log(card.id, card.idLabels.join(','))
+          updateCard(card.id, { idLabels: card.idLabels.join(',') }).then(
+            data => {
+              let card = JSON.parse(data)
+              console.log(card);
+            },
+            error => {
+              console.log("Trello update card: " + error)
+            }
+          )
+        }
+        idx++
+      })
+    },
+    error => {
+      console.log("Trello:" + error)
     }
   )
 }
@@ -99,7 +219,7 @@ function createLabel(parent, r, c, lne1, lne2, url) {
   elem.innerHTML = qr.createSvgTag(true, 6)
 }
 
-function createLabels() {
+function simulateLabels() {
   box = 1;
   let elem
   for (let r = 0; r < 8; r++) {
