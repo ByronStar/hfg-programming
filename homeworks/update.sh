@@ -21,6 +21,10 @@ PORT=
 
 # semester setup
 #scp ${PORT} student/lib/homeworks.js ${HOST}:${DIR}/students/shared/lib
+#scp ${PORT} student/lib/p5.min.js ${HOST}:${DIR}/students/shared/lib
+#scp ${PORT} student/lib/p5.sound.min.js ${HOST}:${DIR}/students/shared/lib
+scp ${PORT} student/lib/p5.sound.min.js.map ${HOST}:${DIR}/students/shared/lib
+#scp ${PORT} student/lib/matter.js ${HOST}:${DIR}/students/shared/lib
 #scp ${PORT} student/css/progsp.css ${HOST}:${DIR}/students/shared/css
 #scp ${PORT} student/img/x.png ${HOST}:${DIR}/students/shared/img
 #scp ${PORT} student/img/r.png ${HOST}:${DIR}/students/shared/img
@@ -43,7 +47,7 @@ PORT=
 #wscat -c wss://hfg.hopto.org:11204 -x '{"id":"RESTART","from":"wscat script","ts":'$(date +%s)',"data":{"rc":0}}'
 
 # save transactional data
-scp ${PORT} ${HOST}:${DIR}/server/homeworks.json server
+# scp ${PORT} ${HOST}:${DIR}/server/homeworks.json server
 # scp ${PORT} ${HOST}:${DIR}/server/homeworks.json server/homeworks_crash.json
 
 # update transactional data

@@ -32,26 +32,22 @@ function initTrello() {
   )
 }
 
+function runTrelloX() {
+  // cleanPrinted()
+}
+
 function runTrello() {
   let page = url.searchParams.get("page")
   if (null != page) {
     createLabels(page, url.searchParams.get("update"))
   } else {
-    checkCards(url.searchParams.get("add") || 0, 3)
-    // cleanPrinted()
-  }
-}
-
-function updateCards() {
-  updateCard('5fabf33c18a1743865cc706b', { idLabels: lblPrinted }).then(
-    data => {
-      let card = JSON.parse(data)
-      console.log(card);
-    },
-    error => {
-      console.log("Trello: " + error)
+    let delCards = url.searchParams.get("delete")
+    if (null != delCards) {
+      deleteCards(delCards)
+    } else {
+      checkCards(url.searchParams.get("add"), url.searchParams.get("num") || 0, url.searchParams.get("max") || 3)
     }
-  )
+  }
 }
 
 function createCard(name, idList) {
@@ -96,7 +92,27 @@ function updateCard(idCard, data) {
   })
 }
 
-function checkCards(add, max) {
+function deleteCard(idCard) {
+  let url = 'https://api.trello.com/1/cards/' + idCard
+  return new Promise((resolve, reject) => {
+    data = {}
+    data.key = trello.key
+    data.token = trello.token
+    ajax({
+      type: 'DELETE',
+      url: url,
+      responseType: 'text',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      data: JSON.stringify(data),
+      success: (response, context) => resolve(response),
+      error: (error, headers) => reject(error)
+    })
+  })
+}
+
+function checkCards(filter, num, max) {
   let url = 'https://api.trello.com/1/boards/' + trello.board + '/cards?key=' + trello.key + '&token=' + trello.token
   getFile(url, 'application/json').then(
     data => {
@@ -112,10 +128,10 @@ function checkCards(add, max) {
           }
         }
       })
-      trello.lists.forEach((list, i) => {
-        let last = list.cardCnt + Math.min(add, max - list.cardCnt)
+      trello.lists.filter((list, i) => list.name.startsWith(filter)).forEach((list, i) => {
+        let last = list.cardCnt + Math.min(num, max - list.cardCnt)
         if (list.cardCnt < max) {
-          for (let c = list.cardCnt + 1; c <= last; c++) { // Math.min(add, max - list.cardCnt))
+          for (let c = list.cardCnt + 1; c <= last; c++) { // Math.min(num, max - list.cardCnt))
             console.log(list.name + ' ' + (c < 10 ? '0' + c : c), list.id)
             createCard(list.name + ' ' + (c < 10 ? '0' + c : c), list.id).then(
               data => {
@@ -131,15 +147,43 @@ function checkCards(add, max) {
           }
         }
       })
-      console.log(cards.length + " / " + trello.labelCnt + " cards total / new")
-      if (trello.labelCnt > 0) {
-        let ul = createElement(info, 'ul', {})
-        for (let l = 0; l < Math.floor(trello.labelCnt / 12) + 1; l++) {
-          let li = createElement(ul, 'li', {})
-          li.innerHTML = '<a href="' + location.pathname + '?page=' + l + '" target="page">Etiketten Seite ' + (l + 1) + '</a>'
-        }
-      }
+      showPages()
     },
+    error => {
+      console.log("Trello:" + error)
+    }
+  )
+}
+
+function showPages() {
+  console.log(cards.length + " / " + trello.labelCnt + " cards total / new")
+  let ul = createElement(info, 'ul', {})
+  for (let l = 0; l < Math.ceil(trello.labelCnt / 12); l++) {
+    let li = createElement(ul, 'li', {})
+    li.innerHTML = '<a href="' + location.pathname + '?page=' + l + '" target="page">Etiketten Seite ' + (l + 1) + '</a>'
+  }
+}
+
+function deleteCards(filter) {
+  let url = 'https://api.trello.com/1/boards/' + trello.board + '/cards?key=' + trello.key + '&token=' + trello.token
+  getFile(url, 'application/json').then(
+    data => {
+      cards = JSON.parse(data)
+      console.log(cards.length + " cards loaded")
+      cards.filter((card, i) => card.idLabels.length == 0 && card.name.startsWith(filter + " ")).forEach((card, i) => {
+        console.log(card.name);
+        deleteCard(card.id).then(
+          data => {
+            let card = JSON.parse(data)
+            console.log(card);
+          },
+          error => {
+            console.log("Trello delete card: " + error)
+          }
+        )
+      })
+      showPages()
+  },
     error => {
       console.log("Trello:" + error)
     }
