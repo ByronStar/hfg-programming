@@ -32,11 +32,16 @@ function initTrello() {
   )
 }
 
-function runTrelloX() {
-  // cleanPrinted()
+function processInput(evt) {
+  evt.preventDefault();
+  console.log("Hallo: ", event)
 }
 
 function runTrello() {
+  // cleanPrinted()
+}
+
+function runTrelloX() {
   let page = url.searchParams.get("page")
   if (null != page) {
     createLabels(page, url.searchParams.get("update"))
@@ -170,7 +175,7 @@ function deleteCards(filter) {
     data => {
       cards = JSON.parse(data)
       console.log(cards.length + " cards loaded")
-      cards.filter((card, i) => card.idLabels.length == 0 && card.name.startsWith(filter + " ")).forEach((card, i) => {
+      cards.filter((card, i) => card.desc == "" && card.idLabels.length == 0 && card.name.startsWith(filter)).forEach((card, i) => {
         console.log(card.name);
         deleteCard(card.id).then(
           data => {

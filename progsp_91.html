@@ -9,7 +9,7 @@
   <meta name="description" content="">
   <meta name="author" content="ByronStar">
 
-  <title>Etiketten</title>
+  <title>Umzug</title>
 
   <!-- qrcode.js -->
   <script type="text/javascript" src="lib/qrcode.js"></script>
@@ -52,7 +52,7 @@
       color: #00a9fe;
       text-decoration: none;
     }
-    
+
     .progsp a:hover {
       color: #ffa312;
     }
@@ -60,25 +60,17 @@
 </head>
 
 <body class="progsp" onload="init()">
-  <!-- Über die viewBox wird der sichtbare Teil des SVGs und die AspectRatio festgelegt
-     ausserdem wird für unser Javascript Programm der Koordinatenraum bestimmt in
-     Grösse und Position Nullpunkt in der Bildmitte. Ansonsten ist ein SVG beliebig skalierbar
-   -->
-  <!-- 4:3 = 1,333 -->
-  <!-- viewBox="-512 -384 1024 768" -->
-  <!-- 16:9 = 1,777 -->
-  <!-- viewBox="-1280 -720 2560 1440" -->
-  <!-- 8:5 = 1,6 -->
-  <!-- viewBox="-640 -400 1280 800" -->
-
-  <!-- Ein SVG das per Programm verändert wird  19,52 27,62 -->
-  <!-- <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 1952 2762"> -->
   <svg id="svg" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 2100 2970">
-    <!-- Diese Gruppe ist enthält vordefinierte Rechtecke -->
     <g id="layer0">
     </g>
   </svg>
   <div id="info" class="overlay">
+    <h3>Admin</h3>
+    <form onsubmit="processInput(event)">
+      <input type="submit" value="Delete">
+      <label for="fname">Cards without labels and description starting with: </label>
+      <input type="text" id="filter" value="Benno">
+    </form>
     <h3>Etiketten</h3>
   </div>
 </body>
