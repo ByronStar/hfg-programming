@@ -34,14 +34,14 @@ function initTrello() {
 
 function processInput(evt) {
   evt.preventDefault();
-  console.log("Hallo: ", event)
-}
-
-function runTrello() {
-  // cleanPrinted()
+  deleteCards(document.getElementById('filter').value)
 }
 
 function runTrelloX() {
+  // cleanPrinted()
+}
+
+function runTrello() {
   let page = url.searchParams.get("page")
   if (null != page) {
     createLabels(page, url.searchParams.get("update"))

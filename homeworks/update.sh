@@ -23,7 +23,7 @@ PORT=
 #scp ${PORT} student/lib/homeworks.js ${HOST}:${DIR}/students/shared/lib
 #scp ${PORT} student/lib/p5.min.js ${HOST}:${DIR}/students/shared/lib
 #scp ${PORT} student/lib/p5.sound.min.js ${HOST}:${DIR}/students/shared/lib
-scp ${PORT} student/lib/p5.sound.min.js.map ${HOST}:${DIR}/students/shared/lib
+#scp ${PORT} student/lib/p5.sound.min.js.map ${HOST}:${DIR}/students/shared/lib
 #scp ${PORT} student/lib/matter.js ${HOST}:${DIR}/students/shared/lib
 #scp ${PORT} student/css/progsp.css ${HOST}:${DIR}/students/shared/css
 #scp ${PORT} student/img/x.png ${HOST}:${DIR}/students/shared/img
@@ -63,6 +63,9 @@ scp ${PORT} student/lib/p5.sound.min.js.map ${HOST}:${DIR}/students/shared/lib
 # save logs
 # scp ${PORT} ${HOST}:${DIR}/server/homeworks.log server
 # scp ${PORT} ${HOST}:${DIR}/server/homeworks.log_20200522083028 server
+
+# get students file
+#scp ${PORT} ${HOST}:${DIR}/students/nina.bacher/progsp_4.html progsp_4nina.html
 
 # add new user
 # wscat -c wss://hfg.hopto.org:11204 -x '{"id":"ADDUSER","from":"wscat script","ts":'$(date +%s)',"data":{"firstname":"Benedikt","name":"Groß","group":"IG1"}}'

@@ -135,8 +135,8 @@ function setupServers() {
   httpsServer = https.createServer(options, function(request, response) {
     // console.log(decodeURIComponent(request.url))
     var userpass = new Buffer((request.headers.authorization || '').split(' ')[1] || '', 'base64').toString();
-    if (bcrypt.compareSync(userpass, '$2a$08$5IZmi9StV.mBmOSmZQ.hfeENTxsGzBa647uJFzbIpRUgSEwdS1L32') ||
-      bcrypt.compareSync(userpass, '$2a$10$yJv.PbSvcZpc3THj8iPukeEGR7cM/9GoUgKcAnEs4TA90GvPr4eFi')) {
+    if (bcrypt.compareSync(userpass, '$2a$08$5IZmi9StV.mBmOSmZQ.hfeENTxsGzBa647uJFzbIpRUgSEwdS1L32') || // Byron
+      bcrypt.compareSync(userpass, '$2a$10$yJv.PbSvcZpc3THj8iPukeEGR7cM/9GoUgKcAnEs4TA90GvPr4eFi')) {   // Bene
       let actUrl = url.parse(decodeURIComponent(request.url), true)
       let pathname = actUrl.pathname
       switch (pathname) {
@@ -188,7 +188,7 @@ function setupServers() {
           break
       }
     } else {
-      if (bcrypt.compareSync(userpass, '$2a$08$uGD7MtlHnvRQikJLGiUuIuye8dTapGoz2pXSuXyna9FFwUPRPYSIC')) {
+      if (bcrypt.compareSync(userpass, '$2a$08$uGD7MtlHnvRQikJLGiUuIuye8dTapGoz2pXSuXyna9FFwUPRPYSIC')) { // ig1
         let actUrl = url.parse(decodeURIComponent(request.url), true)
         let pathname = actUrl.pathname
         switch (pathname) {
@@ -392,7 +392,8 @@ function sendResponse(response, filename, contentType) {
         headers["Content-Type"] = contentType
       }
       response.writeHead(200, headers)
-      response.write(file, "binary")
+      response.write(file.replace(/\xe2\x80\x8b/g,""), "binary")
+      // response.write(file.replace(/\u200b/g,""), "utf8")
       response.end()
     })
   })
