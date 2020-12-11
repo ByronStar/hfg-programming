@@ -1,12 +1,11 @@
 'strict'
-let url, layer, info, idx, trello, cards
+let url, layer, info, trello, cards
 let cols = [320, 1060, 1800]
 let lblPrinted = '5f3c3d9efd54c38f818d2db6'
 
 function init() {
   console.log("screen = " + screen.width + " x " + screen.height + ", " + window.innerWidth + " x " + window.innerHeight)
   url = new URL(window.location.href)
-  idx = url.searchParams.get("skip") || 0
   layer = document.getElementById('layer0')
   info = document.getElementById('info')
   // createGrid()
@@ -44,13 +43,13 @@ function runTrelloX() {
 function runTrello() {
   let page = url.searchParams.get("page")
   if (null != page) {
-    createLabels(page, url.searchParams.get("update"))
+    createLabels(+page, url.searchParams.get("update"))
   } else {
     let delCards = url.searchParams.get("delete")
     if (null != delCards) {
       deleteCards(delCards)
     } else {
-      checkCards(url.searchParams.get("add"), url.searchParams.get("num") || 0, url.searchParams.get("max") || 3)
+      checkCards(+url.searchParams.get("add"), +url.searchParams.get("num") || 0, +url.searchParams.get("max") || 3)
     }
   }
 }
@@ -118,10 +117,9 @@ function deleteCard(idCard) {
 }
 
 function checkCards(filter, num, max) {
-  let url = 'https://api.trello.com/1/boards/' + trello.board + '/cards?key=' + trello.key + '&token=' + trello.token
-  getFile(url, 'application/json').then(
+  getCards().then(
     data => {
-      cards = JSON.parse(data)
+      cards = data
       console.log(cards.length + " cards loaded")
       cards.forEach((card, i) => {
         let list = trello.idMap[card.idList]
@@ -170,10 +168,9 @@ function showPages() {
 }
 
 function deleteCards(filter) {
-  let url = 'https://api.trello.com/1/boards/' + trello.board + '/cards?key=' + trello.key + '&token=' + trello.token
-  getFile(url, 'application/json').then(
+  getCards().then(
     data => {
-      cards = JSON.parse(data)
+      cards = data
       console.log(cards.length + " cards loaded")
       cards.filter((card, i) => card.desc == "" && card.idLabels.length == 0 && card.name.startsWith(filter)).forEach((card, i) => {
         console.log(card.name);
@@ -188,7 +185,7 @@ function deleteCards(filter) {
         )
       })
       showPages()
-  },
+    },
     error => {
       console.log("Trello:" + error)
     }
@@ -196,10 +193,9 @@ function deleteCards(filter) {
 }
 
 function cleanPrinted() {
-  let url = 'https://api.trello.com/1/boards/' + trello.board + '/cards?key=' + trello.key + '&token=' + trello.token
-  getFile(url, 'application/json').then(
+  getCards().then(
     data => {
-      cards = JSON.parse(data)
+      cards = data
       console.log(cards.length + " cards loaded")
       cards.filter((card, i) => card.idLabels.indexOf(lblPrinted) > -1).forEach((card, i) => {
         card.idLabels.filter((label, i) => label != lblPrinted)
@@ -220,18 +216,34 @@ function cleanPrinted() {
   )
 }
 
+function chgSkip(evt) {
+  alert("Hi")
+}
+
 function createLabels(page, doUpdate) {
   info.setAttribute('style', 'display:none')
-  let url = 'https://api.trello.com/1/boards/' + trello.board + '/cards?key=' + trello.key + '&token=' + trello.token
-  getFile(url, 'application/json').then(
+  getCards().then(
     data => {
-      cards = JSON.parse(data)
+      cards = data
       console.log(cards.length + " cards loaded")
-      cards.filter((card, i) => card.idLabels.indexOf(lblPrinted) == -1).filter((card, i) => Math.floor(i / 12) == page).forEach((card, i) => {
-        console.log(card.name, card.shortUrl);
+      let skip = +url.searchParams.get("skip") || 0
+      let slot = page == 0 ? skip : 0
+      let half = false
+      if (page > 0 && skip % 2 == 1) {
+        skip++
+        half = true
+      }
+      cards.filter((card, i) => card.name.startsWith(trello.idMap[card.idList].name + " ") && card.idLabels.indexOf(lblPrinted) == -1).filter((card, i) => Math.floor((2 * i + skip) / 24) == page).forEach((card, i) => {
+        console.log(i, slot, card.name, card.shortUrl);
         let words = card.name.split(" ")
-        createLabel(layer, Math.floor(2 * idx / 3), (2 * idx) % 3, words[0], words[1], card.shortUrl)
-        createLabel(layer, Math.floor((2 * idx + 1) / 3), (2 * idx + 1) % 3, words[0], words[1], card.shortUrl)
+        if (slot != 0 || !half) {
+          createLabel(layer, Math.floor(slot / 3), slot % 3, words[0], words[1], card.shortUrl)
+          slot++
+        }
+        if (slot < 24) {
+          createLabel(layer, Math.floor(slot / 3), slot % 3, words[0], words[1], card.shortUrl)
+          slot++
+        }
         if (doUpdate) {
           card.idLabels.push(lblPrinted)
           console.log(card.id, card.idLabels.join(','))
@@ -245,7 +257,6 @@ function createLabels(page, doUpdate) {
             }
           )
         }
-        idx++
       })
     },
     error => {
@@ -303,6 +314,17 @@ function createElement(parent, type, attrList) {
     elem.setAttribute(attr, attrList[attr]);
   }
   return elem;
+}
+
+function getCards() {
+  let url = 'https://api.trello.com/1/boards/' + trello.board + '/cards?key=' + trello.key + '&token=' + trello.token
+  url = 'info_trello_cards.json'
+  return new Promise((resolve, reject) => {
+    getFile(url, 'application/json').then(
+      data => resolve(JSON.parse(data)),
+      error => reject(error)
+    )
+  })
 }
 
 function getFile(url, type) {
