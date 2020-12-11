@@ -1,7 +1,6 @@
 'strict'
 let url, layer, info, trello, cards
 let cols = [320, 1060, 1800]
-let lblPrinted = '5f3c3d9efd54c38f818d2db6'
 
 function init() {
   console.log("screen = " + screen.width + " x " + screen.height + ", " + window.innerWidth + " x " + window.innerHeight)
@@ -18,9 +17,15 @@ function initTrello() {
     data => {
       trello = JSON.parse(data)
       trello.idMap = {}
+      trello.nameMap = {}
       trello.lists.forEach((list, i) => {
         trello.idMap[list.id] = list
+        // trello.nameMap[list.name] = list
         list.cardCnt = 0
+      })
+      trello.labels.forEach((label, i) => {
+        trello.idMap[label.id] = label
+        trello.nameMap[label.name] = label
       })
       trello.labelCnt = 0
       runTrello()
@@ -36,18 +41,28 @@ function processInput(evt) {
   deleteCards(document.getElementById('filter').value)
 }
 
-function runTrelloX() {
-  // cleanPrinted()
+function runTrello() {
+  // console.log(trello.nameMap["Gedruckt"].name, trello.nameMap["Angekommen"].name)
+  delivered()
+  // cleanGedruckt()
 }
 
-function runTrello() {
+function runTrelloX() {
   let page = url.searchParams.get("page")
   if (null != page) {
-    createLabels(+page, url.searchParams.get("update"))
+    if ("" != page) {
+      createLabels(+page, url.searchParams.get("update"))
+    } else {
+      alert("invalid page")
+    }
   } else {
     let delCards = url.searchParams.get("delete")
     if (null != delCards) {
-      deleteCards(delCards)
+      if ("" != delCards) {
+        deleteCards(delCards)
+      } else {
+        alert("invalid filter")
+      }
     } else {
       checkCards(+url.searchParams.get("add"), +url.searchParams.get("num") || 0, +url.searchParams.get("max") || 3)
     }
@@ -126,7 +141,7 @@ function checkCards(filter, num, max) {
         if (card.name.startsWith(list.name + " ")) {
           console.log(card.name)
           list.cardCnt++
-          if (card.idLabels.indexOf(lblPrinted) == -1) {
+          if (card.idLabels.indexOf(trello.nameMap["Gedruckt"].id) == -1) {
             trello.labelCnt++
           }
         }
@@ -197,9 +212,9 @@ function cleanPrinted() {
     data => {
       cards = data
       console.log(cards.length + " cards loaded")
-      cards.filter((card, i) => card.idLabels.indexOf(lblPrinted) > -1).forEach((card, i) => {
-        card.idLabels.filter((label, i) => label != lblPrinted)
-        updateCard(card.id, { idLabels: card.idLabels.filter((label, i) => label != lblPrinted).join(',') }).then(
+      cards.filter((card, i) => card.idLabels.indexOf(trello.nameMap["Gedruckt"].id) > -1).forEach((card, i) => {
+        card.idLabels.filter((label, i) => label != trello.nameMap["Gedruckt"].id)
+        updateCard(card.id, { idLabels: card.idLabels.filter((label, i) => label != trello.nameMap["Gedruckt"].id).join(',') }).then(
           data => {
             let card = JSON.parse(data)
             console.log(card);
@@ -245,7 +260,7 @@ function createLabels(page, doUpdate) {
           slot++
         }
         if (doUpdate) {
-          card.idLabels.push(lblPrinted)
+          card.idLabels.push(trello.nameMap["Gedruckt"].id)
           console.log(card.id, card.idLabels.join(','))
           updateCard(card.id, { idLabels: card.idLabels.join(',') }).then(
             data => {
