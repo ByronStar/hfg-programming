@@ -41,13 +41,12 @@ function processInput(evt) {
   deleteCards(document.getElementById('filter').value)
 }
 
-function runTrello() {
-  // console.log(trello.nameMap["Gedruckt"].name, trello.nameMap["Angekommen"].name)
-  delivered()
+function runTrelloX() {
+  // delivered()
   // cleanGedruckt()
 }
 
-function runTrelloX() {
+function runTrello() {
   let page = url.searchParams.get("page")
   if (null != page) {
     if ("" != page) {
@@ -207,6 +206,35 @@ function deleteCards(filter) {
   )
 }
 
+function delivered() {
+  getCards().then(
+    data => {
+      cards = data
+      console.log(cards.length + " cards loaded")
+      let addId = trello.nameMap["Angekommen"].id
+      let lblClear = [trello.nameMap["Gepackt"].id, trello.nameMap["Verladen"].id, trello.nameMap["Verladen Büro"].id]
+      // console.log(lblClear)
+      cards.filter((card, i) => card.idLabels.some(lblId => lblId == trello.nameMap["Verladen"].id || lblId == trello.nameMap["Verladen Büro"].id)).forEach((card, i) => {
+        card.idLabels = card.idLabels.filter((lblId, i) => !lblClear.includes(lblId))
+        card.idLabels.push(addId)
+        console.log(card)
+        updateCard(card.id, { idLabels: card.idLabels.join(',') }).then(
+          data => {
+            let card = JSON.parse(data)
+            console.log(card);
+          },
+          error => {
+            console.log("Trello update card: " + error)
+          }
+        )
+      })
+    },
+    error => {
+      console.log("Trello:" + error)
+    }
+  )
+}
+
 function cleanPrinted() {
   getCards().then(
     data => {
@@ -229,10 +257,6 @@ function cleanPrinted() {
       console.log("Trello:" + error)
     }
   )
-}
-
-function chgSkip(evt) {
-  alert("Hi")
 }
 
 function createLabels(page, doUpdate) {
@@ -333,7 +357,7 @@ function createElement(parent, type, attrList) {
 
 function getCards() {
   let url = 'https://api.trello.com/1/boards/' + trello.board + '/cards?key=' + trello.key + '&token=' + trello.token
-  url = 'info_trello_cards.json'
+  // url = 'info_trello_cards.json'
   return new Promise((resolve, reject) => {
     getFile(url, 'application/json').then(
       data => resolve(JSON.parse(data)),
