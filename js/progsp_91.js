@@ -135,14 +135,13 @@ function checkCards(filter, num, max) {
     data => {
       cards = data
       console.log(cards.length + " cards loaded")
-      cards.forEach((card, i) => {
+      let lblPrinted = trello.nameMap["Gedruckt"].id
+      // process cards with known list and list prefix
+      cards.filter((card, i) => (trello.idMap[card.idList] && card.name.startsWith(trello.idMap[card.idList].name + " "))).forEach((card, i) => {
         let list = trello.idMap[card.idList]
-        if (card.name.startsWith(list.name + " ")) {
-          console.log(card.name)
-          list.cardCnt++
-          if (card.idLabels.indexOf(trello.nameMap["Gedruckt"].id) == -1) {
-            trello.labelCnt++
-          }
+        list.cardCnt++
+        if (card.idLabels.indexOf(lblPrinted) == -1) {
+          trello.labelCnt += card.name.match(/ [0-9]+/) ? 2 : 1
         }
       })
       trello.lists.filter((list, i) => list.name.startsWith(filter)).forEach((list, i) => {
@@ -155,7 +154,7 @@ function checkCards(filter, num, max) {
                 let card = JSON.parse(data)
                 console.log(card);
                 cards.push(card)
-                trello.labelCnt++
+                trello.labelCnt += 2
               },
               error => {
                 console.log("Trello: " + error)
@@ -173,11 +172,13 @@ function checkCards(filter, num, max) {
 }
 
 function showPages() {
-  console.log(cards.length + " / " + trello.labelCnt + " cards total / new")
+  console.log(cards.length + " cards, " + trello.labelCnt + " labels to be printed")
+  let skip = +url.searchParams.get("skip") || 0
   let ul = createElement(info, 'ul', {})
-  for (let l = 0; l < Math.ceil(trello.labelCnt / 12); l++) {
+  let max = Math.ceil((skip + trello.labelCnt) / 24)
+  for (let l = 0; l < max; l++) {
     let li = createElement(ul, 'li', {})
-    li.innerHTML = '<a href="' + location.pathname + '?page=' + l + '" target="page">Etiketten Seite ' + (l + 1) + '</a>'
+    li.innerHTML = '<a href="' + location.pathname + '?page=' + l + '&skip=' + skip + ' " target="page">Etiketten Seite ' + (l + 1) + '</a>'
   }
 }
 
@@ -267,35 +268,35 @@ function createLabels(page, doUpdate) {
       console.log(cards.length + " cards loaded")
       let skip = +url.searchParams.get("skip") || 0
       let slot = page == 0 ? skip : 0
-      let half = false
-      if (page > 0 && skip % 2 == 1) {
-        skip++
-        half = true
-      }
-      cards.filter((card, i) => card.name.startsWith(trello.idMap[card.idList].name + " ") && card.idLabels.indexOf(lblPrinted) == -1).filter((card, i) => Math.floor((2 * i + skip) / 24) == page).forEach((card, i) => {
-        console.log(i, slot, card.name, card.shortUrl);
+      let used = skip
+      let lblPrinted = trello.nameMap["Gedruckt"].id
+      cards.filter((card, i) => (trello.idMap[card.idList] && card.name.startsWith(trello.idMap[card.idList].name + " ")) && card.idLabels.indexOf(lblPrinted) == -1).forEach((card, i) => {
+        console.log(i, used, slot, card.name, card.shortUrl);
         let words = card.name.split(" ")
-        if (slot != 0 || !half) {
+        if (Math.floor(used / 24) == page) {
+          createLabel(layer, Math.floor(slot / 3), slot % 3, words[0], words[1], card.shortUrl)
+          slot++
+          if (doUpdate) {
+            card.idLabels.push(trello.nameMap["Gedruckt"].id)
+            console.log(card.id, card.idLabels.join(','))
+            updateCard(card.id, { idLabels: card.idLabels.join(',') }).then(
+              data => {
+                let card = JSON.parse(data)
+                console.log(card);
+              },
+              error => {
+                console.log("Trello update card: " + error)
+              }
+            )
+          }
+        }
+        used++
+        // second label for boxes only
+        if (Math.floor(used / 24) == page && words[1].match(/^[0-9]+$/)) {
           createLabel(layer, Math.floor(slot / 3), slot % 3, words[0], words[1], card.shortUrl)
           slot++
         }
-        if (slot < 24) {
-          createLabel(layer, Math.floor(slot / 3), slot % 3, words[0], words[1], card.shortUrl)
-          slot++
-        }
-        if (doUpdate) {
-          card.idLabels.push(trello.nameMap["Gedruckt"].id)
-          console.log(card.id, card.idLabels.join(','))
-          updateCard(card.id, { idLabels: card.idLabels.join(',') }).then(
-            data => {
-              let card = JSON.parse(data)
-              console.log(card);
-            },
-            error => {
-              console.log("Trello update card: " + error)
-            }
-          )
-        }
+        used += words[1].match(/^[0-9]+$/) && slot < 24 ? 1 : 0
       })
     },
     error => {
