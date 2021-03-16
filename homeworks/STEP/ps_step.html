@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Studenten tippen einfach Programme">
+
+  <link rel="shortcut icon" href="img/favicon.png">
+
+  <title>Programmiersprachen 1</title>
+
+  <!-- Styles -->
+  <style>
+    body {
+    font-family: 'Ubuntu', sans-serif;
+    font-size: 1em;
+    padding: 0;
+    margin: 0;
+    color: #fffba7;
+    background-color: #505050;
+  }
+
+  p {
+    color: #80ff00;
+    font-size: 1.5em;
+  }
+
+  a {
+    color: #00a9fe;
+    text-decoration: none;
+  }
+
+  a:hover {
+    color: #ffa312;
+  }
+
+  li {
+    margin-top: 6px;
+    margin-bottom: 6px;
+  }
+
+  pre {
+    color: #ffffff;
+  }
+
+  svg, canvas {
+    position: absolute;
+    top: 0;
+  }
+
+  .overlay {
+    position: relative;
+    margin: 20px;
+  }
+
+  .noscroll {
+    overflow: hidden;
+  }
+
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgb(255, 255, 255);
+    background-color: rgba(255, 255, 255, 0.6);
+  }
+
+  .bunt {
+    color: #80ff00;
+    font-weight: bold;
+  }
+
+  .modalbox {
+    background-color: #404040;
+    margin: 15% auto;
+    padding: 20px;
+    border: 2px solid #a0a0a0;
+    width: 600px;
+  }
+  </style>
+  <script type="text/javascript">
+    function init() {
+      console.log("screen = " + screen.width + " x " + screen.height + ", " + window.innerWidth + " x " + window.innerHeight);
+    }
+  </script>
+
+</head>
+
+<body onload="init()">
+  <div class="overlay">
+
+    <h3>Kursmaterial Programmiersprachen 1</h3>
+    <p>Hallo und Willkommen im Kurs <strong>Programmiersprachen 1</strong></p>
+    <ul>
+      <li>Diese Seite stammt aus Deinem lokalen Ordner <span class="bunt">STEP</span>. Das steht für
+        <span class="bunt">Studenten tippen einfach Programme</span> und soll heißen: Jeder der auf dem Computer einen Text schreiben kann, kann auch programmieren!
+        <br>In diesem Ordner sind auch die ersten Übungsaufgaben vorbereitet - für Dich zum Fertigstellen im Kursverlauf.</li>
+      <li>Aktuell wollen wir sowohl in
+        <b>Programmiertes Entwerfen</b> als auch in <b>Programmiersprachen</b> denselben Editor verwenden: <a href="https://atom.io" target="_blank">Atom</a> mit Zusatzpaketen
+        <ol>
+          <li><em>atom-live-server</em>: beim Speichern einer Datei wird automatisch die Seite im Browser neu geladen</li>
+          <li><em>atom-beautify</em>: formatiert auf Knopfdruck Deine Sourcecode, damit Du eine besseren Durchblick hast</li>
+        </ol>
+      </li>
+      <li>Im Ordner <b>STEP</b> sind einige vorgefertigte Javascript Bibliotheken (Unterordner libraries), die uns im Kursverlauf
+        das Leben erleichtern sollen. Es gibt sogar eine Library zum einfachen Abgeben der Hausaufgaben: <b>Homeworks.js</b>.
+        Damit das funktioniert, muss Homeworks.js Dich am Anfang "kennenlernen" - d.h. Du musst noch eine individuelle Teilnehmer ID herunterladen,
+        bevor Du etwas abgeben kannst. <br>Keine Angst, das sollte weitgehend mit automatischer Benutzerführung passieren wenn Du eine der Hausaufgaben Seiten öffnest und auf das 🔗 Symbol clickst.
+        Wir machen das auch notfalls zusammen im Kurs.
+      </li>
+      <li>Ausserdem gibt es unter anderem im <b>STEP</b> Ordner:
+        <ul>
+          <li>die Datei README.md beschreibt (auf Englisch 🙄) die Verzeichisstruktur und wie ein Javascript Programm so aufgebaut ist</li>
+          <li>die HTML Dateien (in ps_step_X.html) für die Aufgaben - dort ist im Kurs eher wenig zu tun (X steht für Aufgabe 1,2,...)</li>
+          <li>im UnterOrdner <strong>/js</strong> die zugehörigen Javascript Dateien (jeweils in ps_step_X.js) - da passiert die ganze Magie des Programmierens</li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+</body>
+
+</html>

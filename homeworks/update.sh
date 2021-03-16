@@ -7,19 +7,22 @@ HOST=node@hfg.hopto.org
 DIR=/home/node/homeworks
 PORT=
 
+MODE=${1:-${MODE:-help}}
+
+case "${MODE}" in
+  compile)
+  ;;
 # Save data
 #scp ${PORT} ${HOST}:${DIR}/students.zip studentSoSe20.zip
 #scp ${PORT} ${HOST}:${DIR}/server.zip serverSoSe20.zip
 
-# upload students list
-#scp ${PORT} server/studentWS2021.txt ${HOST}:${DIR}/server/students.txt
 
 # intial setup
 # scp ${PORT} server/package.json ${HOST}:${DIR}/server
-# scp ${PORT} student/favicon.ico ${HOST}:${DIR}/server
+# scp ${PORT} STEP/favicon.ico ${HOST}:${DIR}/server
 # scp ${PORT} server/homeworks.sh ${HOST}:${DIR}/server
 
-# semester setup
+# semester setup OLD
 #scp ${PORT} student/lib/homeworks.js ${HOST}:${DIR}/students/shared/lib
 #scp ${PORT} student/lib/p5.min.js ${HOST}:${DIR}/students/shared/lib
 #scp ${PORT} student/lib/p5.sound.min.js ${HOST}:${DIR}/students/shared/lib
@@ -32,19 +35,44 @@ PORT=
 #scp ${PORT} student/img/y.png ${HOST}:${DIR}/students/shared/img
 #scp ${PORT} student/img/arrow_d.png ${HOST}:${DIR}/students/shared/img
 
-# refresh test setup
-#cp student/lib/homeworks.js /Users/benno/Desktop/student/lib
+  # semester setup NEW
+  setup)
+    # upload shared files
+    scp ${PORT} STEP/libraries/decomp.min.js ${HOST}:${DIR}/students/shared/libraries
+    scp ${PORT} STEP/libraries/homeworks.js ${HOST}:${DIR}/students/shared/libraries
+    scp ${PORT} STEP/libraries/matter.js ${HOST}:${DIR}/students/shared/libraries
+    scp ${PORT} STEP/libraries/p5.min.js ${HOST}:${DIR}/students/shared/libraries
+    scp ${PORT} STEP/libraries/p5.sound.min.js ${HOST}:${DIR}/students/shared/libraries
+    scp ${PORT} STEP/libraries/p5.sound.min.js.map ${HOST}:${DIR}/students/shared/libraries
+    scp ${PORT} STEP/libraries/pathseg.js ${HOST}:${DIR}/students/shared/libraries
+    scp ${PORT} STEP/libraries/qrcode.js ${HOST}:${DIR}/students/shared/libraries
+    scp ${PORT} STEP/css/ps_step.css ${HOST}:${DIR}/students/shared/css
+    scp ${PORT} STEP/img/x.png ${HOST}:${DIR}/students/shared/img
+    scp ${PORT} STEP/img/r.png ${HOST}:${DIR}/students/shared/img
+    scp ${PORT} STEP/img/g.png ${HOST}:${DIR}/students/shared/img
+    scp ${PORT} STEP/img/y.png ${HOST}:${DIR}/students/shared/img
+  ;;
 
-# create students package
-#rm student.zip
-#zip -r student.zip student -x "student/data/*.id" -x "student**.DS_Store"
+# refresh test setup
+#cp STEP/libraries/homeworks.js /Users/benno/Desktop/STEP/libraries
+
+  # create students package
+  package)
+    # upload students list
+    rm STEP.zip
+    zip -r STEP.zip STEP -x "STEP/data/*.id" -x "STEP**.DS_Store"
+  ;;
 
 # replace transactional data
 # scp ${PORT} server/homeworks.json ${HOST}:${DIR}/server
 
-# upload new server (and restart)
-#scp ${PORT} server/homeworks.js ${HOST}:${DIR}/server
-#wscat -c wss://hfg.hopto.org:11204 -x '{"id":"RESTART","from":"wscat script","ts":'$(date +%s)',"data":{"rc":0}}'
+  # upload new server (and restart)
+  upd_server)
+    # upload students list
+    scp ${PORT} server/studentSoSe21.txt ${HOST}:${DIR}/server/students.txt
+    scp ${PORT} server/homeworks.js ${HOST}:${DIR}/server
+    wscat -c wss://hfg.hopto.org:11204 -x '{"id":"RESTART","from":"wscat script","ts":'$(date +%s)',"data":{"rc":0}}'
+  ;;
 
 # save transactional data
 # scp ${PORT} ${HOST}:${DIR}/server/homeworks.json server
@@ -67,5 +95,13 @@ PORT=
 # get students file
 #scp ${PORT} ${HOST}:${DIR}/students/nina.bacher/progsp_4.html progsp_4nina.html
 
-# add new user
-# wscat -c wss://hfg.hopto.org:11204 -x '{"id":"ADDUSER","from":"wscat script","ts":'$(date +%s)',"data":{"firstname":"Benedikt","name":"Groß","group":"IG1"}}'
+  # add new user
+  adduser)
+    #wscat -c wss://hfg.hopto.org:11204 -x '{"id":"ADDUSER","from":"wscat script","ts":'$(date +%s)',"data":{"firstname":"Benedikt","name":"Groß","group":"IG1"}}'
+    wscat -c wss://hfg.hopto.org:11204 -x '{"id":"ADDUSER","from":"wscat script","ts":'$(date +%s)',"data":{"firstname":"Amanda","name":"Grigoleit","group":"IG1A"}}'
+  ;;
+  *)
+    echo "\"${MODE}\" unknown"
+    exit 1
+  ;;
+esac

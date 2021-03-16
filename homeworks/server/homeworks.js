@@ -69,11 +69,11 @@ function setupServers() {
       ipAddr = state.domain
     }
   } else {
-    if (!fs.existsSync('progsp.hfg-gmuend.de.key') || (ipAddr != '127.0.0.1' && ipAddr != state.ipAddr)) {
+    if (!fs.existsSync('step.hfg-gmuend.de.key') || (ipAddr != '127.0.0.1' && ipAddr != state.ipAddr)) {
       //createCA('hfg.hopto.org', ipAddr)
       // generate a key pair
       let keys = forge.pki.rsa.generateKeyPair(2048)
-      fs.writeFileSync('progsp.hfg-gmuend.de.key', forge.pki.privateKeyToPem(keys.privateKey), 'utf8')
+      fs.writeFileSync('step.hfg-gmuend.de.key', forge.pki.privateKeyToPem(keys.privateKey), 'utf8')
 
       // create a certification request (CSR)
       let csr = forge.pki.createCertificationRequest()
@@ -91,14 +91,14 @@ function setupServers() {
       let cert = createCert(csr.publicKey, caPrivateKey, csr.subject.attributes, issuer, csr.getAttribute({
         name: 'extensionRequest'
       }).extensions, 1)
-      fs.writeFileSync('progsp.hfg-gmuend.de.pem', forge.pki.certificateToPem(cert))
+      fs.writeFileSync('step.hfg-gmuend.de.pem', forge.pki.certificateToPem(cert))
       state.ipAddr = ipAddr
       saveState()
     }
 
     options = {
-      key: fs.readFileSync('./progsp.hfg-gmuend.de.key'),
-      cert: fs.readFileSync('./progsp.hfg-gmuend.de.pem')
+      key: fs.readFileSync('./step.hfg-gmuend.de.key'),
+      cert: fs.readFileSync('./step.hfg-gmuend.de.pem')
     }
   }
 
@@ -166,7 +166,7 @@ function setupServers() {
           response.end()
           break
         case '/homeworks.js':
-          sendResponse(response, '../students/shared/lib/homeworks.js', "application/octet-stream")
+          sendResponse(response, '../students/shared/libraries/homeworks.js', "application/octet-stream")
           break
         case '/state.json':
           response.writeHead(200, {
@@ -207,7 +207,7 @@ function setupServers() {
             response.end()
             break
           case '/homeworks.js':
-            sendResponse(response, '../students/shared/lib/homeworks.js', "application/octet-stream")
+            sendResponse(response, '../students/shared/libraries/homeworks.js', "application/octet-stream")
             break
           default:
             response.writeHead(404, {
@@ -346,9 +346,8 @@ function setupServers() {
   }, 30000)
 
   if (clientVersion != state.version) {
-    announce("Es gibt eine neue Version der " + lib + " Library. Bitte von https://" + state.domain + ":" + httpsPort + "/homeworks.js herunterladen und in euren 'student/lib' Ordner kopieren.", "#2021-ig1_a-programmiersprachen-1-a")
-    announce("Es gibt eine neue Version der " + lib + " Library. Bitte von https://" + state.domain + ":" + httpsPort + "/homeworks.js herunterladen und in euren 'student/lib' Ordner kopieren.", "#2021-ig1_b-programmiersprachen-1-b")
-    //announce("Es gibt eine neue Version der " + lib + " Library. Bitte von https://" + state.domain + ":" + httpsPort + "/homeworks.js herunterladen und in euren 'student/lib' Ordner kopieren.", "@benno.staebler")
+    announce("Es gibt eine neue Version der " + lib + " Library. Bitte von https://" + state.domain + ":" + httpsPort + "/homeworks.js herunterladen und in euren 'STEP/libraries' Ordner kopieren.", "#2121-ig1-programmiersprachen-1")
+    //announce("Es gibt eine neue Version der " + lib + " Library. Bitte von https://" + state.domain + ":" + httpsPort + "/homeworks.js herunterladen und in euren 'STEP/libraries' Ordner kopieren.", "@benno.staebler")
     state.version = clientVersion
     saveState()
   }
@@ -490,7 +489,7 @@ function handleMessage(server, message, id, client) {
       case 'STORE':
         student = msg.data.student
         let file = msg.data.file
-        file = file.replace(/.*\/student\//, '/')
+        file = file.replace(/.*\STEP\//, '/')
         let part = file.endsWith('.js') ? 'js' : 'html'
         if (state.volatile[student].act) {
           state.volatile[student].act[part] = file
@@ -604,7 +603,7 @@ function setupUserDir(dir) {
     fs.mkdirSync('../students' + dir + '/js');
     fs.symlinkSync('../shared/css', '../students' + dir + '/css', 'dir')
     fs.symlinkSync('../shared/img', '../students' + dir + '/img', 'dir')
-    fs.symlinkSync('../shared/lib', '../students' + dir + '/lib', 'dir')
+    fs.symlinkSync('../shared/libraries', '../students' + dir + '/libraries', 'dir')
   }
 }
 
@@ -621,7 +620,7 @@ function createState() {
     fs.mkdirSync('../students/shared');
     fs.mkdirSync('../students/shared/css');
     fs.mkdirSync('../students/shared/img');
-    fs.mkdirSync('../students/shared/lib');
+    fs.mkdirSync('../students/shared/libraries');
   }
   fs.readFile(studentsFile, 'utf-8', (err, data) => {
     if (err) {
@@ -692,9 +691,9 @@ function saveState() {
 function announce(info, channel) {
   // console.log(info, channel)
   if (state.slack) {
-    if (null == channel) {
+    //if (null == channel) {
       channel = "@benno.staebler"
-    }
+    //}
 
     let data = {
       channel: channel,
@@ -808,16 +807,16 @@ function getIds() {
   <meta name="author" content="ByronStar">
 
   <title>Programmiersprachen - Hausaufgaben</title>
-  <script type="text/javascript" src="/shared/lib/homeworks.js"></script>
+  <script type="text/javascript" src="/shared/libraries/homeworks.js"></script>
   <script>Homeworks.gc.noMenu=true</script>
-  <link rel="stylesheet" href="/shared/css/progsp.css">
+  <link rel="stylesheet" href="/shared/css/ps_step.css">
 </head>
 
-<body class="progsp">
+<body>
   <div class="overlay" style="margin: 40px;">
     <h1>Id Dateien für Hausaufgaben Abgabe</h1>
     <p>Damit Deine Hausaufgaben richtig zugeordnet werden können, benötigst Du Deine 'student.id' Datei im 'data' Unterverzeichnis
-    Deines 'student' Ordners für IG1 Programmiersprachen.<br>Klicke in der Liste auf Deinen Namen, dann wird Deine 'student.id' Datei im 'Download' Ordner
+    Deines 'STEP' Ordners für IG1 Programmiersprachen.<br>Klicke in der Liste auf Deinen Namen, dann wird Deine 'student.id' Datei im 'Download' Ordner
     deines Rechners abgelelegt und Du kannst sie anschliessend in das 'data' Unterverzeichnis verschieben oder kopieren.
     <p>Diese Seite kannst Du nach dem Download schliessen.
     <div>
@@ -855,11 +854,11 @@ function getIndex() {
   <meta name="author" content="ByronStar">
 
   <title>Programmiersprachen - Hausaufgaben</title>
-  <script type="text/javascript" src="/shared/lib/homeworks.js"></script>
-  <link rel="stylesheet" href="/shared/css/progsp.css">
+  <script type="text/javascript" src="/shared/libraries/homeworks.js"></script>
+  <link rel="stylesheet" href="/shared/css/ps_step.css">
 </head>
 
-<body class="progsp">
+<body>
   <div class="overlay" style="margin: 40px;">
     <h1>Abgegebene Hausaufgaben</h1>
     <div>
@@ -941,7 +940,7 @@ function getExtensions(cA, ipAddr) {
     altNames: [{
       // 1 email, 2 is DNS type, 6: URI, 7: IP Address
       type: 2,
-      value: 'progsp.hfg-gmuend.de'
+      value: 'step.hfg-gmuend.de'
     }, {
       type: 2,
       value: 'hfg.hopto.org',

@@ -1,0 +1,16 @@
+x;x;x;x;x;x;x;x;x;IG1;300;M;Staebler;Benno;;
+x;x;x;x;x;x;x;x;x;IG1A;100;M;Aichele;Steffen
+x;x;x;x;x;x;x;x;x;IG1A;101;M;Ascherl;Rico;Lorin
+x;x;x;x;x;x;x;x;x;IG1A;102;M;Ficht;Frank
+x;x;x;x;x;x;x;x;x;IG1A;103;F;Fichtel;Laura
+x;x;x;x;x;x;x;x;x;IG1A;104;M;Frassica;Eugenio
+x;x;x;x;x;x;x;x;x;IG1A;105;F;Freund;Sofie;Pauline
+x;x;x;x;x;x;x;x;x;IG1A;106;F;Herzer;Tanja
+x;x;x;x;x;x;x;x;x;IG1A;107;F;Liedtke;Zoe;Freya
+x;x;x;x;x;x;x;x;x;IG1A;108;F;Michl;Freya;Johanna
+x;x;x;x;x;x;x;x;x;IG1A;109;M;Moedritzer;Sebastian
+x;x;x;x;x;x;x;x;x;IG1A;110;F;Osswald;Filippa
+x;x;x;x;x;x;x;x;x;IG1A;111;F;Schopf;Johanna
+x;x;x;x;x;x;x;x;x;IG1A;112;M;Soeffing;Anton
+x;x;x;x;x;x;x;x;x;IG1A;113;F;Voith;Lea;Larissa
+x;x;x;x;x;x;x;x;x;IG1A;114;F;Wels;Hannah;Rebecca
