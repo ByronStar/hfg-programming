@@ -98,7 +98,8 @@ case "${MODE}" in
   # add new user
   adduser)
     #wscat -c wss://hfg.hopto.org:11204 -x '{"id":"ADDUSER","from":"wscat script","ts":'$(date +%s)',"data":{"firstname":"Benedikt","name":"Groß","group":"IG1"}}'
-    wscat -c wss://hfg.hopto.org:11204 -x '{"id":"ADDUSER","from":"wscat script","ts":'$(date +%s)',"data":{"firstname":"Amanda","name":"Grigoleit","group":"IG1A"}}'
+    #wscat -c wss://hfg.hopto.org:11204 -x '{"id":"ADDUSER","from":"wscat script","ts":'$(date +%s)',"data":{"firstname":"Amanda","name":"Grigoleit","group":"IG1A"}}'
+    #wscat -c wss://hfg.hopto.org:11204 -x '{"id":"ADDUSER","from":"wscat script","ts":'$(date +%s)',"data":{"firstname":"Rebekka","name":"Romer","group":"IG1A"}}'
   ;;
   *)
     echo "\"${MODE}\" unknown"

@@ -298,7 +298,7 @@ function setupServers() {
       handleClose(wssServer, id)
     })
 
-    // Client did sent a hearbeat
+    // Client did sent a heartbeat
     client.on('pong', () => {
       // console.log(new Date().getTime(), "PONG", id)
       client.isAlive = true
