@@ -105,7 +105,7 @@ function setupServers() {
   // Self signed root certificate only
   // ig1:$2a$08$uGD7MtlHnvRQikJLGiUuIuye8dTapGoz2pXSuXyna9FFwUPRPYSIC
   httpServer = http.createServer(function(request, response) {
-    var userpass = new Buffer((request.headers.authorization || '').split(' ')[1] || '', 'base64').toString();
+    var userpass = Buffer.from((request.headers.authorization || '').split(' ')[1] || '', 'base64').toString();
     if (!bcrypt.compareSync(userpass, '$2a$08$uGD7MtlHnvRQikJLGiUuIuye8dTapGoz2pXSuXyna9FFwUPRPYSIC')) {
       response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="HfG ' + lib + '"' });
       response.end('HTTP Error 401 Unauthorized: Access is denied');
@@ -134,7 +134,7 @@ function setupServers() {
   // ig1:$2a$08$uGD7MtlHnvRQikJLGiUuIuye8dTapGoz2pXSuXyna9FFwUPRPYSIC
   httpsServer = https.createServer(options, function(request, response) {
     // console.log(decodeURIComponent(request.url))
-    var userpass = new Buffer((request.headers.authorization || '').split(' ')[1] || '', 'base64').toString();
+    var userpass = Buffer.from((request.headers.authorization || '').split(' ')[1] || '', 'base64').toString();
     if (bcrypt.compareSync(userpass, '$2a$08$5IZmi9StV.mBmOSmZQ.hfeENTxsGzBa647uJFzbIpRUgSEwdS1L32') || // Byron
       bcrypt.compareSync(userpass, '$2a$10$yJv.PbSvcZpc3THj8iPukeEGR7cM/9GoUgKcAnEs4TA90GvPr4eFi')) {   // Bene
       let actUrl = url.parse(decodeURIComponent(request.url), true)

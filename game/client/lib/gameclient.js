@@ -202,7 +202,8 @@ function onReceive(data) {
       }
       sendState('JOIN', {
         name: name,
-        game: (location.hostname.match(/localhost|127.0.0.1/) ? 'L-' : '') + gc.gameId
+        game: (location.hostname.match(/localhost|127.0.0.1/) ? 'L-' : '') + gc.gameId,
+        gameName: gc.name
       })
       break
     case 'PLAYERS':
@@ -288,11 +289,21 @@ function onReceive(data) {
 function prepareGame(p) {
   gc.ready = true
   gc.me.active = true
-  gc.me.group = [gc.me.id, gc.players[p].id]
-  sendState('PREPARE', {
-    player: gc.me,
-    to: gc.players[p].id
-  })
+  if (p > -1) {
+    gc.me.group = [gc.me.id, gc.players[p].id]
+    sendState('PREPARE', {
+      player: gc.me,
+      to: gc.players[p].id
+    })
+  } else {
+    gc.me.group = [gc.me.id]
+    gc.me.run = gc.run
+    sendState('START', {
+      player: gc.me,
+      to: gc.me.id
+    })
+    // gc.move({ id: 'BEG' });
+  }
 }
 
 function refreshPlayers(players) {
@@ -304,7 +315,11 @@ function refreshPlayers(players) {
     playerNode = clearElement(playerNode)
     gc.players.forEach(function(v, i) {
       let p = document.createElement('li')
-      p.innerHTML = '<button ' + (v == gc.me || (gc.me && gc.me.active) || v.active ? 'disabled ' : '') + 'onclick="prepareGame(' + i + ')">Einladen</button>'
+      if (gc.seats > 1) {
+        p.innerHTML = '<button ' + (v == gc.me || (gc.me && gc.me.active) || v.active ? 'disabled ' : '') + 'onclick="prepareGame(' + i + ')">Einladen</button>'
+      } else {
+        p.innerHTML = '<button ' + (v == gc.me && !gc.me.active ? '' : 'disabled ') + 'onclick="prepareGame(-1)">Starten</button>'
+      }
       if (gc.id === v.id) {
         p.innerHTML += v.name + " (me)" + (v.name.startsWith('Spieler') ? ' Tipp: in der Browser URL mit ?name=Hugo kann man seinen Namen ändern und speichern (Cookie)' : '')
       } else {
@@ -318,10 +333,10 @@ function refreshPlayers(players) {
   }
   if (null != statusNode) {
     statusNode.setAttribute('fill', gc.online ? gc.ready ? 'lime' : 'green' : 'red')
-    let info = document.getElementById('info')
-    if (info) {
-      info.style.display = gc.ready ? 'none' : 'block'
-    }
+  }
+  let info = document.getElementById('info')
+  if (info) {
+    info.style.display = gc.ready ? 'none' : 'block'
   }
 }
 
@@ -357,12 +372,15 @@ function addScript(name) {
 }
 
 function createQRCode(data, id) {
-  console.log("qrcode=" + data)
-  qr = qrcode(4, 'L')
-  qr.addData(data)
-  data.value = ""
-  qr.make()
-  document.getElementById(id).innerHTML = qr.createImgTag()
+  let tag = document.getElementById(id)
+  if (tag) {
+    console.log("qrcode=" + data)
+    qr = qrcode(4, 'L')
+    qr.addData(data)
+    data.value = ""
+    qr.make()
+    tag.innerHTML = qr.createImgTag()
+  }
 }
 
 function createWebSocket(wsUri, onChange, onReceive) {
@@ -482,8 +500,10 @@ let pt, matrix
 
 function initPoint() {
   let svg = document.getElementById('svg')
-  pt = svg.createSVGPoint()
-  matrix = svg.getScreenCTM().inverse()
+  if (svg) {
+    pt = svg.createSVGPoint()
+    matrix = svg.getScreenCTM().inverse()
+  }
 }
 
 // Get point in global SVG space

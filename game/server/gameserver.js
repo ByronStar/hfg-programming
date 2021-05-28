@@ -15,6 +15,7 @@ const https = require('https')
 const fs = require('fs')
 const forge = require('node-forge')
 const bcrypt = require('bcryptjs');
+const spawn = require('child_process').spawn
 
 const http = require('http')
 const url = require("url")
@@ -103,7 +104,7 @@ function setupServers() {
   // Self signed root certificate only
   // ig1:$2a$08$uGD7MtlHnvRQikJLGiUuIuye8dTapGoz2pXSuXyna9FFwUPRPYSIC
   httpServer = http.createServer(function(request, response) {
-    var userpass = new Buffer((request.headers.authorization || '').split(' ')[1] || '', 'base64').toString();
+    var userpass = Buffer.from((request.headers.authorization || '').split(' ')[1] || '', 'base64').toString();
     if (!bcrypt.compareSync(userpass, '$2a$08$uGD7MtlHnvRQikJLGiUuIuye8dTapGoz2pXSuXyna9FFwUPRPYSIC')) {
       response.writeHead(401, { 'WWW-Authenticate': 'Basic realm="HfG ' + lib + '"' });
       response.end('HTTP Error 401 Unauthorized: Access is denied');
@@ -131,8 +132,8 @@ function setupServers() {
   // Bene:$2a$10$yJv.PbSvcZpc3THj8iPukeEGR7cM/9GoUgKcAnEs4TA90GvPr4eFi
   // ig1:$2a$08$uGD7MtlHnvRQikJLGiUuIuye8dTapGoz2pXSuXyna9FFwUPRPYSIC
   httpsServer = https.createServer(options, function(request, response) {
-    console.log(decodeURIComponent(request.url))
-    var userpass = new Buffer((request.headers.authorization || '').split(' ')[1] || '', 'base64').toString();
+    // console.log(decodeURIComponent(request.url))
+    var userpass = Buffer.from((request.headers.authorization || '').split(' ')[1] || '', 'base64').toString();
     if (bcrypt.compareSync(userpass, '$2a$08$5IZmi9StV.mBmOSmZQ.hfeENTxsGzBa647uJFzbIpRUgSEwdS1L32') ||
       bcrypt.compareSync(userpass, '$2a$10$yJv.PbSvcZpc3THj8iPukeEGR7cM/9GoUgKcAnEs4TA90GvPr4eFi') ||
       bcrypt.compareSync(userpass, '$2a$08$uGD7MtlHnvRQikJLGiUuIuye8dTapGoz2pXSuXyna9FFwUPRPYSIC')) {
@@ -393,6 +394,59 @@ function forward(server, message, active) {
   })
 }
 
+function spawnGame(id, run) {
+  let child = spawn(run.cmd, run.args, run.options)
+  let name = state.games[state.players[id]].name
+  child.stdout.setEncoding('utf8')
+
+  /*
+  let text
+    child.stdout.on('data', (data) => {
+      console.log(`${name} data:\n${data}`)
+      if (data.startsWith("Your score")) {
+        clients[id].send(JSON.stringify({
+          id: 'MOVE',
+          data: { id: 'OUTPUT', text: text, score: data }
+        }))
+      } else {
+        text = data
+        child.stdin.write("score\n")
+      }
+    })
+  */
+  child.stdout.on('data', (data) => {
+    // console.log(`${name} data:\n${data}`)
+    clients[id].send(JSON.stringify({
+      id: 'MOVE',
+      data: { id: 'OUTPUT', text: data }
+    }))
+  })
+
+  child.stderr.on('data', (data) => {
+    console.log(`${name} error: ${data}`)
+    clients[id].send(JSON.stringify({
+      id: 'MOVE',
+      data: { id: 'ERROR', text: data }
+    }))
+  })
+
+  child.on('close', (code) => {
+    console.log(`${name} exit(${code})`)
+    if (clients[id]) {
+      clients[id].send(JSON.stringify({
+        id: 'MOVE',
+        data: { id: 'END' }
+      }))
+    }
+  })
+
+  clients[id].send(JSON.stringify({
+    id: 'MOVE',
+    data: { id: 'BEG' }
+  }))
+  return child
+}
+
 function handleMessage(server, message, id, client) {
   let ip = client.upgradeReq.connection.remoteAddress
   if (msgTrace) {
@@ -408,6 +462,7 @@ function handleMessage(server, message, id, client) {
           // not yet published game
           state.games[msg.data.game] = {
             id: msg.data.game,
+            name: msg.data.gameName,
             players: []
           }
         }
@@ -443,12 +498,26 @@ function handleMessage(server, message, id, client) {
         forward(server, JSON.stringify(msg), [msg.from, msg.data.to])
         updateGames(server)
         break
+      case 'START':
+        msg.data.players = updatePlayers(msg.data.player)
+        forward(server, JSON.stringify(msg), [msg.from])
+        updateGames(server)
+        if (msg.data.player.run) {
+          state.games[state.players[id]].child = spawnGame(id, msg.data.player.run)
+          // console.log(state.games[state.players[id]])
+        }
+        break
       case 'DECLINE':
         forward(server, message, [msg.data.to])
         updateGames(server)
         break
       case 'MOVE':
-        forward(server, message, msg.data.group)
+        let gameId = state.players[id]
+        if (state.games[gameId].child) {
+          state.games[gameId].child.stdin.write(msg.data.text)
+        } else {
+          forward(server, message, msg.data.group)
+        }
         break
       case 'INFO':
         console.log("INFO: ", msg.data)
@@ -573,6 +642,9 @@ function updatePlayers(player) {
 function handleClose(server, id) {
   delete clients[id]
   let gameId = state.players[id]
+  if (state.games[gameId].child) {
+    state.games[gameId].child.kill('SIGINT')
+  }
   delete state.players[id]
   state.games[gameId].players = state.games[gameId].players.filter(v => v.id !== id)
   let message = JSON.stringify({
